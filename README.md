@@ -52,6 +52,12 @@ The module names are `auth`, `paths`, `rooms`, `contests`, `grading`, `leaderboa
 
 Suggested semester sequence: sprint 1 foundation and auth; sprint 2 paths and rooms; sprint 3 submissions and Judge0; sprint 4 contests and handwritten grading; sprint 5 leaderboard, XP, badges, and anti-cheat; sprint 6 integration, hardening, and demo. Assign one owner per module and rotate reviewers.
 
+## GitHub task board
+
+[Code Carf Project #2](https://github.com/users/kimngan1805/projects/2) contains 12 Epic issues and 40 task sub-issues from `scripts/seed_sprint_issues.py`. The board uses Backlog, Priority, Estimate, and two milestones named Sprint 1 and Sprint 2. Sprint dates are intentionally blank until the team agrees on them. The task plan totals 160 story points; review capacity and sprint scope before assigning work. The suggested semester sequence above is a planning option, while the imported issue set uses only two sprint milestones from the supplied task list.
+
+To preview the issue plan, run `python3 scripts/seed_sprint_issues.py --repo kimngan1805/Code-Carf --owner kimngan1805 --project 2 --dry-run`. To sync it to GitHub, authenticate with `gh auth login` and `gh auth refresh -s project`, then remove `--dry-run`. The script reuses existing issue titles and project items when rerun. Once dates are agreed, pass all four flags: `--s1-start`, `--s1-end`, `--s2-start`, and `--s2-end` in `YYYY-MM-DD` format.
+
 ## Checks
 
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` before a PR. GitHub Actions runs the same checks on every PR. Pre-commit hooks format and lint staged files; commit messages follow Conventional Commits.
