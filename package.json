@@ -63,5 +63,8 @@
     "tsx": "^4.0.0",
     "typescript": "^5.9.0",
     "vitest": "^3.0.0"
+  },
+  "overrides": {
+    "dompurify": "^3.4.17"
   }
 }
