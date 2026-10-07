@@ -33,6 +33,7 @@ Local development uses `GRADER_ADAPTER=mock`; it returns `MOCKED` and never exec
 | `src/features/<module>/service.ts`    | Authorization and orchestration                      |
 | `src/features/<module>/repository.ts` | Prisma queries                                       |
 | `src/components/ui`                   | Shared shadcn-style primitives                       |
+| `src/app/globals.css`                 | Design tokens; see `docs/design-system.md`           |
 | `src/lib`                             | Database, environment, errors, logging, API response |
 | `prisma`                              | Schema, migration, seed                              |
 | `src/proxy.ts`                        | Next.js 16 route guard                               |

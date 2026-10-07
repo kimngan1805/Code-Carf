@@ -8,6 +8,7 @@ Describe the change and why it is needed.
 - [ ] `npm run typecheck`
 - [ ] `npm test`
 - [ ] `npm run build`
+- [ ] UI uses design tokens and shared components (`docs/design-system.md`)
 
 ## Review notes
 
