@@ -1,4 +1,4 @@
-import { PrismaClient, RoleName } from "@prisma/client";
+import { ExerciseKind, PrismaClient, RoleName } from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -42,6 +42,8 @@ async function main() {
         create: {
           title: "Getting started",
           position: 1,
+          content:
+            "# Getting started\n\nUse `console.log` to print text to the console.",
           exercises: {
             create: {
               title: "Hello world",
@@ -58,7 +60,43 @@ async function main() {
   const contest = await prisma.contest.upsert({
     where: { slug: "sample-contest" },
     update: {},
-    create: { slug: "sample-contest", title: "Sample Contest" },
+    create: {
+      slug: "sample-contest",
+      title: "Sample Contest",
+      creatorId: teacher.id,
+      exercises: {
+        create: [
+          {
+            position: 1,
+            exercise: {
+              create: {
+                title: "Sum two numbers",
+                prompt: "Read two integers and print their sum.",
+                testCases: {
+                  create: [
+                    { input: "1 2", expected: "3", isHidden: false },
+                    { input: "-5 10", expected: "5" },
+                  ],
+                },
+              },
+            },
+          },
+          {
+            position: 2,
+            exercise: {
+              create: {
+                title: "Binary search flowchart",
+                prompt:
+                  "Draw a flowchart for binary search and upload a photo.",
+                kind: ExerciseKind.HANDWRITTEN,
+                rubric:
+                  "Has start/end, low/high/mid, comparison branch, loop until low > high.",
+              },
+            },
+          },
+        ],
+      },
+    },
   });
   await prisma.contestGrader.upsert({
     where: {
