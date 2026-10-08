@@ -1,6 +1,7 @@
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
 import { signIn } from "@/auth";
+import { Button } from "@/components/ui/button";
 
 export default async function Login({
   searchParams,
@@ -12,7 +13,7 @@ export default async function Login({
     <main className="mx-auto max-w-sm p-8">
       <h1 className="text-2xl font-bold">Đăng nhập</h1>
       {error && (
-        <p role="alert" className="mt-4 text-red-700">
+        <p role="alert" className="mt-4 text-destructive">
           Email hoặc mật khẩu không đúng.
         </p>
       )}
@@ -32,7 +33,7 @@ export default async function Login({
         <label className="block">
           Email
           <input
-            className="mt-1 w-full border p-2"
+            className="mt-1 w-full rounded-md border border-input p-2"
             name="email"
             type="email"
             required
@@ -41,15 +42,13 @@ export default async function Login({
         <label className="block">
           Mật khẩu
           <input
-            className="mt-1 w-full border p-2"
+            className="mt-1 w-full rounded-md border border-input p-2"
             name="password"
             type="password"
             required
           />
         </label>
-        <button className="rounded bg-black px-4 py-2 text-white" type="submit">
-          Đăng nhập
-        </button>
+        <Button type="submit">Đăng nhập</Button>
       </form>
     </main>
   );
