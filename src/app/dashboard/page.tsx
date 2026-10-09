@@ -1,0 +1,50 @@
+import {
+  AchievementStrip,
+  ContestSchedule,
+  DashboardTitle,
+  JourneyCard,
+  LearningProgress,
+  SuggestedPaths,
+  TopLearners,
+  WeekPlan,
+} from "@/features/dashboard/components/dashboard-sections";
+import { getDashboard } from "@/features/dashboard/service";
+
+export default async function DashboardPage() {
+  const dashboard = await getDashboard();
+  return (
+    <div className="space-y-6">
+      <DashboardTitle paths={dashboard.paths} />
+
+      <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
+        <div className="space-y-6">
+          <LearningProgress paths={dashboard.paths} />
+          <SuggestedPaths paths={dashboard.suggestedPaths} />
+        </div>
+
+        <div className="space-y-6">
+          <WeekPlan streak={dashboard.streak} />
+          <ContestSchedule contests={dashboard.contests} />
+          <AchievementStrip
+            badges={dashboard.badges}
+            lockedBadges={dashboard.lockedBadges}
+            stats={dashboard.stats}
+          />
+        </div>
+
+        <div className="grid gap-6 self-start md:grid-cols-2 lg:col-span-2 2xl:col-span-1 2xl:grid-cols-1">
+          <JourneyCard
+            level={dashboard.level}
+            rank={dashboard.rank}
+            streak={dashboard.streak}
+          />
+          <TopLearners
+            learners={dashboard.topLearners}
+            rank={dashboard.rank}
+            me={dashboard.me}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
