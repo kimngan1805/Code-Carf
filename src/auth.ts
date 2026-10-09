@@ -1,10 +1,8 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
-import { z } from "zod";
 import { findUserByEmail } from "@/features/auth/repository";
-
-const credentials = z.object({ email: z.email(), password: z.string().min(1) });
+import { loginSchema } from "@/features/auth/schemas";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   session: { strategy: "jwt" },
@@ -13,7 +11,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     Credentials({
       credentials: { email: {}, password: {} },
       async authorize(input) {
-        const parsed = credentials.safeParse(input);
+        const parsed = loginSchema.safeParse(input);
         if (!parsed.success) return null;
         const user = await findUserByEmail(parsed.data.email);
         if (!user || !(await compare(parsed.data.password, user.passwordHash)))

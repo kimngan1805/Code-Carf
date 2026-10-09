@@ -1,55 +1,23 @@
-import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
-import { signIn } from "@/auth";
-import { Button } from "@/components/ui/button";
+import { auth } from "@/auth";
+import { AuthShell } from "@/features/auth/components/auth-shell";
+import { LoginForm } from "@/features/auth/components/login-form";
+import { AFTER_LOGIN_PATH } from "@/features/auth/constants";
 
-export default async function Login({
+export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ callbackUrl?: string }>;
 }) {
-  const { error } = await searchParams;
+  if ((await auth())?.user) redirect(AFTER_LOGIN_PATH);
+  const { callbackUrl } = await searchParams;
   return (
-    <main className="mx-auto max-w-sm p-8">
-      <h1 className="text-2xl font-bold">Đăng nhập</h1>
-      {error && (
-        <p role="alert" className="mt-4 text-destructive">
-          Email hoặc mật khẩu không đúng.
-        </p>
-      )}
-      <form
-        className="mt-6 space-y-4"
-        action={async (formData) => {
-          "use server";
-          try {
-            await signIn("credentials", formData);
-          } catch (error) {
-            if (error instanceof AuthError)
-              redirect("/login?error=credentials");
-            throw error;
-          }
-        }}
-      >
-        <label className="block">
-          Email
-          <input
-            className="mt-1 w-full rounded-md border border-input p-2"
-            name="email"
-            type="email"
-            required
-          />
-        </label>
-        <label className="block">
-          Mật khẩu
-          <input
-            className="mt-1 w-full rounded-md border border-input p-2"
-            name="password"
-            type="password"
-            required
-          />
-        </label>
-        <Button type="submit">Đăng nhập</Button>
-      </form>
-    </main>
+    <AuthShell
+      mode="login"
+      title="Chào mừng trở lại"
+      subtitle="Đăng nhập để tiếp tục hành trình học lập trình."
+    >
+      <LoginForm callbackUrl={callbackUrl} />
+    </AuthShell>
   );
 }

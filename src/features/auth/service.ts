@@ -1,7 +1,9 @@
-import { RoleName } from "@prisma/client";
+import { Prisma, RoleName } from "@prisma/client";
+import { hash } from "bcryptjs";
 import { auth } from "@/auth";
 import { AppError } from "@/lib/errors";
-import { findUserWithRole } from "./repository";
+import { createUser, findUserWithRole } from "./repository";
+import type { RegisterInput } from "./schemas";
 
 export async function requireRole(roles: RoleName[]) {
   const session = await auth();
@@ -11,4 +13,24 @@ export async function requireRole(roles: RoleName[]) {
   if (!user || !roles.includes(user.role.name))
     throw new AppError(403, "FORBIDDEN", "Insufficient permission");
   return user;
+}
+
+/** Self-registration always creates a STUDENT; other roles are assigned by an admin. */
+export async function registerUser(input: RegisterInput) {
+  const passwordHash = await hash(input.password, 12);
+  try {
+    return await createUser({
+      name: input.name,
+      email: input.email,
+      passwordHash,
+      role: RoleName.STUDENT,
+    });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    )
+      throw new AppError(409, "EMAIL_TAKEN", "Email đã được sử dụng");
+    throw error;
+  }
 }

@@ -3,6 +3,7 @@ import { RoleName } from "@prisma/client";
 export { RoleName };
 
 export const routeRoles: Record<string, RoleName[]> = {
+  "/dashboard": Object.values(RoleName),
   "/paths": [RoleName.STUDENT, RoleName.TEACHER, RoleName.ADMIN],
   "/rooms": [RoleName.STUDENT, RoleName.TEACHER, RoleName.ADMIN],
   "/contests": [
