@@ -45,18 +45,29 @@ export async function getDashboard() {
     badges: records.badges.map(({ badge }) => badge),
     paths,
     stats: {
-      paths: paths.length,
+      // Achievements count finished paths only; enrolling alone is not an achievement.
+      paths: paths.filter(
+        (path) => path.total > 0 && path.completed === path.total,
+      ).length,
       roomsDone: records.completedRoomIds.size,
       badges: records.badges.length,
     },
-    suggestedPaths: records.suggestedPaths.map((path) => ({
-      id: path.id,
-      slug: path.slug,
-      title: path.title,
-      description: path.description,
-      rooms: path._count.rooms,
-      learners: path._count.enrollments,
-    })),
+    suggestedPaths: [
+      ...(records.recommendedPath ? [records.recommendedPath] : []),
+      ...records.suggestedPaths.filter(
+        (path) => path.id !== records.recommendedPath?.id,
+      ),
+    ]
+      .slice(0, 3)
+      .map((path) => ({
+        id: path.id,
+        slug: path.slug,
+        title: path.title,
+        description: path.description,
+        rooms: path._count.rooms,
+        learners: path._count.enrollments,
+        recommended: path.id === records.recommendedPath?.id,
+      })),
     contests: records.contests,
     lockedBadges: records.lockedBadges,
     topLearners: records.topLearners.map((learner, index) => ({

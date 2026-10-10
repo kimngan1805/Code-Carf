@@ -1,4 +1,5 @@
 import { ContestStatus, RoleName } from "@prisma/client";
+import { recommendPathSlug } from "@/features/onboarding/recommend";
 import { db } from "@/lib/db";
 
 export async function getDashboardRecords(
@@ -16,6 +17,7 @@ export async function getDashboardRecords(
     usersAhead,
     lockedBadges,
     topLearners,
+    profile,
   ] = await Promise.all([
     db.enrollment.findMany({
       where: { userId },
@@ -82,7 +84,28 @@ export async function getDashboardRecords(
       take: 5,
       select: { id: true, name: true, xp: true },
     }),
+    db.learnerProfile.findUnique({
+      where: { userId },
+      select: { level: true, goal: true },
+    }),
   ]);
+
+  // Path matching the onboarding answers, if the learner has not joined it yet.
+  const recommendedPath = profile
+    ? await db.path.findFirst({
+        where: {
+          slug: recommendPathSlug(profile),
+          enrollments: { none: { userId } },
+        },
+        select: {
+          id: true,
+          slug: true,
+          title: true,
+          description: true,
+          _count: { select: { rooms: true, enrollments: true } },
+        },
+      })
+    : null;
   return {
     enrollments,
     completedRoomIds: new Set(completedRooms.map((row) => row.roomId)),
@@ -93,5 +116,6 @@ export async function getDashboardRecords(
     rank: usersAhead + 1,
     lockedBadges,
     topLearners,
+    recommendedPath,
   };
 }
