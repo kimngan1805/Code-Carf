@@ -150,7 +150,13 @@ function Sparkline({ seed, className }: { seed: number; className: string }) {
   );
 }
 
-export function LearningProgress({ paths }: { paths: Dashboard["paths"] }) {
+export function LearningProgress({
+  paths,
+  recommended,
+}: {
+  paths: Dashboard["paths"];
+  recommended?: Dashboard["suggestedPaths"][number];
+}) {
   return (
     <Panel>
       <div className="flex items-center gap-3">
@@ -166,7 +172,7 @@ export function LearningProgress({ paths }: { paths: Dashboard["paths"] }) {
       </div>
 
       {paths.length === 0 ? (
-        <GettingStarted />
+        <GettingStarted recommended={recommended} />
       ) : (
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           {paths.slice(0, 4).map((path, index) => {
@@ -230,7 +236,11 @@ const startSteps = [
   },
 ];
 
-function GettingStarted() {
+function GettingStarted({
+  recommended,
+}: {
+  recommended?: Dashboard["suggestedPaths"][number];
+}) {
   return (
     <div className="mt-4 rounded-3xl bg-secondary/30 p-5">
       <p className="font-semibold">Bắt đầu hành trình đầu tiên</p>
@@ -255,11 +265,22 @@ function GettingStarted() {
           </li>
         ))}
       </ol>
+      {recommended && (
+        <div className="mt-4 flex items-center gap-3 rounded-2xl border border-primary/20 bg-background px-4 py-3">
+          <Sparkles className="size-5 shrink-0 text-accent" aria-hidden />
+          <p className="min-w-0 text-sm">
+            <span className="text-muted-foreground">
+              Gợi ý theo câu trả lời của bạn:{" "}
+            </span>
+            <span className="font-semibold">{recommended.title}</span>
+          </p>
+        </div>
+      )}
       <Link
-        href="/paths"
+        href={recommended ? `/paths/${recommended.slug}` : "/paths"}
         className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
       >
-        Khám phá lộ trình <ArrowRight className="size-4" aria-hidden />
+        Khám phá ngay <ArrowRight className="size-4" aria-hidden />
       </Link>
     </div>
   );
@@ -302,7 +323,14 @@ export function SuggestedPaths({
                   <Icon className="size-6" aria-hidden />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm font-semibold">{path.title}</h3>
+                  <h3 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+                    {path.title}
+                    {path.recommended && (
+                      <span className="rounded-full bg-accent/10 px-2 py-0.5 text-[11px] font-semibold text-accent-strong">
+                        Phù hợp với bạn
+                      </span>
+                    )}
+                  </h3>
                   <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted-foreground">
                     {path.description ||
                       "Lộ trình học lập trình theo từng bài."}
@@ -347,7 +375,7 @@ export function AchievementStrip({
   stats: Dashboard["stats"];
 }) {
   const items = [
-    { label: "Lộ trình", value: stats.paths, icon: BookOpen },
+    { label: "Lộ trình xong", value: stats.paths, icon: BookOpen },
     { label: "Bài đã xong", value: stats.roomsDone, icon: Check },
     { label: "Huy hiệu", value: stats.badges, icon: Award },
   ];

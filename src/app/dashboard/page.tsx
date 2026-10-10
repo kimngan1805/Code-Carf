@@ -8,17 +8,29 @@ import {
   TopLearners,
   WeekPlan,
 } from "@/features/dashboard/components/dashboard-sections";
+import { redirect } from "next/navigation";
 import { getDashboard } from "@/features/dashboard/service";
+import { AppError } from "@/lib/errors";
 
 export default async function DashboardPage() {
-  const dashboard = await getDashboard();
+  // Layout and page render in parallel, so the page also handles a missing account.
+  const dashboard = await getDashboard().catch((error) => {
+    if (error instanceof AppError && [401, 403].includes(error.status))
+      redirect("/login");
+    throw error;
+  });
   return (
     <div className="space-y-6">
       <DashboardTitle paths={dashboard.paths} />
 
       <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.9fr)]">
         <div className="space-y-6">
-          <LearningProgress paths={dashboard.paths} />
+          <LearningProgress
+            paths={dashboard.paths}
+            recommended={dashboard.suggestedPaths.find(
+              (path) => path.recommended,
+            )}
+          />
           <SuggestedPaths paths={dashboard.suggestedPaths} />
         </div>
 

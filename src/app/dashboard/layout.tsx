@@ -15,6 +15,7 @@ export default async function DashboardLayout({
   // Read the name from the database so profile changes show without signing in again.
   const user = await findUserWithRole(session.user.id);
   if (!user) redirect("/login?callbackUrl=/dashboard");
+  if (!user.onboardedAt) redirect("/onboarding");
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
   return (
     <AppShell userName={user.name} sidebarCollapsed={sidebarCollapsed}>
