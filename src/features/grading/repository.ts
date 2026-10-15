@@ -8,8 +8,16 @@ export function findCodeExerciseWithTests(exerciseId: string) {
       id: true,
       kind: true,
       points: true,
+      timeLimitMs: true,
+      memoryLimitKb: true,
       testCases: {
-        select: { id: true, input: true, expected: true, isHidden: true },
+        select: {
+          id: true,
+          input: true,
+          expected: true,
+          isHidden: true,
+          weight: true,
+        },
         orderBy: { id: "asc" },
       },
     },
@@ -50,7 +58,13 @@ export function markSubmissionRunning(id: string) {
 
 export function finishSubmission(
   id: string,
-  result: { status: SubmissionStatus; score: number; feedback: string },
+  result: {
+    status: SubmissionStatus;
+    score: number;
+    feedback: string;
+    runtimeMs: number | null;
+    memoryKb: number | null;
+  },
 ) {
   return db.submission.update({
     where: { id },
