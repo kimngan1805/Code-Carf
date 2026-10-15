@@ -35,6 +35,12 @@ export async function isExerciseInContest(
   return link !== null;
 }
 
+export function countRecentSubmissions(userId: string, since: Date) {
+  return db.submission.count({
+    where: { userId, createdAt: { gte: since } },
+  });
+}
+
 export function createPendingSubmission(data: {
   userId: string;
   exerciseId: string;
