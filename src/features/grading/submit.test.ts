@@ -11,6 +11,7 @@ const { repo, adapter } = vi.hoisted(() => ({
     createPendingSubmission: vi.fn(),
     markSubmissionRunning: vi.fn(),
     finishSubmission: vi.fn(),
+    countRecentSubmissions: vi.fn(),
   },
   adapter: {
     grade: vi.fn<(request: GradeRequest) => Promise<GradeResult>>(),
@@ -23,7 +24,11 @@ vi.mock("../../lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
 }));
 
-import { MAX_SOURCE_LENGTH, submitSolution } from "./submit";
+import {
+  MAX_SOURCE_LENGTH,
+  SUBMISSION_RATE_LIMIT,
+  submitSolution,
+} from "./submit";
 
 const exercise = {
   id: "ex-1",
@@ -52,6 +57,7 @@ describe("submitSolution", () => {
     repo.createPendingSubmission.mockResolvedValue({ id: "sub-1" });
     repo.markSubmissionRunning.mockResolvedValue({ id: "sub-1" });
     repo.finishSubmission.mockResolvedValue({ id: "sub-1" });
+    repo.countRecentSubmissions.mockResolvedValue(0);
     adapter.grade.mockImplementation((request) =>
       mockGradingAdapter.grade(request),
     );
@@ -122,6 +128,63 @@ describe("submitSolution", () => {
       "sub-1",
       expect.objectContaining({ status: "REJECTED", score: 25 }),
     );
+  });
+
+  it("does not leak program output from hidden tests in feedback", async () => {
+    adapter.grade
+      .mockResolvedValueOnce({
+        status: "WRONG_ANSWER",
+        feedback: "Wrong Answer",
+      })
+      .mockResolvedValueOnce({
+        status: "RUNTIME_ERROR",
+        feedback: "Runtime Error (NZEC): ValueError: bad input '-5 10'",
+      });
+
+    const result = await submitSolution(validInput);
+
+    expect(result.tests[0]?.feedback).toBe("Wrong Answer");
+    expect(result.tests[1]?.feedback).toBe("Lỗi khi chạy");
+    expect(JSON.stringify(result)).not.toContain("-5 10");
+  });
+
+  it("keeps compiler output for hidden tests", async () => {
+    adapter.grade.mockResolvedValue({
+      status: "COMPILE_ERROR",
+      feedback: "Compilation Error: missing ;",
+    });
+
+    const result = await submitSolution(validInput);
+
+    expect(result.tests[1]?.feedback).toBe("Compilation Error: missing ;");
+  });
+
+  it("allows the 10th submission within a minute", async () => {
+    repo.countRecentSubmissions.mockResolvedValue(SUBMISSION_RATE_LIMIT - 1);
+
+    await expect(submitSolution(validInput)).resolves.toMatchObject({
+      status: "ACCEPTED",
+    });
+  });
+
+  it("rejects the 11th submission within a minute with 429", async () => {
+    vi.useFakeTimers({ now: new Date("2026-11-14T10:00:00Z") });
+    repo.countRecentSubmissions.mockResolvedValue(SUBMISSION_RATE_LIMIT);
+
+    try {
+      await expect(submitSolution(validInput)).rejects.toMatchObject({
+        status: 429,
+        code: "TOO_MANY_SUBMISSIONS",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+    expect(repo.countRecentSubmissions).toHaveBeenCalledWith(
+      "user-1",
+      new Date("2026-11-14T09:59:00Z"),
+    );
+    expect(repo.createPendingSubmission).not.toHaveBeenCalled();
+    expect(adapter.grade).not.toHaveBeenCalled();
   });
 
   it("never exposes input or expected output of hidden test cases", async () => {
