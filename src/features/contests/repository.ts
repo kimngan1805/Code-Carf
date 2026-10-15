@@ -29,3 +29,20 @@ export function findPublishedContest(slug: string) {
 }
 
 export type ContestSummary = Awaited<ReturnType<typeof listContests>>[number];
+
+export function findContestParticipant(contestId: string, userId: string) {
+  return db.contestParticipant.findUnique({
+    where: { contestId_userId: { contestId, userId } },
+    select: { joinedAt: true, finishedAt: true, faceVerifiedAt: true },
+  });
+}
+
+export function registerContestParticipant(contestId: string, userId: string) {
+  // The compound primary key and native upsert also cover simultaneous requests.
+  return db.contestParticipant.upsert({
+    where: { contestId_userId: { contestId, userId } },
+    create: { contestId, userId },
+    update: {},
+    select: { joinedAt: true, finishedAt: true, faceVerifiedAt: true },
+  });
+}
