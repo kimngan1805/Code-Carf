@@ -8,11 +8,11 @@ import {
   Trophy,
   Users,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { AppError } from "@/lib/errors";
 import { getContest } from "@/features/contests/service";
 import { Countdown } from "@/features/contests/components/countdown";
 import { PhaseBadge } from "@/features/contests/components/phase-badge";
+import { ParticipationAction } from "@/features/contests/components/participation-action";
 import { formatContestDate, getContestPhase } from "@/features/contests/time";
 
 export default async function ContestDetailPage({
@@ -124,9 +124,16 @@ export default async function ContestDetailPage({
               <Countdown key={now} target={+target} serverNow={now} />
             </div>
           )}
-          <Button disabled className="w-full">
-            {phase === "ended" ? "Cuộc thi đã kết thúc" : "Đăng ký tham gia"}
-          </Button>
+          <ParticipationAction
+            slug={slug}
+            phase={phase}
+            registered={!!contest.participant}
+            finished={!!contest.participant?.finishedAt}
+            canParticipate={contest.canParticipate}
+            needsFaceCheck={
+              contest.requireFaceCheck && !contest.participant?.faceVerifiedAt
+            }
+          />
           <p className="flex items-center gap-2 text-xs text-muted-foreground">
             <ShieldCheck className="size-4 shrink-0" aria-hidden />
             {contest.requireFaceCheck
