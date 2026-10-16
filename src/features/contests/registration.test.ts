@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Prisma } from "@prisma/client";
 
 const mocks = vi.hoisted(() => ({
   requireRole: vi.fn(),
@@ -37,6 +38,21 @@ import { afterEach } from "vitest";
 afterEach(() => vi.useRealTimers());
 
 describe("contest registration service", () => {
+  it("returns the existing registration when another request wins the insert", async () => {
+    const participant = {
+      joinedAt: start,
+      finishedAt: null,
+      faceVerifiedAt: null,
+    };
+    mocks.upsert.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError("Duplicate participant", {
+        code: "P2002",
+        clientVersion: "6.19.3",
+      }),
+    );
+    mocks.findUnique.mockResolvedValue(participant);
+    await expect(registerForContest("sample")).resolves.toEqual(participant);
+  });
   it("uses the signed-in student and an idempotent database upsert", async () => {
     mocks.upsert.mockResolvedValue({ joinedAt: start });
     await registerForContest("sample");
