@@ -12,10 +12,12 @@ import {
   Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { languages, type SolutionLanguage } from "@/features/grading/languages";
-import type { SubmissionResult } from "@/features/grading/submit";
+import { languages, type SolutionLanguage } from "../languages";
 import { cn } from "@/lib/utils";
-import type { ContestWorkspaceData } from "../workspace";
+import type {
+  ContestSubmissionResult,
+  ContestWorkspaceData,
+} from "../workspace";
 import { draftKey } from "../clock";
 import { formatDuration } from "../time";
 import { useServerClock } from "./use-server-clock";
@@ -48,9 +50,9 @@ function SolutionPanel({
   exercise: Exercise;
   data: ContestWorkspaceData;
   closed: boolean;
-  onSubmitted: (result: SubmissionResult, language: string) => void;
+  onSubmitted: (result: ContestSubmissionResult, language: string) => void;
 }) {
-  const [language, setLanguage] = useState<SolutionLanguage>("typescript");
+  const [language, setLanguage] = useState<SolutionLanguage>("python");
   const selected = languages.find((item) => item.id === language)!;
   const { source, setSource } = useContestDraft(
     draftKey(data.userId, data.contest.id, exercise.id, language),
@@ -171,17 +173,18 @@ function SolutionPanel({
           <Button
             onClick={submit}
             disabled={
-              closed || pending || !source.trim() || source.length > 100000
+              closed ||
+              pending ||
+              !source.trim() ||
+              source.length > data.maxSourceLength
             }
           >
             <Send className="size-4" aria-hidden />
             {pending ? "Đang nộp..." : "Nộp bài"}
           </Button>
         </div>
-        {source.length > 100000 && (
-          <p className="text-sm text-destructive">
-            Code vượt giới hạn 100.000 ký tự.
-          </p>
+        {source.length > data.maxSourceLength && (
+          <p className="text-sm text-destructive">Code vượt giới hạn 64 KB.</p>
         )}
         {error && (
           <p
@@ -205,8 +208,9 @@ function SolutionPanel({
 }
 
 const resultLabels: Record<string, string> = {
-  MOCKED: "Đã lưu · mô phỏng",
+  MOCKED: "Đã chấm · mô phỏng",
   PENDING: "Chờ chấm",
+  RUNNING: "Đang chấm",
   ACCEPTED: "Đúng",
   REJECTED: "Chưa đúng",
   ERROR: "Lỗi chấm",
@@ -224,15 +228,15 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const remaining = clock.endsAt - clock.now;
   const closed = clock.blocked || remaining <= 0;
   const exercise = data.exercises.find((item) => item.id === selectedId);
-  function recordResult(result: SubmissionResult, language: string) {
+  function recordResult(result: ContestSubmissionResult, language: string) {
     setHistory((previous) =>
       [
         {
           id: result.id,
           exerciseId: result.exerciseId,
           language,
-          status: "PENDING" as const,
-          score: null,
+          status: result.status,
+          score: result.score,
           feedback: result.feedback,
           createdAt: result.createdAt,
         },
@@ -441,9 +445,8 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
                             : "text-primary",
                         )}
                       >
-                        {item.status === "PENDING" &&
-                        (item.feedback?.includes("Mock") ||
-                          item.feedback?.includes("mô phỏng"))
+                        {item.feedback?.toLowerCase().includes("mock") ||
+                        item.feedback?.includes("mô phỏng")
                           ? resultLabels.MOCKED
                           : (resultLabels[item.status] ?? item.status)}
                       </span>
