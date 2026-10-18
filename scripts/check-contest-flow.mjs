@@ -255,7 +255,7 @@ try {
     },
   );
   await check(
-    "mock submission saves the authenticated owner and contest",
+    "submission saves the authenticated owner and contest",
     async () => {
       const response = await request(`${prefix}/submissions`, {
         method: "POST",
@@ -270,14 +270,19 @@ try {
       });
       const result = await response.json();
       assert.equal(response.status, 201);
-      assert.equal(result.data.status, "MOCKED");
+      assert.ok(["ACCEPTED", "REJECTED", "ERROR"].includes(result.data.status));
+      assert.ok(
+        !JSON.stringify(result.data).includes(hidden),
+        "Hidden test data leaked in the grading result",
+      );
       const saved = await db.submission.findUniqueOrThrow({
         where: { id: result.data.id },
       });
       assert.equal(saved.userId, student.id);
       assert.equal(saved.contestId, live.id);
-      assert.equal(saved.status, "PENDING");
-      assert.equal(saved.score, null);
+      assert.equal(saved.status, result.data.status);
+      assert.equal(saved.score, result.data.score);
+      assert.equal(saved.createdAt.toISOString(), result.data.createdAt);
     },
   );
   await check("foreign exercise and invalid JSON are rejected", async () => {
@@ -290,7 +295,7 @@ try {
         language: "python",
       }),
     });
-    assert.equal(invalid.status, 400);
+    assert.equal(invalid.status, 404);
     assert.equal(
       (await request(`${prefix}/submissions`, { method: "POST", body: "{" }))
         .status,
