@@ -41,11 +41,13 @@ async function main() {
   const path = await prisma.path.upsert({
     where: { slug: "typescript-basics" },
     update: {
+      published: true,
       description:
         "Làm quen kiểu dữ liệu, hàm và interface trong TypeScript qua các bài tập ngắn.",
     },
     create: {
       slug: "typescript-basics",
+      published: true,
       title: "TypeScript Basics",
       description:
         "Làm quen kiểu dữ liệu, hàm và interface trong TypeScript qua các bài tập ngắn.",
@@ -229,9 +231,10 @@ async function seedStudentDemo(
   for (const demo of demoPaths) {
     const path = await prisma.path.upsert({
       where: { slug: demo.slug },
-      update: { description: demo.description },
+      update: { description: demo.description, published: true },
       create: {
         slug: demo.slug,
+        published: true,
         title: demo.title,
         description: demo.description,
         creatorId: teacherId,
