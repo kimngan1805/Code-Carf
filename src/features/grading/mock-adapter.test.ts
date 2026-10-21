@@ -7,6 +7,8 @@ it("marks mock results without claiming code was executed", async () => {
     languageId: 63,
     input: "",
     expected: "",
+    timeLimitMs: 2000,
+    memoryLimitKb: 262144,
   });
   expect(result.status).toBe("MOCKED");
 });

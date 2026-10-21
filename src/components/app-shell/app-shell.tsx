@@ -5,7 +5,7 @@ import { logoutAction } from "@/features/auth/actions";
 import { isTeacherRole } from "@/features/auth/permissions";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
 import { Sidebar } from "./sidebar";
-import { MobileTabBar } from "./sidebar-nav";
+import { MobileSidebar } from "./mobile-sidebar";
 
 function initials(name: string) {
   return (name.trim().split(/\s+/).at(-1)?.[0] ?? "?").toUpperCase();
@@ -60,8 +60,9 @@ export function AppShell({
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
         <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur">
-          <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
-            <div className="lg:hidden">
+          <div className="flex h-16 items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
+            <MobileSidebar role={role} />
+            <div className="min-w-0 lg:hidden">
               <Logo href={homeHref} />
             </div>
             <div className="hidden min-w-0 lg:block">
@@ -144,17 +145,10 @@ export function AppShell({
           </div>
         </header>
 
-        <main className="flex-1 px-4 pt-6 pb-24 sm:px-6 lg:px-8 lg:pt-8 lg:pb-10">
+        <main className="flex-1 px-4 pt-6 pb-10 sm:px-6 lg:px-8 lg:pt-8">
           {children}
         </main>
       </div>
-
-      <nav
-        aria-label="Điều hướng di động"
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-border/70 bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
-      >
-        <MobileTabBar role={role} />
-      </nav>
     </div>
   );
 }

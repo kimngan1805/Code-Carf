@@ -7,4 +7,10 @@ describe("role routing", () => {
     expect(allowedRole("/admin/users", RoleName.ADMIN)).toBe(true));
   it("blocks students from grader routes", () =>
     expect(allowedRole("/grading", RoleName.STUDENT)).toBe(false));
+  it("allows only students into achievements", () => {
+    expect(allowedRole("/achievements", RoleName.STUDENT)).toBe(true);
+    expect(allowedRole("/achievements", RoleName.TEACHER)).toBe(false);
+    expect(allowedRole("/achievements", RoleName.GRADER)).toBe(false);
+    expect(allowedRole("/achievements", RoleName.ADMIN)).toBe(false);
+  });
 });
