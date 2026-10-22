@@ -13,4 +13,10 @@ describe("role routing", () => {
     expect(allowedRole("/achievements", RoleName.GRADER)).toBe(false);
     expect(allowedRole("/achievements", RoleName.ADMIN)).toBe(false);
   });
+  it("allows all authenticated roles into settings", () => {
+    for (const role of Object.values(RoleName)) {
+      expect(allowedRole("/settings", role)).toBe(true);
+    }
+    expect(allowedRole("/settings", undefined)).toBe(false);
+  });
 });
