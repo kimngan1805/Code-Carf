@@ -15,7 +15,11 @@ export default async function StudentLayout({
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";
 
   return (
-    <AppShell userName={user.name} sidebarCollapsed={sidebarCollapsed}>
+    <AppShell
+      userName={user.name}
+      role={user.role.name}
+      sidebarCollapsed={sidebarCollapsed}
+    >
       {children}
     </AppShell>
   );

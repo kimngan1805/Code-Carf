@@ -1,9 +1,11 @@
 "use client";
 
+import { RoleName } from "@prisma/client";
 import Link from "next/link";
 import { useState } from "react";
 import { CodeXml, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
+import { isTeacherRole } from "@/features/auth/permissions";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_COOKIE } from "./constants";
 import { SidebarNav } from "./sidebar-nav";
@@ -15,11 +17,17 @@ function initials(name: string) {
 export function Sidebar({
   userName,
   initialCollapsed,
+  role = RoleName.STUDENT,
 }: {
   userName: string;
   initialCollapsed: boolean;
+  role?: RoleName;
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const teacherMode = isTeacherRole(role);
+  const homeHref = teacherMode ? "/creator" : "/dashboard";
+  const roleLabel =
+    role === RoleName.ADMIN ? "Quản trị viên" : "Không gian giảng viên";
 
   function toggle() {
     const next = !collapsed;
@@ -45,7 +53,7 @@ export function Sidebar({
         )}
       >
         <Link
-          href="/dashboard"
+          href={homeHref}
           aria-label="Code Carf"
           className="flex items-center gap-2.5 text-lg font-bold whitespace-nowrap text-primary"
         >
@@ -87,15 +95,15 @@ export function Sidebar({
         aria-label="Chính"
         className="flex-1 overflow-x-hidden overflow-y-auto px-3 py-4"
       >
-        <SidebarNav collapsed={collapsed} />
+        <SidebarNav collapsed={collapsed} role={role} />
       </nav>
 
       <div className="border-t border-border/70 p-3">
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
             <Link
-              href="/profile"
-              aria-label={`Hồ sơ của ${userName}`}
+              href={teacherMode ? "/creator" : "/profile"}
+              aria-label={teacherMode ? userName : `Hồ sơ của ${userName}`}
               title={userName}
               className="grid size-9 place-items-center rounded-full bg-secondary/60 text-sm font-semibold text-primary"
             >
@@ -119,12 +127,18 @@ export function Sidebar({
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{userName}</p>
-              <Link
-                href="/profile"
-                className="text-xs text-muted-foreground hover:text-primary"
-              >
-                Xem hồ sơ
-              </Link>
+              {teacherMode ? (
+                <p className="truncate text-xs text-muted-foreground">
+                  {roleLabel}
+                </p>
+              ) : (
+                <Link
+                  href="/profile"
+                  className="text-xs text-muted-foreground hover:text-primary"
+                >
+                  Xem hồ sơ
+                </Link>
+              )}
             </div>
             <form action={logoutAction}>
               <button
