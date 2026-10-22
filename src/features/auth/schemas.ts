@@ -11,19 +11,27 @@ export const loginSchema = z.object({
   password: z.string().min(1, "Vui lòng nhập mật khẩu"),
 });
 
+export const displayNameSchema = z
+  .string()
+  .trim()
+  .min(2, "Tên cần ít nhất 2 ký tự")
+  .max(60, "Tên tối đa 60 ký tự");
+
+// bcrypt only uses the first 72 bytes of a password.
+export const passwordRule = z
+  .string()
+  .min(8, "Mật khẩu cần ít nhất 8 ký tự")
+  .max(72, "Mật khẩu tối đa 72 ký tự")
+  .refine(
+    (value) => new TextEncoder().encode(value).byteLength <= 72,
+    "Mật khẩu tối đa 72 byte",
+  );
+
 export const registerSchema = z
   .object({
-    name: z
-      .string()
-      .trim()
-      .min(2, "Tên cần ít nhất 2 ký tự")
-      .max(60, "Tên tối đa 60 ký tự"),
+    name: displayNameSchema,
     email,
-    // bcrypt only uses the first 72 bytes of a password.
-    password: z
-      .string()
-      .min(8, "Mật khẩu cần ít nhất 8 ký tự")
-      .max(72, "Mật khẩu tối đa 72 ký tự"),
+    password: passwordRule,
     confirmPassword: z.string(),
   })
   .refine((data) => data.password === data.confirmPassword, {
@@ -31,7 +39,28 @@ export const registerSchema = z
     message: "Mật khẩu nhập lại không khớp",
   });
 
+export const updateProfileSchema = z.object({
+  name: displayNameSchema,
+});
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Vui lòng nhập mật khẩu hiện tại"),
+    newPassword: passwordRule,
+    confirmNewPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmNewPassword, {
+    path: ["confirmNewPassword"],
+    message: "Mật khẩu nhập lại không khớp",
+  })
+  .refine((data) => data.newPassword !== data.currentPassword, {
+    path: ["newPassword"],
+    message: "Mật khẩu mới phải khác mật khẩu hiện tại",
+  });
+
 export type RegisterInput = z.infer<typeof registerSchema>;
+export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
 
 export type FieldErrors<T extends string> = Partial<Record<T, string>>;
 
