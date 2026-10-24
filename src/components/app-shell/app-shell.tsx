@@ -2,7 +2,7 @@ import { RoleName } from "@prisma/client";
 import Link from "next/link";
 import { Bell, BookOpen, CodeXml, LogOut, Plus, Search } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
-import { isTeacherRole } from "@/features/auth/permissions";
+import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
 import { Sidebar } from "./sidebar";
 import { MobileSidebar } from "./mobile-sidebar";
@@ -40,6 +40,7 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const teacherMode = isTeacherRole(role);
+  const canViewProfile = allowedRole("/profile", role);
   const homeHref = teacherMode ? "/creator" : "/dashboard";
   const today = new Intl.DateTimeFormat("vi-VN", {
     timeZone: APP_TIME_ZONE,
@@ -125,10 +126,20 @@ export function AppShell({
                     {userName}
                   </p>
                   <Link
-                    href={teacherMode ? "/creator" : "/profile"}
+                    href={
+                      teacherMode
+                        ? "/creator"
+                        : canViewProfile
+                          ? "/profile"
+                          : "/grading"
+                    }
                     className="block rounded-xl px-3 py-2 text-sm hover:bg-muted"
                   >
-                    {teacherMode ? "Không gian giảng viên" : "Hồ sơ của tôi"}
+                    {teacherMode
+                      ? "Không gian giảng viên"
+                      : canViewProfile
+                        ? "Hồ sơ của tôi"
+                        : "Khu vực chấm bài"}
                   </Link>
                   <Link
                     href="/settings"

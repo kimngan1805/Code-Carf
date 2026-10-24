@@ -11,7 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
-import { isTeacherRole } from "@/features/auth/permissions";
+import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
 import { cn } from "@/lib/utils";
 import { SIDEBAR_COOKIE } from "./constants";
 import { SidebarNav } from "./sidebar-nav";
@@ -31,9 +31,19 @@ export function Sidebar({
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const teacherMode = isTeacherRole(role);
+  const canViewProfile = allowedRole("/profile", role);
   const homeHref = teacherMode ? "/creator" : "/dashboard";
+  const accountHref = teacherMode
+    ? "/creator"
+    : canViewProfile
+      ? "/profile"
+      : "/grading";
   const roleLabel =
-    role === RoleName.ADMIN ? "Quản trị viên" : "Không gian giảng viên";
+    role === RoleName.ADMIN
+      ? "Quản trị viên"
+      : role === RoleName.GRADER
+        ? "Giám khảo"
+        : "Không gian giảng viên";
 
   function toggle() {
     const next = !collapsed;
@@ -108,8 +118,8 @@ export function Sidebar({
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
             <Link
-              href={teacherMode ? "/creator" : "/profile"}
-              aria-label={teacherMode ? userName : `Hồ sơ của ${userName}`}
+              href={accountHref}
+              aria-label={canViewProfile ? `Hồ sơ của ${userName}` : userName}
               title={userName}
               className="grid size-9 place-items-center rounded-full bg-secondary/60 text-sm font-semibold text-primary"
             >
@@ -142,12 +152,12 @@ export function Sidebar({
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{userName}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                {teacherMode ? (
-                  <span className="truncate">{roleLabel}</span>
-                ) : (
+                {canViewProfile ? (
                   <Link href="/profile" className="hover:text-primary">
                     Xem hồ sơ
                   </Link>
+                ) : (
+                  <span className="truncate">{roleLabel}</span>
                 )}
               </div>
             </div>
