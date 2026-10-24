@@ -20,6 +20,8 @@ export const config = {
     "/onboarding/:path*",
     "/settings/:path*",
     "/achievements/:path*",
+    "/profile/:path*",
+    "/u/:path*",
     "/paths/:path*",
     "/rooms/:path*",
     "/contests/:path*",

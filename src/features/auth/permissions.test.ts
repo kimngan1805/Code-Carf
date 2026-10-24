@@ -19,4 +19,17 @@ describe("role routing", () => {
     }
     expect(allowedRole("/settings", undefined)).toBe(false);
   });
+  it("allows only students into profile", () => {
+    expect(allowedRole("/profile", RoleName.STUDENT)).toBe(true);
+    expect(allowedRole("/profile", RoleName.TEACHER)).toBe(false);
+    expect(allowedRole("/profile", RoleName.GRADER)).toBe(false);
+    expect(allowedRole("/profile", RoleName.ADMIN)).toBe(false);
+    expect(allowedRole("/profile", undefined)).toBe(false);
+  });
+  it("allows all authenticated roles to view public student profiles", () => {
+    for (const role of Object.values(RoleName)) {
+      expect(allowedRole("/u/student-1", role)).toBe(true);
+    }
+    expect(allowedRole("/u/student-1", undefined)).toBe(false);
+  });
 });
