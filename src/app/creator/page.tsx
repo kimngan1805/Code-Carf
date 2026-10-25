@@ -1,4 +1,6 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { routeRoles } from "@/features/auth/permissions";
 import { requireRole } from "@/features/auth/service";
 import { TeacherDashboardView } from "@/features/teacher-dashboard/components/teacher-dashboard-view";
@@ -18,5 +20,14 @@ export default async function CreatorPage() {
     throw error;
   });
 
-  return <TeacherDashboardView data={MOCK_TEACHER_DASHBOARD} />;
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-end">
+        <Button asChild variant="outline">
+          <Link href="/creator/paths">Quản lý lộ trình</Link>
+        </Button>
+      </div>
+      <TeacherDashboardView data={MOCK_TEACHER_DASHBOARD} />
+    </div>
+  );
 }
