@@ -6,6 +6,7 @@ function learnerSelection(userId: string) {
     slug: true,
     title: true,
     description: true,
+    sequentialUnlock: true,
     enrollments: { where: { userId }, select: { userId: true }, take: 1 },
     rooms: {
       orderBy: { position: "asc" as const },

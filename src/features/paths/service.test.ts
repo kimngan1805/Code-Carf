@@ -21,6 +21,7 @@ function pathRecord(completed = 1, total = 3) {
     slug: "basics",
     title: "Basics",
     description: "Learn",
+    sequentialUnlock: true,
     enrollments: [{ userId: "student-1" }],
     rooms: Array.from({ length: total }, (_, index) => ({
       id: `room-${index}`,
@@ -42,6 +43,21 @@ beforeEach(() => {
 });
 
 describe("learner path catalog", () => {
+  it("uses the preceding room completion for links and honors disabled sequential unlock", async () => {
+    const path = pathRecord();
+    mocks.findFirst.mockResolvedValue(path);
+    expect(
+      (await getPath("basics")).rooms.map((room) => room.accessible),
+    ).toEqual([true, true, false]);
+    mocks.findFirst.mockResolvedValue({ ...path, sequentialUnlock: false });
+    expect(
+      (await getPath("basics")).rooms.every((room) => room.accessible),
+    ).toBe(true);
+    mocks.findFirst.mockResolvedValue({ ...path, enrollments: [] });
+    expect(
+      (await getPath("basics")).rooms.some((room) => room.accessible),
+    ).toBe(false);
+  });
   it("only queries published paths and scopes enrollment and room progress to the current user", async () => {
     mocks.findMany.mockResolvedValue([]);
     await expect(getPaths()).resolves.toEqual([]);
