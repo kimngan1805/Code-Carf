@@ -118,17 +118,18 @@ model LearnerProfile {
 }
 
 model Path {
-  id          String       @id @default(cuid())
-  slug        String       @unique
-  title       String
-  description String       @default("")
-  published   Boolean      @default(false)
-  creatorId   String
-  creator     User         @relation("PathCreator", fields: [creatorId], references: [id])
-  rooms       Room[]
-  enrollments Enrollment[]
-  xpEvents    XpEvent[]
-  createdAt   DateTime     @default(now())
+  id               String       @id @default(cuid())
+  slug             String       @unique
+  title            String
+  description      String       @default("")
+  published        Boolean      @default(false)
+  sequentialUnlock Boolean      @default(true)
+  creatorId        String
+  creator          User         @relation("PathCreator", fields: [creatorId], references: [id])
+  rooms            Room[]
+  enrollments      Enrollment[]
+  xpEvents         XpEvent[]
+  createdAt        DateTime     @default(now())
 }
 
 model Room {

@@ -6,6 +6,7 @@ export function findCodeExerciseWithTests(exerciseId: string) {
     where: { id: exerciseId },
     select: {
       id: true,
+      roomId: true,
       kind: true,
       points: true,
       timeLimitMs: true,

@@ -4,7 +4,8 @@ import { AppError } from "../../lib/errors";
 import type { GradeRequest, GradeResult } from "./adapter";
 import { mockGradingAdapter } from "./mock-adapter";
 
-const { repo, adapter } = vi.hoisted(() => ({
+const { repo, adapter, canAccessRoom } = vi.hoisted(() => ({
+  canAccessRoom: vi.fn(),
   repo: {
     findCodeExerciseWithTests: vi.fn(),
     isExerciseInContest: vi.fn(),
@@ -19,6 +20,7 @@ const { repo, adapter } = vi.hoisted(() => ({
 }));
 
 vi.mock("./repository", () => repo);
+vi.mock("../rooms/access", () => ({ canAccessRoom }));
 vi.mock("./service", () => ({ getGradingAdapter: () => adapter }));
 vi.mock("../../lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
@@ -52,6 +54,7 @@ const validInput = {
 describe("submitSolution", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    canAccessRoom.mockResolvedValue(true);
     repo.findCodeExerciseWithTests.mockResolvedValue(exercise);
     repo.isExerciseInContest.mockResolvedValue(true);
     repo.createPendingSubmission.mockResolvedValue({ id: "sub-1" });
@@ -96,6 +99,44 @@ describe("submitSolution", () => {
     });
     expect(result.tests).toHaveLength(2);
     expect(result.tests.every((test) => test.passed)).toBe(true);
+  });
+
+  it("blocks practice submissions to locked rooms before creating a submission", async () => {
+    repo.findCodeExerciseWithTests.mockResolvedValue({
+      ...exercise,
+      roomId: "room-locked",
+    });
+    canAccessRoom.mockResolvedValue(false);
+    await expect(submitSolution(validInput)).rejects.toMatchObject({
+      status: 403,
+      code: "ROOM_LOCKED",
+    });
+    expect(canAccessRoom).toHaveBeenCalledWith("user-1", "room-locked");
+    expect(repo.createPendingSubmission).not.toHaveBeenCalled();
+    expect(adapter.grade).not.toHaveBeenCalled();
+  });
+
+  it("allows practice after the room is unlocked", async () => {
+    repo.findCodeExerciseWithTests.mockResolvedValue({
+      ...exercise,
+      roomId: "room-open",
+    });
+    await expect(submitSolution(validInput)).resolves.toMatchObject({
+      status: "ACCEPTED",
+    });
+    expect(canAccessRoom).toHaveBeenCalledWith("user-1", "room-open");
+  });
+
+  it("does not apply practice-room locks to an authorized contest exercise", async () => {
+    repo.findCodeExerciseWithTests.mockResolvedValue({
+      ...exercise,
+      roomId: "room-locked",
+    });
+    canAccessRoom.mockResolvedValue(false);
+    await expect(
+      submitSolution({ ...validInput, contestId: "contest-1" }),
+    ).resolves.toMatchObject({ status: "ACCEPTED" });
+    expect(canAccessRoom).not.toHaveBeenCalled();
   });
 
   it("passes source, Judge0 language id, test data and limits to the adapter", async () => {
