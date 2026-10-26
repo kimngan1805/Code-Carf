@@ -1,0 +1,1 @@
+ALTER TABLE "Path" ADD COLUMN "sequentialUnlock" BOOLEAN NOT NULL DEFAULT true;
