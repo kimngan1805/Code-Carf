@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/features/auth/service";
+import { isTeacherRole } from "@/features/auth/permissions";
 import { Progress } from "@/components/ui/progress";
 import { EnrollButton } from "@/features/paths/components/enroll-button";
 import { getPath } from "@/features/paths/service";
@@ -11,6 +13,9 @@ export default async function PathPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const user = await getCurrentUser();
+  if (user && isTeacherRole(user.role.name))
+    redirect(`/creator/paths/${encodeURIComponent(slug)}`);
   const path = await getPath(slug).catch((error) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;

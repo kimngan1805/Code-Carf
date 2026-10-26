@@ -19,6 +19,7 @@ export async function changePathUnlock(input: {
   try {
     await setPathSequentialUnlock(parsed.data.pathId, parsed.data.enabled);
     revalidatePath("/creator/paths");
+    revalidatePath("/creator/paths", "layout");
     revalidatePath("/paths", "layout");
     revalidatePath("/rooms", "layout");
     return { error: null };

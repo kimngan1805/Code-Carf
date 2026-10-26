@@ -42,14 +42,12 @@ export default async function ManagedPathsPage() {
               pathId={path.id}
               initialEnabled={path.sequentialUnlock}
             />
-            {path.published && (
-              <Link
-                href={`/paths/${path.slug}`}
-                className="inline-block text-sm font-semibold text-primary hover:underline"
-              >
-                Xem lộ trình
-              </Link>
-            )}
+            <Link
+              href={`/creator/paths/${path.slug}`}
+              className="inline-block text-sm font-semibold text-primary hover:underline"
+            >
+              Xem lộ trình
+            </Link>
           </li>
         ))}
       </ul>
