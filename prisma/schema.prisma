@@ -57,6 +57,19 @@ enum LearningGoal {
   WEB
 }
 
+/// Cấp giảng dạy được nhận hồ sơ giảng viên (từ THPT trở lên).
+enum TeachingLevel {
+  HIGH_SCHOOL
+  COLLEGE
+  UNIVERSITY
+}
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 enum ProctoringEventType {
   TAB_SWITCH
   WINDOW_BLUR
@@ -74,35 +87,85 @@ model Role {
 }
 
 model User {
-  id                  String               @id @default(cuid())
-  email               String               @unique
-  name                String
-  passwordHash        String
-  roleId              String
-  role                Role                 @relation(fields: [roleId], references: [id])
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  name                 String
+  passwordHash         String
+  roleId               String
+  role                 Role                 @relation(fields: [roleId], references: [id])
   /// Tổng XP, cache của XpEvent. Cấp độ được tính từ xp trong code, không lưu.
-  xp                  Int                  @default(0)
-  currentStreak       Int                  @default(0)
-  longestStreak       Int                  @default(0)
+  xp                   Int                  @default(0)
+  currentStreak        Int                  @default(0)
+  longestStreak        Int                  @default(0)
   /// Ngày học gần nhất, dùng để tính chuỗi ngày học liên tục.
-  lastActiveOn        DateTime?            @db.Date
+  lastActiveOn         DateTime?            @db.Date
   /// Thời điểm hoàn tất câu hỏi làm quen sau đăng ký; null thì cần làm onboarding.
-  onboardedAt         DateTime?
-  createdAt           DateTime             @default(now())
-  learnerProfile      LearnerProfile?
-  paths               Path[]               @relation("PathCreator")
-  createdContests     Contest[]            @relation("ContestCreator")
-  enrollments         Enrollment[]
-  roomProgress        RoomProgress[]
-  submissions         Submission[]         @relation("SubmissionAuthor")
-  reviewedSubmissions Submission[]         @relation("SubmissionReviewer")
-  xpEvents            XpEvent[]
-  badges              UserBadge[]
-  assignedContests    ContestGrader[]
-  contestEntries      ContestParticipant[]
-  proctoringEvents    ProctoringEvent[]
+  onboardedAt          DateTime?
+  createdAt            DateTime             @default(now())
+  learnerProfile       LearnerProfile?
+  teacherApplications  TeacherApplication[] @relation("TeacherApplicant")
+  reviewedApplications TeacherApplication[] @relation("TeacherApplicationReviewer")
+  paths                Path[]               @relation("PathCreator")
+  createdContests      Contest[]            @relation("ContestCreator")
+  enrollments          Enrollment[]
+  roomProgress         RoomProgress[]
+  submissions          Submission[]         @relation("SubmissionAuthor")
+  reviewedSubmissions  Submission[]         @relation("SubmissionReviewer")
+  xpEvents             XpEvent[]
+  badges               UserBadge[]
+  assignedContests     ContestGrader[]
+  contestEntries       ContestParticipant[]
+  proctoringEvents     ProctoringEvent[]
 
   @@index([xp])
+}
+
+/// Danh mục trường để giảng viên chọn khi nộp hồ sơ.
+model School {
+  id           String               @id @default(cuid())
+  name         String
+  /// Tên tỉnh/thành theo danh sách 34 đơn vị (src/features/teacher-application/provinces.ts).
+  province     String
+  level        TeachingLevel
+  applications TeacherApplication[]
+
+  @@unique([province, name])
+  @@index([province, level])
+}
+
+/// Hồ sơ xin quyền giảng viên, admin duyệt rồi mới đổi role.
+model TeacherApplication {
+  id            String                       @id @default(cuid())
+  userId        String
+  user          User                         @relation("TeacherApplicant", fields: [userId], references: [id], onDelete: Cascade)
+  teachingLevel TeachingLevel
+  province      String
+  schoolId      String?
+  school        School?                      @relation(fields: [schoolId], references: [id], onDelete: SetNull)
+  /// Tên trường lúc nộp (chọn từ danh sách hoặc tự nhập khi không có).
+  schoolName    String
+  status        ApplicationStatus            @default(PENDING)
+  reviewerId    String?
+  reviewer      User?                        @relation("TeacherApplicationReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+  reviewNote    String?
+  reviewedAt    DateTime?
+  documents     TeacherApplicationDocument[]
+  createdAt     DateTime                     @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId])
+}
+
+/// File minh chứng; nội dung nằm ở kho lưu trữ riêng, không public.
+model TeacherApplicationDocument {
+  id            String             @id @default(cuid())
+  applicationId String
+  application   TeacherApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fileName      String
+  mimeType      String
+  size          Int
+  storageKey    String             @unique
+  createdAt     DateTime           @default(now())
 }
 
 /// Câu trả lời onboarding của học viên, dùng để gợi ý lộ trình.
