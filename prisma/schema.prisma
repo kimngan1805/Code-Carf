@@ -12,6 +12,8 @@ enum RoleName {
   TEACHER
   ADMIN
   GRADER
+  /// Đã nộp hồ sơ giảng viên, chờ admin duyệt; chưa có quyền học hay dạy.
+  GUEST
 }
 
 enum ExerciseKind {

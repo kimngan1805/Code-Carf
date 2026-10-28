@@ -49,10 +49,14 @@ export function createApplication(data: {
     const created = await tx.teacherApplication.create({
       data: { ...application, documents: { create: documents } },
     });
-    // Applicants can use the app as a learner while they wait for review.
+    // Applicants are guests until an admin approves; they cannot learn or teach yet.
+    // onboardedAt marks the questions as done so they are not sent back to the wizard.
+    const guest = await tx.role.findUniqueOrThrow({
+      where: { name: RoleName.GUEST },
+    });
     await tx.user.updateMany({
-      where: { id: data.userId, onboardedAt: null },
-      data: { onboardedAt: new Date() },
+      where: { id: data.userId, role: { name: RoleName.STUDENT } },
+      data: { roleId: guest.id, onboardedAt: new Date() },
     });
     return created;
   });
@@ -123,9 +127,13 @@ export function decideApplication(data: {
       const teacher = await tx.role.findUniqueOrThrow({
         where: { name: RoleName.TEACHER },
       });
-      // Only promote learners; never demote an admin or grader.
+      // Promote the guest applicant (STUDENT covers applications filed before GUEST
+      // existed); never touch an admin or grader.
       await tx.user.updateMany({
-        where: { id: application.userId, role: { name: RoleName.STUDENT } },
+        where: {
+          id: application.userId,
+          role: { name: { in: [RoleName.GUEST, RoleName.STUDENT] } },
+        },
         data: { roleId: teacher.id },
       });
     }
