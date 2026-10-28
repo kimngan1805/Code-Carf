@@ -6,7 +6,7 @@ export default function NotFound() {
       <h1 className="text-2xl font-bold">
         Không tìm thấy nội dung bạn được quản lý
       </h1>
-      <Link href="/creator/paths" className="text-primary hover:underline">
+      <Link href="/gv/paths" className="text-primary hover:underline">
         Về quản lý lộ trình
       </Link>
     </div>

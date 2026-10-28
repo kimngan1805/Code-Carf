@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 export default async function ProfilePage() {
   const profile = await getOwnProfile().catch((error) => {
     if (error instanceof AppError) {
-      if (error.status === 401) redirect("/login?callbackUrl=/profile");
+      if (error.status === 401) redirect("/login?callbackUrl=/hv/profile");
       if (error.status === 403) redirect("/forbidden");
       if (error.status === 404) notFound();
     }

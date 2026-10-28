@@ -15,7 +15,7 @@ export default async function PathPage({
   const { slug } = await params;
   const user = await getCurrentUser();
   if (user && isTeacherRole(user.role.name))
-    redirect(`/creator/paths/${encodeURIComponent(slug)}`);
+    redirect(`/gv/paths/${encodeURIComponent(slug)}`);
   const path = await getPath(slug).catch((error) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;
@@ -23,7 +23,7 @@ export default async function PathPage({
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <Link
-        href="/paths"
+        href="/hv/paths"
         className="text-sm font-semibold text-primary hover:underline"
       >
         ← Tất cả lộ trình
@@ -65,7 +65,7 @@ export default async function PathPage({
               <h3 className="font-semibold break-words">
                 {room.accessible && path.canEnroll ? (
                   <Link
-                    href={`/rooms/${room.id}`}
+                    href={`/hv/rooms/${room.id}`}
                     className="text-primary hover:underline"
                   >
                     {room.position}. {room.title}

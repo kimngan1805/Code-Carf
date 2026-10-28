@@ -23,7 +23,7 @@ export function PathList({
           <h2 className="text-lg font-semibold text-primary break-words">
             <Link
               className="rounded hover:underline focus-visible:outline-2 focus-visible:outline-ring"
-              href={`/paths/${path.slug}`}
+              href={`/hv/paths/${path.slug}`}
             >
               {path.title}
             </Link>
@@ -48,7 +48,7 @@ export function PathList({
             </>
           )}
           <Link
-            href={`/paths/${path.slug}`}
+            href={`/hv/paths/${path.slug}`}
             className="inline-block rounded text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-ring"
           >
             Xem lộ trình

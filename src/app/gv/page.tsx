@@ -12,9 +12,9 @@ export const metadata = {
 };
 
 export default async function CreatorPage() {
-  await requireRole(routeRoles["/creator"]).catch((error) => {
+  await requireRole(routeRoles["/gv"]).catch((error) => {
     if (error instanceof AppError) {
-      if (error.status === 401) redirect("/login?callbackUrl=/creator");
+      if (error.status === 401) redirect("/login?callbackUrl=/gv");
       if (error.status === 403) redirect("/forbidden");
     }
     throw error;
@@ -24,7 +24,7 @@ export default async function CreatorPage() {
     <div className="space-y-6">
       <div className="flex justify-end">
         <Button asChild variant="outline">
-          <Link href="/creator/paths">Quản lý lộ trình</Link>
+          <Link href="/gv/paths">Quản lý lộ trình</Link>
         </Button>
       </div>
       <TeacherDashboardView data={MOCK_TEACHER_DASHBOARD} />

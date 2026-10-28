@@ -40,8 +40,8 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const teacherMode = isTeacherRole(role);
-  const canViewProfile = allowedRole("/profile", role);
-  const homeHref = teacherMode ? "/creator" : "/dashboard";
+  const canViewProfile = allowedRole("/hv/profile", role);
+  const homeHref = teacherMode ? "/gv" : "/hv/dashboard";
   const today = new Intl.DateTimeFormat("vi-VN", {
     timeZone: APP_TIME_ZONE,
     weekday: "long",
@@ -97,7 +97,7 @@ export function AppShell({
                 <span className="absolute top-2 right-2.5 size-2 rounded-full bg-accent ring-2 ring-background" />
               </button>
               <Link
-                href={teacherMode ? "/creator/paths" : "/paths"}
+                href={teacherMode ? "/gv/paths" : "/hv/paths"}
                 className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
               >
                 {teacherMode ? (
@@ -128,9 +128,9 @@ export function AppShell({
                   <Link
                     href={
                       teacherMode
-                        ? "/creator"
+                        ? "/gv"
                         : canViewProfile
-                          ? "/profile"
+                          ? "/hv/profile"
                           : "/grading"
                     }
                     className="block rounded-xl px-3 py-2 text-sm hover:bg-muted"
