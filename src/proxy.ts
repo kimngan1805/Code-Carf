@@ -16,16 +16,16 @@ export const proxy = auth((request) => {
 
 export const config = {
   matcher: [
-    "/dashboard/:path*",
+    "/hv/dashboard/:path*",
     "/onboarding/:path*",
     "/settings/:path*",
-    "/achievements/:path*",
-    "/profile/:path*",
+    "/hv/achievements/:path*",
+    "/hv/profile/:path*",
     "/u/:path*",
-    "/paths/:path*",
-    "/rooms/:path*",
+    "/hv/paths/:path*",
+    "/hv/rooms/:path*",
     "/contests/:path*",
-    "/creator/:path*",
+    "/gv/:path*",
     "/grading/:path*",
     "/admin/:path*",
   ],

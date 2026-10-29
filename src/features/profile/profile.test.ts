@@ -355,7 +355,7 @@ describe("getOwnProfile", () => {
     expect(profile.submissions[1]).toMatchObject({
       id: "sub-2",
       contextLabel: "Nhập môn lập trình · Bài 1",
-      contextHref: "/paths/nhap-mon-lap-trinh",
+      contextHref: "/hv/paths/nhap-mon-lap-trinh",
       language: null,
       status: SubmissionStatus.NEEDS_REVIEW,
     });

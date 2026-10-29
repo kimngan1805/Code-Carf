@@ -1,6 +1,14 @@
 import { RoleName } from "@prisma/client";
 import Link from "next/link";
-import { Bell, BookOpen, CodeXml, LogOut, Plus, Search } from "lucide-react";
+import {
+  BadgeCheck,
+  Bell,
+  BookOpen,
+  CodeXml,
+  LogOut,
+  Plus,
+  Search,
+} from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
 import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
@@ -40,8 +48,9 @@ export function AppShell({
   children: React.ReactNode;
 }) {
   const teacherMode = isTeacherRole(role);
-  const canViewProfile = allowedRole("/profile", role);
-  const homeHref = teacherMode ? "/creator" : "/dashboard";
+  const canViewProfile = allowedRole("/hv/profile", role);
+  const adminMode = role === RoleName.ADMIN;
+  const homeHref = adminMode ? "/admin" : teacherMode ? "/gv" : "/hv/dashboard";
   const today = new Intl.DateTimeFormat("vi-VN", {
     timeZone: APP_TIME_ZONE,
     weekday: "long",
@@ -97,10 +106,21 @@ export function AppShell({
                 <span className="absolute top-2 right-2.5 size-2 rounded-full bg-accent ring-2 ring-background" />
               </button>
               <Link
-                href={teacherMode ? "/creator/paths" : "/paths"}
+                href={
+                  adminMode
+                    ? "/admin/teacher-applications"
+                    : teacherMode
+                      ? "/gv/paths"
+                      : "/hv/paths"
+                }
                 className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
               >
-                {teacherMode ? (
+                {adminMode ? (
+                  <>
+                    <BadgeCheck className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Duyệt hồ sơ</span>
+                  </>
+                ) : teacherMode ? (
                   <>
                     <BookOpen className="size-4" aria-hidden />
                     <span className="hidden sm:inline">Lộ trình học</span>
@@ -127,19 +147,23 @@ export function AppShell({
                   </p>
                   <Link
                     href={
-                      teacherMode
-                        ? "/creator"
-                        : canViewProfile
-                          ? "/profile"
-                          : "/grading"
+                      adminMode
+                        ? "/admin"
+                        : teacherMode
+                          ? "/gv"
+                          : canViewProfile
+                            ? "/hv/profile"
+                            : "/grading"
                     }
                     className="block rounded-xl px-3 py-2 text-sm hover:bg-muted"
                   >
-                    {teacherMode
-                      ? "Không gian giảng viên"
-                      : canViewProfile
-                        ? "Hồ sơ của tôi"
-                        : "Khu vực chấm bài"}
+                    {adminMode
+                      ? "Khu vực quản trị"
+                      : teacherMode
+                        ? "Không gian giảng viên"
+                        : canViewProfile
+                          ? "Hồ sơ của tôi"
+                          : "Khu vực chấm bài"}
                   </Link>
                   <Link
                     href="/settings"
