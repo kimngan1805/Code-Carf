@@ -13,7 +13,11 @@ import { getContest } from "@/features/contests/service";
 import { Countdown } from "@/features/contests/components/countdown";
 import { PhaseBadge } from "@/features/contests/components/phase-badge";
 import { ParticipationAction } from "@/features/contests/components/participation-action";
-import { formatContestDate, getContestPhase } from "@/features/contests/time";
+import {
+  formatContestDate,
+  getContestPhase,
+  getExamPhase,
+} from "@/features/contests/time";
 
 export default async function ContestDetailPage({
   params,
@@ -27,12 +31,25 @@ export default async function ContestDetailPage({
   });
   const now = contest.serverNow;
   const phase = getContestPhase(contest, now);
+  const examPhase = getExamPhase(contest, now);
   const target =
     phase === "upcoming"
       ? contest.startsAt
       : phase === "live"
         ? contest.endsAt
-        : null;
+        : examPhase === "upcoming"
+          ? contest.examStartsAt
+          : examPhase === "live"
+            ? contest.examEndsAt
+            : null;
+  const countdownLabel =
+    phase === "upcoming"
+      ? "MỞ ĐĂNG KÝ SAU"
+      : phase === "live"
+        ? "ĐÓNG ĐĂNG KÝ SAU"
+        : examPhase === "upcoming"
+          ? "BẮT ĐẦU THI SAU"
+          : "ĐÓNG LÀM BÀI SAU";
   return (
     <div className="mx-auto max-w-6xl space-y-6">
       <Link
@@ -74,7 +91,16 @@ export default async function ContestDetailPage({
                 Mỗi lần nộp sai cộng {contest.penaltyMinutes} phút phạt theo cấu
                 hình cuộc thi.
               </li>
-              <li>Thời gian thi được xác định theo đồng hồ máy chủ.</li>
+              <li>
+                Mỗi thí sinh có tối đa {contest.durationMinutes} phút từ khi bấm
+                Bắt đầu làm bài, và phải nộp trước giờ đóng làm bài chung. Hạn
+                nộp được lưu trên máy chủ; tải lại trang không đặt lại đồng hồ.
+              </li>
+              <li>
+                Lịch đăng ký tách biệt với thời gian làm bài. Đóng đăng ký không
+                mở đề ngay nếu chưa đến giờ thi. Chỉ người đã đăng ký mới được
+                bắt đầu khi giờ thi tới.
+              </li>
               {contest.requireFaceCheck && (
                 <li>
                   Cuộc thi yêu cầu xác minh khuôn mặt bằng camera khi vào thi.
@@ -89,16 +115,34 @@ export default async function ContestDetailPage({
             <div>
               <dt className="flex items-center gap-2 text-muted-foreground">
                 <CalendarDays className="size-4" aria-hidden />
-                Bắt đầu
+                Mở đăng ký
               </dt>
               <dd className="mt-1 font-semibold">
                 {formatContestDate(contest.startsAt)}
               </dd>
             </div>
             <div>
-              <dt className="text-muted-foreground">Kết thúc</dt>
+              <dt className="text-muted-foreground">Đóng đăng ký</dt>
               <dd className="mt-1 font-semibold">
                 {formatContestDate(contest.endsAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Thời lượng làm bài</dt>
+              <dd className="mt-1 font-semibold">
+                {contest.durationMinutes} phút / thí sinh
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Bắt đầu thi</dt>
+              <dd className="mt-1 font-semibold">
+                {formatContestDate(contest.examStartsAt)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted-foreground">Đóng làm bài</dt>
+              <dd className="mt-1 font-semibold">
+                {formatContestDate(contest.examEndsAt)}
               </dd>
             </div>
             <div className="flex justify-between">
@@ -118,17 +162,30 @@ export default async function ContestDetailPage({
           </dl>
           {target && (
             <div className="rounded-xl bg-secondary/40 p-4 text-center text-primary">
-              <p className="mb-2 text-xs font-semibold">
-                {phase === "upcoming" ? "BẮT ĐẦU SAU" : "THỜI GIAN CÒN LẠI"}
-              </p>
+              <p className="mb-2 text-xs font-semibold">{countdownLabel}</p>
               <Countdown key={now} target={+target} serverNow={now} />
+            </div>
+          )}
+          {contest.participant?.deadlineAt && (
+            <div className="rounded-xl bg-secondary/40 p-4 text-primary">
+              <p className="text-xs font-semibold">HẠN NỘP BÀI CỦA BẠN</p>
+              <p className="mt-2 text-sm font-semibold">
+                {formatContestDate(contest.participant.deadlineAt)}
+              </p>
             </div>
           )}
           <ParticipationAction
             slug={slug}
             phase={phase}
+            examPhase={examPhase}
             registered={!!contest.participant}
             finished={!!contest.participant?.finishedAt}
+            attemptStarted={!!contest.participant?.startedAt}
+            attemptExpired={
+              !!contest.participant?.deadlineAt &&
+              +contest.participant.deadlineAt <= now
+            }
+            durationMinutes={contest.durationMinutes}
             canParticipate={contest.canParticipate}
             needsFaceCheck={
               contest.requireFaceCheck && !contest.participant?.faceVerifiedAt

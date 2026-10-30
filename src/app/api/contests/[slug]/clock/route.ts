@@ -1,4 +1,4 @@
-import { getContestEntry } from "@/features/contests/service";
+import { getContestClock } from "@/features/contests/deadline";
 import { fail, ok } from "@/lib/api-response";
 
 export async function GET(
@@ -7,11 +7,7 @@ export async function GET(
 ) {
   try {
     const { slug } = await params;
-    const entry = await getContestEntry(slug);
-    const response = ok({
-      serverNow: entry.serverNow,
-      endsAt: entry.contest.endsAt!.toISOString(),
-    });
+    const response = ok(await getContestClock(slug));
     response.headers.set("Cache-Control", "no-store");
     return response;
   } catch (error) {

@@ -12,7 +12,8 @@ import { getContests } from "@/features/contests/service";
 import {
   formatContestDate,
   getContestPhase,
-  phaseLabels,
+  examPhaseLabels,
+  getExamPhase,
   type ContestPhase,
 } from "@/features/contests/time";
 import { cn } from "@/lib/utils";
@@ -28,7 +29,7 @@ export default async function ContestsPage({
   const active = filters.find((filter) => filter === status) ?? "all";
   const { contests, serverNow: now } = await getContests();
   const visible = contests.filter(
-    (contest) => active === "all" || getContestPhase(contest, now) === active,
+    (contest) => active === "all" || getExamPhase(contest, now) === active,
   );
   return (
     <div className="mx-auto max-w-6xl space-y-7">
@@ -69,7 +70,7 @@ export default async function ContestsPage({
             >
               {filter === "all"
                 ? "Tất cả"
-                : phaseLabels[filter as ContestPhase]}
+                : examPhaseLabels[filter as ContestPhase]}
             </Link>
           ))}
         </nav>
@@ -120,8 +121,8 @@ export default async function ContestsPage({
                     className="size-4 shrink-0 text-primary"
                     aria-hidden
                   />
-                  <dt className="sr-only">Bắt đầu</dt>
-                  <dd>{formatContestDate(contest.startsAt)}</dd>
+                  <dt className="sr-only">Mở đăng ký</dt>
+                  <dd>Mở đăng ký: {formatContestDate(contest.startsAt)}</dd>
                 </div>
                 <div className="flex gap-5">
                   <div className="flex items-center gap-2">
@@ -136,6 +137,13 @@ export default async function ContestsPage({
                   </div>
                 </div>
               </dl>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Làm bài: {contest.durationMinutes} phút từ khi bắt đầu.
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Giờ thi: {formatContestDate(contest.examStartsAt)} →{" "}
+                {formatContestDate(contest.examEndsAt)}
+              </p>
               <Button asChild variant="outline" className="mt-6 w-full">
                 <Link href={`/contests/${contest.slug}`}>
                   Xem chi tiết <ArrowRight className="size-4" aria-hidden />

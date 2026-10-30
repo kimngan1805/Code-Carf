@@ -1,11 +1,29 @@
 export type ContestPhase = "upcoming" | "live" | "ended" | "unscheduled";
 export type ContestSchedule = { startsAt: Date | null; endsAt: Date | null };
+export type ExamSchedule = {
+  examStartsAt: Date | null;
+  examEndsAt: Date | null;
+};
+
+export function getExamPhase(contest: ExamSchedule, now: number): ContestPhase {
+  return getContestPhase(
+    { startsAt: contest.examStartsAt, endsAt: contest.examEndsAt },
+    now,
+  );
+}
 
 export const phaseLabels: Record<ContestPhase, string> = {
-  upcoming: "Sắp diễn ra",
-  live: "Đang diễn ra",
-  ended: "Đã kết thúc",
+  upcoming: "Chưa mở đăng ký",
+  live: "Đang mở đăng ký",
+  ended: "Đã đóng đăng ký",
   unscheduled: "Chưa có lịch",
+};
+
+export const examPhaseLabels: Record<ContestPhase, string> = {
+  upcoming: "Sắp diễn ra",
+  live: "Đang thi",
+  ended: "Đã đóng làm bài",
+  unscheduled: "Chưa có lịch thi",
 };
 
 export function getContestPhase(
