@@ -22,7 +22,7 @@ Paths are drafts by default (`Path.published = false`). The seed explicitly publ
 
 Sequential room unlock is enabled by default (`Path.sequentialUnlock = true`). Enrolled learners can open the first room of a published path; later rooms require a `RoomProgress` record for the immediately preceding room in position order. Gaps in positions are supported. Set `sequentialUnlock = false` to open all rooms of that path for enrolled learners. Progress is read on every request, so completing the preceding room unlocks the next immediately. Room pages, the room API, and practice submissions enforce the same rule; contest submissions retain their separate contest authorization. The richer Room learning UI is tracked in #13.
 
-For an app container, run `docker compose up --build app`; Compose applies migrations before starting the app. Seed with the local npm command after the database is running. To use Supabase, set `DATABASE_URL` to its PostgreSQL connection string and skip the local `db` service.
+For a hosted deployment (Render and Supabase) see `docs/deployment.md`. For a local app container, run `docker compose up --build app`; Compose applies migrations before starting the app. Seed with the local npm command after the database is running. To use Supabase, set `DATABASE_URL` to its PostgreSQL connection string and skip the local `db` service.
 
 ## Judge0
 
