@@ -47,6 +47,8 @@ Each student can submit each exercise only once in a contest. A second submissio
 
 After a successful submission, the editor opens the first remaining exercise in contest order. Submitted exercises are marked and read-only. Reloading opens the next unsubmitted exercise; progress is queried independently of the most recent 20 history rows. Once all exercises have submissions, the server atomically sets `finishedAt` and saves the last manual result for recovery. The workspace displays completion and stops draft synchronization. Reopening the play page recovers that result without waiting for the deadline or allowing more submissions. Pending manual grading is reserved before completion becomes visible, preventing recovery requests from grading it again.
 
+Submitting the last remaining exercise first opens a confirmation dialog. Canceling keeps the editor open without sending a submission. After the server records the final answer, a completion dialog appears and returns the student to the contest detail page after 2.5 seconds, with a button to return immediately. Failed requests leave the student on the workspace with the error message; the confirmation also respects expiry.
+
 The timer displays the authenticated participant's `deadlineAt`, advances with `performance.now()`, and resynchronizes with server time every 15 seconds, on returning to the tab, and on reconnecting. Reloading does not restart the duration. Source drafts are local to the browser and keyed by user, contest, exercise, and language. The simple editor works as a fallback when the advanced editor cannot load.
 
 ## Deadline behavior (task 78)
