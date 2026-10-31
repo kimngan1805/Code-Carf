@@ -16,6 +16,8 @@ Scaffold for a learning and coding contest platform. The repository contains arc
 5. Run `npm run db:migrate` and `npm run db:seed`.
 6. Run `npm run dev`, then open `http://localhost:3000`.
 
+Local development uses Webpack, matching the production build. This avoids the repeated Fast Refresh observed with Turbopack in the Windows workspace. After switching bundlers, hard-refresh an existing browser tab once to load the new development client.
+
 The seed creates `student@local.test`, `teacher@local.test`, `admin@local.test`, and `grader@local.test`. Their local password is `SEED_PASSWORD` from `.env`, or `LocalDev123!` if unset. Change it before sharing a database. The seed also creates a path, room, exercise, contest, grader assignment, enrollment, and badge.
 
 Paths are drafts by default (`Path.published = false`). The seed explicitly publishes its sample paths. After applying the path-publication migration, existing non-seed paths stay hidden until published. Learners can browse `/paths`, open `/paths/<slug>`, and enroll once; progress is the rounded percentage of rooms with a `RoomProgress` record for that learner (zero for an empty path).
