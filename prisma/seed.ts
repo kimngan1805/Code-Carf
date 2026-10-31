@@ -107,39 +107,38 @@ async function main() {
               },
             },
           },
-          {
-            position: 2,
-            exercise: {
-              create: {
-                title: "Binary search flowchart",
-                prompt:
-                  "Draw a flowchart for binary search and upload a photo.",
-                kind: ExerciseKind.HANDWRITTEN,
-                rubric:
-                  "Has start/end, low/high/mid, comparison branch, loop until low > high.",
-              },
-            },
-          },
         ],
       },
     },
   });
-  const weeklySchedule = {
-    status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() - hour),
-    endsAt: new Date(Date.now() + 24 * hour),
-    examStartsAt: new Date(Date.now() + 26 * hour),
-    examEndsAt: new Date(Date.now() + 27.5 * hour),
-    durationMinutes: 90,
+  // Keep older local seeds consistent with the code-only sample contest.
+  const squareExercise = {
+    title: "Square a number",
+    prompt: "Read one integer n and print n * n.",
+    kind: ExerciseKind.CODE,
+    rubric: null,
+    testCases: {
+      create: [
+        { input: "2", expected: "4", isHidden: false },
+        { input: "-3", expected: "9" },
+        { input: "0", expected: "0" },
+      ],
+    },
   };
-  await prisma.contest.upsert({
-    where: { slug: "weekly-warmup" },
-    update: weeklySchedule,
+  await prisma.contestExercise.upsert({
+    where: { contestId_position: { contestId: contest.id, position: 2 } },
+    update: {
+      exercise: {
+        update: {
+          ...squareExercise,
+          testCases: { deleteMany: {}, ...squareExercise.testCases },
+        },
+      },
+    },
     create: {
-      ...weeklySchedule,
-      slug: "weekly-warmup",
-      title: "Khởi động cuối tuần",
-      creatorId: teacher.id,
+      position: 2,
+      contest: { connect: { id: contest.id } },
+      exercise: { create: squareExercise },
     },
   });
   await prisma.contestGrader.upsert({

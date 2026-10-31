@@ -21,6 +21,8 @@ This creates a contest with two code exercises and no camera requirement: one mi
 
 Start the database, apply migrations, seed the sample accounts, and start the app as described in the README. Open `/contests` after signing in as a student.
 
+The default seed creates only Sample Contest, with two code exercises: sum two integers, then square one integer (`2` → `4`). Seeding also converts the older handwritten second exercise to code with test cases. Extra deadline demos are created only when explicitly running `demo:contest`.
+
 - `/contests`: published contests filtered by the shared exam status (upcoming, ongoing, ended), with a separate registration badge. An upcoming contest can already accept registration. Times use `Asia/Ho_Chi_Minh`.
 - `/contests/[slug]`: registration opening/closing, exam opening/closing, duration, and start/continue actions. The countdown progresses through registration closing, waiting for exam opening, and exam closing. Missing or unpublished slugs return HTTP 404.
 - `/contests/[slug]/play`: statements, public samples, editor, and submission history. Entry requires an explicitly started, unexpired personal attempt. Opening this URL before starting redirects to the detail page without starting a clock.
@@ -41,13 +43,17 @@ The editor uses the grading stream's supported languages (Python, C++, Java, Jav
 
 The server checks the participant, exercise membership, and time before storing a submission. Hidden tests and other students' submissions are excluded from workspace queries. A contest requiring face checks cannot be entered until `faceVerifiedAt` exists; camera verification belongs to task 65.
 
+Each student can submit each exercise only once in a contest. A second submission is rejected with HTTP 409 `EXERCISE_ALREADY_SUBMITTED`, even if the source or language changes. The participant lock protects concurrent requests and tabs. Existing historical submissions are retained.
+
+After a successful submission, the editor opens the first remaining exercise in contest order. Submitted exercises are marked and read-only. Reloading opens the next unsubmitted exercise; progress is queried independently of the most recent 20 history rows. Once all exercises have submissions, the server atomically sets `finishedAt` and saves the last manual result for recovery. The workspace displays completion and stops draft synchronization. Reopening the play page recovers that result without waiting for the deadline or allowing more submissions. Pending manual grading is reserved before completion becomes visible, preventing recovery requests from grading it again.
+
 The timer displays the authenticated participant's `deadlineAt`, advances with `performance.now()`, and resynchronizes with server time every 15 seconds, on returning to the tab, and on reconnecting. Reloading does not restart the duration. Source drafts are local to the browser and keyed by user, contest, exercise, and language. The simple editor works as a fallback when the advanced editor cannot load.
 
 ## Deadline behavior (task 78)
 
 While the student's personal attempt is active, the editor synchronizes to `PUT /api/contests/[slug]/draft`. Writes are debounced by 300 ms and serialized so an older request cannot overwrite a newer edit from the same page. The page reports whether the server snapshot has been saved. Local drafts remain available if synchronization fails. With multiple tabs, the last snapshot accepted by the server is the active snapshot.
 
-At expiry the editor becomes read-only and the page calls `POST /api/contests/[slug]/finalize`. This endpoint accepts no new source: it finalizes only the last active snapshot accepted before the deadline. A participant row lock serializes draft writes, manual submissions, and finalization. The final submission ID is stored with the draft and `finishedAt` closes the attempt, so parallel calls, retries, and reloads reuse one submission. An identical manual answer is reused; an empty draft or an active handwritten exercise does not create an empty code submission.
+At expiry the editor becomes read-only and the page calls `POST /api/contests/[slug]/finalize`. This endpoint accepts no new source: it finalizes only the last active snapshot accepted before the deadline. A participant row lock serializes draft writes, manual submissions, and finalization. The final submission ID is stored with the draft and `finishedAt` closes the attempt, so parallel calls, retries, and reloads reuse one submission. An existing manual answer for that exercise is reused even if a different tab saved changed code; an empty draft or an active handwritten exercise does not create an empty code submission. This endpoint also recovers the last manual result of an already completed attempt before its deadline.
 
 Automatic submissions use the same grading pipeline but do not consume a new manual submission rate-limit slot. An atomic `PENDING` to `RUNNING` claim prevents concurrent grading. History marks newly created automatic answers as **Tự nộp**. A delayed manual request rechecks server time under the participant lock immediately before its insert and is rejected at or after that student's `deadlineAt`.
 

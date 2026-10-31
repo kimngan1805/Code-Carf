@@ -9,6 +9,34 @@ import {
 } from "./access";
 import type { ContestDraftInput } from "./draft-schema";
 
+export async function getContestSubmissionProgress(
+  contestId: string,
+  userId: string,
+  client: Prisma.TransactionClient = db,
+) {
+  const [exercises, submissions] = await Promise.all([
+    client.contestExercise.findMany({
+      where: { contestId },
+      orderBy: [{ position: "asc" }, { exerciseId: "asc" }],
+      select: { exerciseId: true },
+    }),
+    client.submission.findMany({
+      where: { contestId, userId },
+      distinct: ["exerciseId"],
+      select: { exerciseId: true },
+    }),
+  ]);
+  const submittedExerciseIds = submissions.map((item) => item.exerciseId);
+  const nextExerciseId =
+    exercises.find((item) => !submittedExerciseIds.includes(item.exerciseId))
+      ?.exerciseId ?? null;
+  return {
+    submittedExerciseIds,
+    nextExerciseId,
+    finished: exercises.length > 0 && !nextExerciseId,
+  };
+}
+
 const publicSubmission = {
   id: true,
   exerciseId: true,
@@ -111,10 +139,45 @@ export function createTimedContestSubmission(data: {
     assertParticipantCanEnter(contest, participant, +acceptedAt);
     if (contest.status !== ContestStatus.PUBLISHED)
       throw new AppError(403, "CONTEST_NOT_OPEN", "Cuộc thi đã đóng.");
-    return tx.submission.create({
-      data: { ...data, status: "PENDING", createdAt: acceptedAt },
+    // Serialize all submissions for an exercise, including changed code and languages.
+    const existing = await tx.submission.findFirst({
+      where: {
+        contestId,
+        userId: data.userId,
+        exerciseId: data.exerciseId,
+      },
       select: { id: true },
     });
+    if (existing)
+      throw new AppError(
+        409,
+        "EXERCISE_ALREADY_SUBMITTED",
+        "Bạn đã nộp bài này. Mỗi bài chỉ được nộp một lần.",
+      );
+    assertParticipantCanEnter(contest, participant, Date.now());
+    const submission = await tx.submission.create({
+      // Reserve grading before exposing an early-finished attempt to recovery requests.
+      data: { ...data, status: "RUNNING", createdAt: acceptedAt },
+      select: { id: true },
+    });
+    const progress = await getContestSubmissionProgress(
+      contestId,
+      data.userId,
+      tx,
+    );
+    if (progress.finished) {
+      await tx.contestParticipant.update({
+        where: { contestId_userId: { contestId, userId: data.userId } },
+        data: { finishedAt: new Date() },
+      });
+      // Keep the last manual result recoverable after reload, just like expiry.
+      await tx.contestDraft.upsert({
+        where: { contestId_userId: { contestId, userId: data.userId } },
+        create: { ...data, contestId, finalSubmissionId: submission.id },
+        update: { finalSubmissionId: submission.id },
+      });
+    }
+    return submission;
   });
 }
 
@@ -122,6 +185,10 @@ export function finalizeSavedDraft(contestId: string, userId: string) {
   return db.$transaction(async (tx) => {
     const participant = await lockParticipant(tx, contestId, userId);
     const contest = await currentContest(tx, contestId);
+    const key = { contestId_userId: { contestId, userId } };
+    const draft = await tx.contestDraft.findUnique({ where: key });
+    if (participant.finishedAt)
+      return { submissionId: draft?.finalSubmissionId ?? null };
     const deadlineAt = getAttemptDeadline(contest, participant);
     if (!participant.startedAt || !deadlineAt || Date.now() < +deadlineAt) {
       throw new AppError(
@@ -136,11 +203,6 @@ export function finalizeSavedDraft(contestId: string, userId: string) {
         "FACE_CHECK_REQUIRED",
         "Bạn chưa xác minh khuôn mặt.",
       );
-    const key = { contestId_userId: { contestId, userId } };
-    const draft = await tx.contestDraft.findUnique({ where: key });
-    // The participant lock serializes all tabs, retries, draft writes, and manual submissions.
-    if (participant.finishedAt)
-      return { submissionId: draft?.finalSubmissionId ?? null };
     await tx.contestParticipant.update({
       where: key,
       data: { finishedAt: deadlineAt },
@@ -152,14 +214,12 @@ export function finalizeSavedDraft(contestId: string, userId: string) {
     )
       return { submissionId: null };
     await assertCodeExercise(tx, contestId, draft.exerciseId);
-    // Reuse an identical manual submission rather than storing the same answer twice.
+    // A submitted exercise stays final even if another tab saved changed code.
     const existing = await tx.submission.findFirst({
       where: {
         contestId,
         userId,
         exerciseId: draft.exerciseId,
-        source: draft.source,
-        language: draft.language,
       },
       orderBy: { createdAt: "desc" },
       select: { id: true },

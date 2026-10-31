@@ -63,11 +63,19 @@ export async function getExpiredContest(slug: string) {
   if (!contest) return null;
   const participant = await findContestParticipant(contest.id, user.id);
   const deadlineAt = getAttemptDeadline(contest, participant);
-  if (!deadlineAt || Date.now() < +deadlineAt) return null;
+  if (!deadlineAt || (!participant?.finishedAt && Date.now() < +deadlineAt))
+    return null;
   return {
     slug,
     title: contest.title,
-    deadlineAt: deadlineAt.toISOString(),
+    completed:
+      !!participant?.finishedAt && +participant.finishedAt < +deadlineAt,
+    deadlineAt: new Date(
+      Math.min(
+        +deadlineAt,
+        participant?.finishedAt ? +participant.finishedAt : Infinity,
+      ),
+    ).toISOString(),
   };
 }
 

@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
@@ -49,12 +50,16 @@ function SolutionPanel({
   exercise,
   data,
   closed,
+  submitted,
+  isLast,
   onSubmitted,
   onSnapshot,
 }: {
   exercise: Exercise;
   data: ContestWorkspaceData;
   closed: boolean;
+  submitted: boolean;
+  isLast: boolean;
   onSubmitted: (result: ContestSubmissionResult, language: string) => void;
   onSnapshot: (snapshot: ContestDraftInput) => void;
 }) {
@@ -65,6 +70,7 @@ function SolutionPanel({
     selected.starter,
   );
   const [pending, setPending] = useState(false);
+  const router = useRouter();
   const inFlight = useRef(false);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -87,7 +93,7 @@ function SolutionPanel({
     data.maxSourceLength,
   ]);
   async function submit() {
-    if (inFlight.current || closed) return;
+    if (inFlight.current || closed || submitted) return;
     inFlight.current = true;
     setPending(true);
     setError("");
@@ -102,6 +108,11 @@ function SolutionPanel({
         },
       );
       const result = await response.json();
+      if (result.error?.code === "EXERCISE_ALREADY_SUBMITTED") {
+        setFeedback(result.error.message);
+        router.refresh();
+        return;
+      }
       if (!response.ok)
         throw new Error(result.error?.message ?? "Không thể nộp bài.");
       onSubmitted(result.data, language);
@@ -169,7 +180,7 @@ function SolutionPanel({
           aria-label="Mã nguồn"
           spellCheck={false}
           value={source}
-          readOnly={closed}
+          readOnly={closed || pending}
           onChange={(event) => updateSource(event.target.value)}
           className="block min-h-96 w-full resize-y bg-background p-4 font-mono text-sm focus-visible:outline-2"
         />
@@ -178,7 +189,7 @@ function SolutionPanel({
           value={source}
           onChange={updateSource}
           language={language}
-          readOnly={closed}
+          readOnly={closed || pending}
         />
       )}
       <div className="space-y-3 border-t p-4">
@@ -199,12 +210,19 @@ function SolutionPanel({
             disabled={
               closed ||
               pending ||
+              submitted ||
               !source.trim() ||
               source.length > data.maxSourceLength
             }
           >
             <Send className="size-4" aria-hidden />
-            {pending ? "Đang nộp..." : "Nộp bài"}
+            {pending
+              ? "Đang nộp..."
+              : submitted
+                ? "Đã nộp bài"
+                : isLast
+                  ? "Nộp bài"
+                  : "Nộp bài và sang bài tiếp theo"}
           </Button>
         </div>
         {source.length > data.maxSourceLength && (
@@ -242,7 +260,18 @@ const resultLabels: Record<string, string> = {
 };
 
 export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
-  const [selectedId, setSelectedId] = useState(data.exercises[0]?.id ?? "");
+  const [selectedId, setSelectedId] = useState(
+    data.progress.nextExerciseId ?? data.exercises[0]?.id ?? "",
+  );
+  const [progress, setProgress] = useState(data.progress);
+  // A refresh after another tab submits must lock that exercise here as well.
+  const submittedExerciseIds = [
+    ...new Set([
+      ...data.progress.submittedExerciseIds,
+      ...progress.submittedExerciseIds,
+    ]),
+  ];
+  const completed = progress.finished || data.progress.finished;
   const [history, setHistory] = useState<HistoryEntry[]>(data.submissions);
   const clock = useServerClock(
     data.contest.slug,
@@ -250,11 +279,11 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
     Date.parse(data.contest.deadlineAt),
   );
   const remaining = clock.deadlineAt - clock.now;
-  const closed = clock.blocked || remaining <= 0;
+  const closed = completed || clock.blocked || remaining <= 0;
   const serverDraft = useServerDraft(data.contest.slug, closed);
   const finalization = useContestFinalization(
     data.contest.slug,
-    remaining <= 0,
+    remaining <= 0 || completed,
   );
   const visibleHistory = finalization.result?.submission
     ? [
@@ -266,6 +295,9 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
     : history;
   const exercise = data.exercises.find((item) => item.id === selectedId);
   function recordResult(result: ContestSubmissionResult, language: string) {
+    setProgress(result.progress);
+    if (result.progress.nextExerciseId)
+      setSelectedId(result.progress.nextExerciseId);
     setHistory((previous) =>
       [
         {
@@ -278,7 +310,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           feedback: result.feedback,
           createdAt: result.createdAt,
         },
-        ...previous,
+        ...previous.filter((item) => item.id !== result.id),
       ].slice(0, 20),
     );
   }
@@ -300,23 +332,41 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
         <div
           className={cn(
             "rounded-xl px-5 py-3 text-center",
-            closed
-              ? "bg-destructive/10 text-destructive"
-              : remaining < 300000
-                ? "bg-warning/10 text-warning"
-                : "bg-secondary/50 text-primary",
+            completed
+              ? "bg-secondary/50 text-primary"
+              : closed
+                ? "bg-destructive/10 text-destructive"
+                : remaining < 300000
+                  ? "bg-warning/10 text-warning"
+                  : "bg-secondary/50 text-primary",
           )}
         >
           <p className="mb-1 flex items-center justify-center gap-2 text-xs font-semibold">
             <Clock3 className="size-3.5" aria-hidden />
-            THỜI GIAN LÀM BÀI CỦA BẠN
+            {completed ? "ĐÃ HOÀN THÀNH" : "THỜI GIAN LÀM BÀI CỦA BẠN"}
           </p>
           <p role="timer" className="font-mono text-2xl font-bold tabular-nums">
-            {formatDuration(remaining)}
+            {completed ? "Đã nộp bài" : formatDuration(remaining)}
           </p>
         </div>
       </header>
-      {remaining <= 0 && <FinalizationNotice finalization={finalization} />}
+      {completed && (
+        <p
+          role="status"
+          className="rounded-xl bg-secondary p-4 font-semibold text-primary"
+        >
+          Bạn đã nộp tất cả bài và hoàn thành lượt thi.
+        </p>
+      )}
+      {remaining <= 0 && !completed && (
+        <FinalizationNotice finalization={finalization} />
+      )}
+      {!closed && (
+        <p className="text-sm text-muted-foreground">
+          Mỗi bài chỉ được nộp một lần. Nộp xong sẽ tự chuyển sang bài chưa nộp
+          tiếp theo; nộp tất cả bài sẽ kết thúc lượt thi.
+        </p>
+      )}
       {!closed && (
         <p
           role="status"
@@ -334,7 +384,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
               : "Đang đồng bộ bài đang mở..."}
         </p>
       )}
-      {closed && (
+      {closed && !completed && (
         <p
           role="alert"
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
@@ -383,6 +433,9 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
               >
                 <FileCode2 className="size-4" aria-hidden />
                 Bài {index + 1}
+                {submittedExerciseIds.includes(item.id) && (
+                  <Check className="size-4" aria-label="Đã nộp" />
+                )}
                 <span className="text-xs opacity-80">{item.points}đ</span>
               </button>
             ))}
@@ -443,7 +496,13 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
               key={exercise.id}
               exercise={exercise}
               data={data}
-              closed={closed}
+              closed={closed || submittedExerciseIds.includes(exercise.id)}
+              submitted={submittedExerciseIds.includes(exercise.id)}
+              isLast={
+                data.exercises.filter(
+                  (item) => !submittedExerciseIds.includes(item.id),
+                ).length <= 1
+              }
               onSubmitted={recordResult}
               onSnapshot={serverDraft.update}
             />
