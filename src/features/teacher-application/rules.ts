@@ -98,3 +98,22 @@ export function validateDocuments(files: UploadedDocument[]): string | null {
   }
   return null;
 }
+
+export const MIN_REJECTION_NOTE = 10;
+
+export const reviewSchema = z.discriminatedUnion("decision", [
+  z.object({
+    decision: z.literal("approve"),
+    note: z.string().trim().max(1000).optional(),
+  }),
+  z.object({
+    decision: z.literal("reject"),
+    note: z
+      .string()
+      .trim()
+      .min(MIN_REJECTION_NOTE, "Hãy nhập lý do từ chối (ít nhất 10 ký tự)")
+      .max(1000, "Lý do quá dài"),
+  }),
+]);
+
+export type ReviewInput = z.infer<typeof reviewSchema>;

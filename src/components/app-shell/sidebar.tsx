@@ -31,19 +31,26 @@ export function Sidebar({
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const teacherMode = isTeacherRole(role);
-  const canViewProfile = allowedRole("/profile", role);
-  const homeHref = teacherMode ? "/creator" : "/dashboard";
-  const accountHref = teacherMode
-    ? "/creator"
-    : canViewProfile
-      ? "/profile"
-      : "/grading";
+  const canViewProfile = allowedRole("/hv/profile", role);
+  const adminMode = role === RoleName.ADMIN;
+  const homeHref = adminMode ? "/admin" : teacherMode ? "/gv" : "/hv/dashboard";
+  const accountHref = adminMode
+    ? "/admin"
+    : teacherMode
+      ? "/gv"
+      : canViewProfile
+        ? "/hv/profile"
+        : role === RoleName.GUEST
+          ? "/onboarding/teacher/submitted"
+          : "/grading";
   const roleLabel =
     role === RoleName.ADMIN
       ? "Quản trị viên"
       : role === RoleName.GRADER
         ? "Giám khảo"
-        : "Không gian giảng viên";
+        : role === RoleName.GUEST
+          ? "Khách"
+          : "Không gian giảng viên";
 
   function toggle() {
     const next = !collapsed;
@@ -153,7 +160,7 @@ export function Sidebar({
               <p className="truncate text-sm font-semibold">{userName}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {canViewProfile ? (
-                  <Link href="/profile" className="hover:text-primary">
+                  <Link href="/hv/profile" className="hover:text-primary">
                     Xem hồ sơ
                   </Link>
                 ) : (
