@@ -5,10 +5,12 @@ export function CodeEditor({
   value,
   onChange,
   language = "typescript",
+  readOnly = false,
 }: {
   value: string;
   onChange: (value: string) => void;
   language?: string;
+  readOnly?: boolean;
 }) {
   return (
     <Editor
@@ -16,7 +18,7 @@ export function CodeEditor({
       language={language}
       value={value}
       onChange={(next) => onChange(next ?? "")}
-      options={{ minimap: { enabled: false } }}
+      options={{ minimap: { enabled: false }, readOnly }}
     />
   );
 }

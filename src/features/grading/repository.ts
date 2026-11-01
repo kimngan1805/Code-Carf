@@ -79,3 +79,15 @@ export function finishSubmission(
     select: { id: true },
   });
 }
+
+export function findStoredSubmission(id: string) {
+  return db.submission.findUniqueOrThrow({ where: { id } });
+}
+
+export async function claimPendingSubmission(id: string) {
+  const result = await db.submission.updateMany({
+    where: { id, status: "PENDING" },
+    data: { status: "RUNNING" },
+  });
+  return result.count === 1;
+}
