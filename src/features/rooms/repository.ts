@@ -4,10 +4,14 @@ export function findRoomAccess(roomId: string, userId: string) {
   return db.room.findUnique({
     where: { id: roomId },
     select: {
+      id: true,
+      title: true,
       pathId: true,
       position: true,
       path: {
         select: {
+          slug: true,
+          title: true,
           published: true,
           sequentialUnlock: true,
           enrollments: { where: { userId }, select: { userId: true }, take: 1 },
@@ -25,7 +29,11 @@ export function findPreviousRoom(
   return db.room.findFirst({
     where: { pathId, position: { lt: position } },
     orderBy: { position: "desc" },
-    select: { progress: { where: { userId }, select: { roomId: true } } },
+    select: {
+      id: true,
+      title: true,
+      progress: { where: { userId }, select: { roomId: true } },
+    },
   });
 }
 
@@ -37,8 +45,25 @@ export function findRoomContent(roomId: string) {
       title: true,
       description: true,
       content: true,
+      exercises: {
+        orderBy: { id: "asc" },
+        select: {
+          id: true,
+          title: true,
+          prompt: true,
+          kind: true,
+          points: true,
+        },
+      },
       path: { select: { slug: true, title: true } },
     },
+  });
+}
+
+export function findRoomExerciseStatuses(roomId: string, userId: string) {
+  return db.submission.groupBy({
+    by: ["exerciseId", "status"],
+    where: { userId, contestId: null, exercise: { roomId } },
   });
 }
 
