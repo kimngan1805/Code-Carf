@@ -97,7 +97,8 @@ try {
   }
   const student = await user("first", "STUDENT"),
     other = await user("second", "STUDENT"),
-    teacher = await user("teacher", "TEACHER");
+    teacher = await user("teacher", "TEACHER"),
+    unrelatedTeacher = await user("unrelated-teacher", "TEACHER");
   const prompt = `PUBLIC_${runId}`,
     hidden = `HIDDEN_${runId}`;
   const exercise = await db.exercise.create({
@@ -128,6 +129,7 @@ try {
         title: `CONTEST_${label}_${runId}`,
         slug: `contest-check-${label}-${runId}`,
         status,
+        creatorId: teacher.id,
         startsAt: new Date(opens),
         endsAt: new Date(closes),
         examStartsAt: new Date(closes),
@@ -152,7 +154,8 @@ try {
   const empty = await contest("empty", now - 60000, now + 3600000);
   const request = await login(student.email),
     otherRequest = await login(other.email),
-    teacherRequest = await login(teacher.email);
+    teacherRequest = await login(teacher.email),
+    unrelatedTeacherRequest = await login(unrelatedTeacher.email);
   const prefix = `/api/contests/${live.slug}`;
   const key = (contestId, userId = student.id) => ({
     contestId_userId: { contestId, userId },
@@ -453,6 +456,120 @@ try {
     },
   );
   await check(
+    "only the contest owner can change warning thresholds",
+    async () => {
+      const path = `${prefix}/proctoring-settings`;
+      assert.equal(
+        (await request(path, { method: "PATCH", ...json({ threshold: 1 }) }))
+          .status,
+        403,
+      );
+      assert.equal(
+        (
+          await unrelatedTeacherRequest(path, {
+            method: "PATCH",
+            ...json({ threshold: 1 }),
+          })
+        ).status,
+        403,
+      );
+      assert.equal(
+        (
+          await teacherRequest(path, {
+            method: "PATCH",
+            ...json({ threshold: 0 }),
+          })
+        ).status,
+        400,
+      );
+      assert.equal(
+        (
+          await teacherRequest(path, {
+            method: "PATCH",
+            ...json({ threshold: 1 }),
+            headers: {
+              "Content-Type": "application/json",
+              Origin: "https://example.invalid",
+            },
+          })
+        ).status,
+        403,
+      );
+      assert.equal(
+        (
+          await teacherRequest(path, {
+            method: "PATCH",
+            ...json({ threshold: 3 }),
+          })
+        ).status,
+        200,
+      );
+      const ownHtml = await (await teacherRequest("/gv/contests")).text();
+      assert.ok(ownHtml.includes(live.title));
+      assert.ok(
+        !(
+          await (await unrelatedTeacherRequest("/gv/contests")).text()
+        ).includes(live.title),
+      );
+    },
+  );
+  await check(
+    "lowering a threshold flags saved answers without canceling the attempt or clearing flags when raised",
+    async () => {
+      const response = await request(`${prefix}/proctoring-events`, {
+        method: "POST",
+        ...json({
+          clientEventId: randomUUID(),
+          type: "TAB_SWITCH",
+          occurredAt: new Date().toISOString(),
+        }),
+      });
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).data.status.flagged, false);
+      assert.equal(
+        (
+          await teacherRequest(`${prefix}/proctoring-settings`, {
+            method: "PATCH",
+            ...json({ threshold: 1 }),
+          })
+        ).status,
+        200,
+      );
+      const own = (await (await request(`${prefix}/proctoring-events`)).json())
+        .data;
+      assert.deepEqual(own, { violationCount: 2, threshold: 1, flagged: true });
+      const theirs = (
+        await (await otherRequest(`${prefix}/proctoring-events`)).json()
+      ).data;
+      assert.equal(theirs.violationCount, 0);
+      assert.equal(theirs.flagged, false);
+      const saved = await db.submission.findFirstOrThrow({
+        where: { contestId: live.id, userId: student.id },
+      });
+      assert.equal(saved.flaggedForReview, true);
+      assert.notEqual(saved.status, "ERROR");
+      assert.equal(
+        (await db.contestParticipant.findUniqueOrThrow({ where: key(live.id) }))
+          .finishedAt,
+        null,
+      );
+      assert.equal(
+        (
+          await teacherRequest(`${prefix}/proctoring-settings`, {
+            method: "PATCH",
+            ...json({ threshold: 3 }),
+          })
+        ).status,
+        200,
+      );
+      assert.equal(
+        (await (await request(`${prefix}/proctoring-events`)).json()).data
+          .flagged,
+        true,
+      );
+    },
+  );
+  await check(
     "concurrent event bursts respect the database rate limit",
     async () => {
       const responses = await Promise.all(
@@ -469,16 +586,21 @@ try {
       );
       assert.equal(
         responses.filter((response) => response.status === 200).length,
-        29,
+        28,
       );
       assert.equal(
         responses.filter((response) => response.status === 429).length,
-        6,
+        7,
       );
       assert.equal(
         await db.proctoringEvent.count({
           where: { contestId: live.id, userId: student.id },
         }),
+        30,
+      );
+      assert.equal(
+        (await db.contestParticipant.findUniqueOrThrow({ where: key(live.id) }))
+          .violationCount,
         30,
       );
     },
@@ -606,6 +728,29 @@ try {
     },
   );
   await check(
+    "crossing the threshold flags the participant and preserves an active attempt",
+    async () => {
+      for (let i = 0; i < 4; i++) {
+        const response = await otherRequest(`${prefix}/proctoring-events`, {
+          method: "POST",
+          ...json({
+            clientEventId: randomUUID(),
+            type: "TAB_SWITCH",
+            occurredAt: new Date().toISOString(),
+          }),
+        });
+        assert.equal(response.status, 200);
+        assert.equal((await response.json()).data.status.flagged, i === 3);
+      }
+      const participant = await db.contestParticipant.findUniqueOrThrow({
+        where: key(live.id, other.id),
+      });
+      assert.equal(participant.violationCount, 4);
+      assert.ok(participant.flaggedAt);
+      assert.equal(participant.finishedAt, null);
+    },
+  );
+  await check(
     "active draft synchronization selects the latest problem",
     async () => {
       for (const value of [source, snapshot])
@@ -730,6 +875,21 @@ try {
         403,
       );
   });
+  await check(
+    "flags propagate to later manual answers without changing their grading",
+    async () => {
+      const submissions = await db.submission.findMany({
+        where: { contestId: live.id, userId: other.id },
+      });
+      assert.equal(submissions.length, 2);
+      assert.ok(submissions.every((submission) => submission.flaggedForReview));
+      assert.ok(
+        submissions.every(
+          (submission) => !["PENDING", "RUNNING"].includes(submission.status),
+        ),
+      );
+    },
+  );
   let finalId;
   await check(
     "four concurrent expiry requests submit the saved source exactly once",
@@ -763,6 +923,7 @@ try {
       assert.equal(saved.exerciseId, secondExercise.id);
       assert.equal(saved.userId, student.id);
       assert.equal(saved.autoSubmitted, true);
+      assert.equal(saved.flaggedForReview, true);
       assert.equal(
         await db.submission.count({
           where: {

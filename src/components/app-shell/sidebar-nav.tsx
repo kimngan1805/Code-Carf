@@ -91,6 +91,12 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
     title: "Tổ chức",
     items: [
       { href: "/contests", label: "Cuộc thi", short: "Cuộc thi", icon: Trophy },
+      {
+        href: "/gv/contests",
+        label: "Giám sát cuộc thi",
+        short: "Giám sát",
+        icon: BadgeCheck,
+      },
     ],
   },
 ];
@@ -116,6 +122,12 @@ export const adminNavGroups: { title: string; items: NavItem[] }[] = [
   {
     title: "Nội dung",
     items: [
+      {
+        href: "/gv/contests",
+        label: "Giám sát cuộc thi",
+        short: "Giám sát",
+        icon: BadgeCheck,
+      },
       {
         href: "/gv/paths",
         label: "Lộ trình học",

@@ -29,6 +29,7 @@ import { FinalizationNotice } from "./expired-contest";
 import type { ContestDraftInput } from "../draft-schema";
 import { ContestSubmissionDialog } from "./contest-submission-dialog";
 import { useContestEvents } from "@/features/proctoring/components/use-contest-events";
+import { ProctoringNotice } from "@/features/proctoring/components/proctoring-notice";
 
 const CodeEditor = dynamic(
   () =>
@@ -302,7 +303,11 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   );
   const remaining = clock.deadlineAt - clock.now;
   const closed = completed || clock.blocked || remaining <= 0;
-  useContestEvents(data.contest.slug, !closed);
+  const proctoring = useContestEvents(
+    data.contest.slug,
+    !closed,
+    data.proctoring,
+  );
   const serverDraft = useServerDraft(data.contest.slug, closed);
   const finalization = useContestFinalization(
     data.contest.slug,
@@ -380,6 +385,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           </p>
         </div>
       </header>
+      {!closed && <ProctoringNotice state={proctoring} />}
       {completed && (
         <p
           role="status"
