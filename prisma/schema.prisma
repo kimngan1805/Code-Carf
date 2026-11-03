@@ -401,16 +401,18 @@ model ContestDraft {
 }
 
 model ProctoringEvent {
-  id        String              @id @default(cuid())
-  contestId String
-  userId    String
-  contest   Contest             @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      ProctoringEventType
+  id            String              @id @default(cuid())
+  clientEventId String?
+  contestId     String
+  userId        String
+  contest       Contest             @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          ProctoringEventType
   /// Chi tiết tùy loại: độ dài đoạn dán, độ tương đồng khuôn mặt...
-  metadata  Json?
-  createdAt DateTime            @default(now())
+  metadata      Json?
+  createdAt     DateTime            @default(now())
 
+  @@unique([contestId, userId, clientEventId])
   @@index([contestId, userId, createdAt])
 }
 

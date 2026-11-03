@@ -167,6 +167,44 @@ try {
     language: "python",
     source: "print('saved before personal deadline')",
   };
+  const event = {
+    clientEventId: randomUUID(),
+    type: "PASTE",
+    pasteLength: 12,
+    occurredAt: new Date().toISOString(),
+  };
+  await check(
+    "event reporting requires authentication and an active registered attempt",
+    async () => {
+      assert.equal(
+        (
+          await fetch(`${base}${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json(event),
+          })
+        ).status,
+        401,
+      );
+      assert.equal(
+        (
+          await teacherRequest(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json(event),
+          })
+        ).status,
+        403,
+      );
+      assert.equal(
+        (
+          await request(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json(event),
+          })
+        ).status,
+        403,
+      );
+    },
+  );
 
   await check(
     "catalog excludes drafts and shows registration dates",
@@ -368,6 +406,80 @@ try {
           })
         ).status,
         201,
+      );
+    },
+  );
+  await check(
+    "concurrent event retries store one private, server-timed event",
+    async () => {
+      const responses = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          request(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json(event),
+          }),
+        ),
+      );
+      assert.ok(responses.every((response) => response.status === 200));
+      const events = await db.proctoringEvent.findMany({
+        where: { contestId: live.id, userId: student.id },
+      });
+      assert.equal(events.length, 1);
+      assert.equal(events[0].type, "PASTE");
+      assert.equal(events[0].metadata.pasteLength, 12);
+      assert.ok(events[0].createdAt <= new Date());
+      assert.equal(
+        (
+          await request(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json({ ...event, source: "private clipboard" }),
+          })
+        ).status,
+        400,
+      );
+      assert.equal(
+        (
+          await request(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json(event),
+            headers: {
+              "Content-Type": "application/json",
+              Origin: "https://example.invalid",
+            },
+          })
+        ).status,
+        403,
+      );
+    },
+  );
+  await check(
+    "concurrent event bursts respect the database rate limit",
+    async () => {
+      const responses = await Promise.all(
+        Array.from({ length: 35 }, () =>
+          request(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json({
+              clientEventId: randomUUID(),
+              type: "TAB_SWITCH",
+              occurredAt: new Date().toISOString(),
+            }),
+          }),
+        ),
+      );
+      assert.equal(
+        responses.filter((response) => response.status === 200).length,
+        29,
+      );
+      assert.equal(
+        responses.filter((response) => response.status === 429).length,
+        6,
+      );
+      assert.equal(
+        await db.proctoringEvent.count({
+          where: { contestId: live.id, userId: student.id },
+        }),
+        30,
       );
     },
   );
@@ -606,6 +718,18 @@ try {
       );
     },
   );
+  await check("logging is rejected after completion or expiry", async () => {
+    for (const send of [request, otherRequest])
+      assert.equal(
+        (
+          await send(`${prefix}/proctoring-events`, {
+            method: "POST",
+            ...json({ ...event, clientEventId: randomUUID() }),
+          })
+        ).status,
+        403,
+      );
+  });
   let finalId;
   await check(
     "four concurrent expiry requests submit the saved source exactly once",
