@@ -257,33 +257,34 @@ model TestCase {
 }
 
 model Submission {
-  id             String           @id @default(cuid())
-  userId         String
-  user           User             @relation("SubmissionAuthor", fields: [userId], references: [id])
-  exerciseId     String
-  exercise       Exercise         @relation(fields: [exerciseId], references: [id])
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation("SubmissionAuthor", fields: [userId], references: [id])
+  exerciseId       String
+  exercise         Exercise         @relation(fields: [exerciseId], references: [id])
   /// Null khi nộp ở chế độ học; có giá trị khi nộp trong cuộc thi.
-  contestId      String?
-  contest        Contest?         @relation(fields: [contestId], references: [id])
+  contestId        String?
+  contest          Contest?         @relation(fields: [contestId], references: [id])
   /// Mã nguồn (bài CODE). Null với bài viết tay.
-  source         String?
-  language       String?
+  source           String?
+  language         String?
   /// Ảnh bài viết tay đã upload (bài HANDWRITTEN).
-  imageUrl       String?
-  status         SubmissionStatus @default(PENDING)
-  score          Int?
-  feedback       String?
-  runtimeMs      Int?
-  memoryKb       Int?
+  imageUrl         String?
+  status           SubmissionStatus @default(PENDING)
+  score            Int?
+  feedback         String?
+  runtimeMs        Int?
+  memoryKb         Int?
   /// Điểm và nhận xét AI đề xuất cho bài viết tay, trước khi grader duyệt.
-  aiScore        Int?
-  aiFeedback     String?
-  reviewerId     String?
-  reviewer       User?            @relation("SubmissionReviewer", fields: [reviewerId], references: [id])
-  reviewedAt     DateTime?
-  createdAt      DateTime         @default(now())
-  autoSubmitted  Boolean          @default(false)
-  finalizedDraft ContestDraft?    @relation("ContestFinalSubmission")
+  aiScore          Int?
+  aiFeedback       String?
+  reviewerId       String?
+  reviewer         User?            @relation("SubmissionReviewer", fields: [reviewerId], references: [id])
+  reviewedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  autoSubmitted    Boolean          @default(false)
+  flaggedForReview Boolean          @default(false)
+  finalizedDraft   ContestDraft?    @relation("ContestFinalSubmission")
 
   @@index([userId, exerciseId])
   @@index([contestId, createdAt])
@@ -311,32 +312,33 @@ model XpEvent {
 }
 
 model Contest {
-  id               String               @id @default(cuid())
-  slug             String               @unique
-  title            String
-  description      String               @default("")
-  status           ContestStatus        @default(DRAFT)
-  creatorId        String?
-  creator          User?                @relation("ContestCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  id                 String               @id @default(cuid())
+  slug               String               @unique
+  title              String
+  description        String               @default("")
+  status             ContestStatus        @default(DRAFT)
+  creatorId          String?
+  creator            User?                @relation("ContestCreator", fields: [creatorId], references: [id], onDelete: SetNull)
   /// Registration opens; not the start of a timed attempt.
-  startsAt         DateTime?
+  startsAt           DateTime?
   /// Registration closes; does not end active attempts.
-  endsAt           DateTime?
+  endsAt             DateTime?
   /// Shared window in which registered students may start and submit.
-  examStartsAt     DateTime?
-  examEndsAt       DateTime?
+  examStartsAt       DateTime?
+  examEndsAt         DateTime?
   /// Duration counted separately from each participant's explicit start.
-  durationMinutes  Int                  @default(60)
+  durationMinutes    Int                  @default(60)
   /// Phạt (phút) cho mỗi lần nộp sai, dùng khi xếp hạng.
-  penaltyMinutes   Int                  @default(20)
-  requireFaceCheck Boolean              @default(false)
-  exercises        ContestExercise[]
-  graders          ContestGrader[]
-  participants     ContestParticipant[]
-  submissions      Submission[]
-  xpEvents         XpEvent[]
-  proctoringEvents ProctoringEvent[]
-  createdAt        DateTime             @default(now())
+  penaltyMinutes     Int                  @default(20)
+  requireFaceCheck   Boolean              @default(false)
+  violationThreshold Int                  @default(3)
+  exercises          ContestExercise[]
+  graders            ContestGrader[]
+  participants       ContestParticipant[]
+  submissions        Submission[]
+  xpEvents           XpEvent[]
+  proctoringEvents   ProctoringEvent[]
+  createdAt          DateTime             @default(now())
 }
 
 model ContestExercise {
@@ -378,10 +380,13 @@ model ContestParticipant {
   /// Ảnh khuôn mặt tham chiếu chụp lúc vào thi, dùng để so khớp.
   faceReferenceUrl String?
   faceVerifiedAt   DateTime?
+  violationCount   Int           @default(0)
+  flaggedAt        DateTime?
   draft            ContestDraft?
 
   @@id([contestId, userId])
   @@index([contestId, score(sort: Desc), penaltyMinutes])
+  @@index([contestId, flaggedAt])
 }
 
 /// Last active editor snapshot accepted before the contest deadline.

@@ -13,6 +13,7 @@ const summary = {
   examEndsAt: true,
   penaltyMinutes: true,
   requireFaceCheck: true,
+  violationThreshold: true,
   _count: { select: { exercises: true, participants: true } },
 } as const;
 
@@ -41,6 +42,8 @@ export function findContestParticipant(contestId: string, userId: string) {
       startedAt: true,
       deadlineAt: true,
       finishedAt: true,
+      violationCount: true,
+      flaggedAt: true,
       faceVerifiedAt: true,
     },
   });

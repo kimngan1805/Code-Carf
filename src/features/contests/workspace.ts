@@ -25,6 +25,11 @@ export async function getContestWorkspace(slug: string) {
   return {
     userId: entry.userId,
     progress,
+    proctoring: {
+      violationCount: entry.participant.violationCount ?? 0,
+      threshold: entry.contest.violationThreshold ?? 3,
+      flagged: !!entry.participant.flaggedAt,
+    },
     contest: {
       id: entry.contest.id,
       slug: entry.contest.slug,
