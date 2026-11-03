@@ -11,6 +11,7 @@ import {
   FileCode2,
   Send,
   Trophy,
+  Maximize2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { languages, type SolutionLanguage } from "../languages";
@@ -30,6 +31,7 @@ import type { ContestDraftInput } from "../draft-schema";
 import { ContestSubmissionDialog } from "./contest-submission-dialog";
 import { useContestEvents } from "@/features/proctoring/components/use-contest-events";
 import { ProctoringNotice } from "@/features/proctoring/components/proctoring-notice";
+import { enterExamFullscreen, exitExamFullscreen } from "../fullscreen";
 
 const CodeEditor = dynamic(
   () =>
@@ -275,6 +277,7 @@ const resultLabels: Record<string, string> = {
 };
 
 export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
+  const [fullscreenError, setFullscreenError] = useState("");
   const router = useRouter();
   const [completionOpen, setCompletionOpen] = useState(false);
   const detailUrl = `/contests/${encodeURIComponent(data.contest.slug)}`;
@@ -308,6 +311,9 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
     !closed,
     data.proctoring,
   );
+  useEffect(() => {
+    if (closed) void exitExamFullscreen();
+  }, [closed]);
   const serverDraft = useServerDraft(data.contest.slug, closed);
   const finalization = useContestFinalization(
     data.contest.slug,
@@ -385,6 +391,37 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           </p>
         </div>
       </header>
+      {!closed && (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">
+            Màn hình làm bài · Thống kê thao tác sẽ hiện trong kết quả.
+          </p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={async () => {
+              setFullscreenError("");
+              try {
+                await enterExamFullscreen();
+              } catch (error) {
+                setFullscreenError(
+                  error instanceof Error
+                    ? error.message
+                    : "Chưa thể vào toàn màn hình.",
+                );
+              }
+            }}
+          >
+            <Maximize2 aria-hidden className="size-4" />
+            Toàn màn hình
+          </Button>
+        </div>
+      )}
+      {fullscreenError && (
+        <p role="alert" className="text-sm text-warning">
+          {fullscreenError}
+        </p>
+      )}
       {!closed && <ProctoringNotice state={proctoring} />}
       {completed && (
         <p

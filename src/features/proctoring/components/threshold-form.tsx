@@ -72,7 +72,7 @@ export function ThresholdForm({
         </Button>
       </div>
       <p className="text-xs leading-5 text-muted-foreground">
-        Chuyển tab và dán code đều được tính. Với ngưỡng{" "}
+        Chuyển tab, dán code và thoát toàn màn hình đều được tính. Với ngưỡng{" "}
         {Number.isFinite(value) ? value : threshold}, lần thứ{" "}
         {(Number.isFinite(value) ? value : threshold) + 1} sẽ gắn cờ để xem xét;
         bài làm vẫn được nộp và chấm bình thường. Tăng ngưỡng không tự xóa cờ đã
