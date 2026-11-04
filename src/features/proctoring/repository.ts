@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { assertParticipantCanEnter } from "@/features/contests/access";
+import { violationStatus } from "./rules";
 import {
   EVENT_RATE_LIMIT,
   EVENT_RATE_WINDOW_MS,
@@ -13,6 +14,8 @@ export async function recordProctoringEvent(
   input: ProctoringEventInput,
 ) {
   return db.$transaction(async (tx) => {
+    // Settings updates take an exclusive contest lock, before participant locks.
+    await tx.$queryRaw`SELECT "id" FROM "Contest" WHERE "slug" = ${slug} FOR SHARE`;
     const contest = await tx.contest.findUnique({ where: { slug } });
     if (!contest || contest.status !== "PUBLISHED")
       throw new AppError(404, "CONTEST_NOT_FOUND", "Không tìm thấy cuộc thi.");
@@ -32,7 +35,16 @@ export async function recordProctoringEvent(
       },
       select: { id: true },
     });
-    if (existing) return { eventId: existing.id, duplicate: true };
+    if (existing)
+      return {
+        eventId: existing.id,
+        duplicate: true,
+        status: violationStatus(
+          participant.violationCount,
+          contest.violationThreshold,
+          participant.flaggedAt,
+        ),
+      };
     const count = await tx.proctoringEvent.count({
       where: {
         contestId: contest.id,
@@ -61,6 +73,26 @@ export async function recordProctoringEvent(
       },
       select: { id: true },
     });
-    return { eventId: event.id, duplicate: false };
+    const nextCount = participant.violationCount + 1;
+    const flaggedAt =
+      participant.flaggedAt ??
+      (nextCount > contest.violationThreshold ? new Date() : null);
+    await tx.contestParticipant.update({
+      where: { contestId_userId: { contestId: contest.id, userId } },
+      data: {
+        violationCount: { increment: 1 },
+        ...(flaggedAt ? { flaggedAt } : {}),
+      },
+    });
+    if (flaggedAt && !participant.flaggedAt)
+      await tx.submission.updateMany({
+        where: { contestId: contest.id, userId },
+        data: { flaggedForReview: true },
+      });
+    return {
+      eventId: event.id,
+      duplicate: false,
+      status: violationStatus(nextCount, contest.violationThreshold, flaggedAt),
+    };
   });
 }

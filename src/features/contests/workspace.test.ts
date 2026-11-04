@@ -125,13 +125,13 @@ describe("contest workspace", () => {
     ).rejects.toMatchObject({ status: 400 });
     expect(mocks.submit).not.toHaveBeenCalled();
   });
-  it("loads only the current participant's submission history", async () => {
+  it("loads exercises and progress without fetching submission history during the attempt", async () => {
     mocks.exercises.mockResolvedValue([
       { position: 1, points: 200, exercise: { id: "exercise", points: 100 } },
     ]);
     mocks.submissions.mockResolvedValue([]);
     const result = await getContestWorkspace("sample");
-    expect(mocks.submissions).toHaveBeenCalledWith("contest", "signed-in");
+    expect(mocks.submissions).not.toHaveBeenCalled();
     expect(result.exercises[0].points).toBe(200);
   });
   it("does not fetch statements when entry is denied", async () => {

@@ -70,6 +70,23 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe("deadline persistence", () => {
+  it("keeps a flagged participant's manual and automatic answers marked without changing grading status", async () => {
+    tx.contestParticipant.findUnique.mockResolvedValue({
+      ...participant,
+      flaggedAt: new Date(start),
+    });
+    await createTimedContestSubmission(input);
+    expect(tx.submission.create.mock.calls[0][0].data).toMatchObject({
+      flaggedForReview: true,
+      status: "RUNNING",
+    });
+    vi.setSystemTime(end);
+    await finalizeSavedDraft("contest", "student");
+    expect(tx.submission.create.mock.calls[1][0].data).toMatchObject({
+      flaggedForReview: true,
+      status: "PENDING",
+    });
+  });
   it("blocks explicit start before the shared exam opening", async () => {
     vi.setSystemTime(start - 1);
     tx.contestParticipant.findUnique.mockResolvedValue({

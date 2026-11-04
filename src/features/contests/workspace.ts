@@ -1,11 +1,7 @@
 import { AppError } from "@/lib/errors";
 import { MAX_SOURCE_LENGTH, submitSolution } from "@/features/grading/submit";
 import { getContestEntry } from "./service";
-import {
-  findUserContestSubmission,
-  listContestExercises,
-  listUserContestSubmissions,
-} from "./repository";
+import { findUserContestSubmission, listContestExercises } from "./repository";
 import { contestSubmissionSchema } from "./submission-schema";
 import { assertParticipantCanEnter, getAttemptDeadline } from "./access";
 import {
@@ -15,9 +11,8 @@ import {
 
 export async function getContestWorkspace(slug: string) {
   const entry = await getContestEntry(slug);
-  const [exercises, submissions, progress] = await Promise.all([
+  const [exercises, progress] = await Promise.all([
     listContestExercises(entry.contest.id),
-    listUserContestSubmissions(entry.contest.id, entry.userId),
     getContestSubmissionProgress(entry.contest.id, entry.userId),
   ]);
   const serverNow = Date.now();
@@ -25,6 +20,11 @@ export async function getContestWorkspace(slug: string) {
   return {
     userId: entry.userId,
     progress,
+    proctoring: {
+      violationCount: entry.participant.violationCount ?? 0,
+      threshold: entry.contest.violationThreshold ?? 3,
+      flagged: !!entry.participant.flaggedAt,
+    },
     contest: {
       id: entry.contest.id,
       slug: entry.contest.slug,
@@ -41,10 +41,6 @@ export async function getContestWorkspace(slug: string) {
       ...exercise,
       points: points ?? exercise.points,
       position,
-    })),
-    submissions: submissions.map((submission) => ({
-      ...submission,
-      createdAt: submission.createdAt.toISOString(),
     })),
   };
 }
