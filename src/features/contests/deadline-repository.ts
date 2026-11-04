@@ -40,6 +40,7 @@ export async function getContestSubmissionProgress(
 const publicSubmission = {
   id: true,
   exerciseId: true,
+  exercise: { select: { title: true } },
   language: true,
   status: true,
   score: true,
