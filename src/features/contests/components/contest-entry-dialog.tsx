@@ -15,7 +15,7 @@ export function ContestEntryDialog({
   started: boolean;
   pending: boolean;
   error: string;
-  onEnter: (fullscreen: boolean) => void;
+  onEnter: () => void;
   onCancel: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -46,8 +46,8 @@ export function ContestEntryDialog({
         id="contest-entry-description"
         className="text-sm leading-6 text-muted-foreground"
       >
-        Bài thi sẽ mở ở màn hình riêng, ẩn thanh điều hướng để bạn tập trung.
-        Bạn có muốn chuyển sang toàn màn hình không?
+        Bài thi sẽ chuyển sang toàn màn hình, ẩn thanh điều hướng để bạn tập
+        trung làm bài.
       </p>
       <p className="text-xs leading-5 text-muted-foreground">
         {started
@@ -65,18 +65,11 @@ export function ContestEntryDialog({
         </p>
       )}
       <div className="flex flex-col gap-2">
-        <Button disabled={pending} onClick={() => onEnter(true)}>
-          {pending ? "Đang mở bài thi..." : "Vào toàn màn hình"}
-        </Button>
-        <Button
-          variant="outline"
-          disabled={pending}
-          onClick={() => onEnter(false)}
-        >
-          Mở màn hình làm bài riêng
+        <Button disabled={pending} onClick={onEnter}>
+          {pending ? "Đang mở bài thi..." : "Vào làm bài"}
         </Button>
         <Button variant="ghost" disabled={pending} onClick={onCancel}>
-          Quay lại
+          Hủy
         </Button>
       </div>
     </dialog>

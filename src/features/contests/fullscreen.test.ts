@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllGlobals());
 describe("exam entry", () => {
   it("requests fullscreen before starting the server clock and navigating", async () => {
     const calls: string[] = [];
-    await prepareExamEntry(true, false, {
+    await prepareExamEntry(false, {
       fullscreen: async () => {
         calls.push("fullscreen");
       },
@@ -27,16 +27,14 @@ describe("exam entry", () => {
       start: vi.fn(),
       navigate: vi.fn(),
     };
-    await expect(prepareExamEntry(true, false, actions)).rejects.toThrow(
-      "denied",
-    );
+    await expect(prepareExamEntry(false, actions)).rejects.toThrow("denied");
     expect(actions.start).not.toHaveBeenCalled();
     expect(actions.navigate).not.toHaveBeenCalled();
   });
-  it("normal mode does not request fullscreen, and resuming never starts a new clock", async () => {
+  it("resuming requests fullscreen without restarting the clock", async () => {
     const actions = { fullscreen: vi.fn(), start: vi.fn(), navigate: vi.fn() };
-    await prepareExamEntry(false, true, actions);
-    expect(actions.fullscreen).not.toHaveBeenCalled();
+    await prepareExamEntry(true, actions);
+    expect(actions.fullscreen).toHaveBeenCalledOnce();
     expect(actions.start).not.toHaveBeenCalled();
     expect(actions.navigate).toHaveBeenCalledOnce();
   });
@@ -46,9 +44,7 @@ describe("exam entry", () => {
       start: vi.fn().mockRejectedValue(new Error("closed")),
       navigate: vi.fn(),
     };
-    await expect(prepareExamEntry(false, false, actions)).rejects.toThrow(
-      "closed",
-    );
+    await expect(prepareExamEntry(false, actions)).rejects.toThrow("closed");
     expect(actions.navigate).not.toHaveBeenCalled();
   });
   it("handles unsupported or denied fullscreen without swallowing the entry error", async () => {

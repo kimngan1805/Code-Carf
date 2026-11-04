@@ -2,14 +2,12 @@ export async function enterExamFullscreen() {
   if (document.fullscreenElement) return;
   if (!document.documentElement.requestFullscreen)
     throw new Error(
-      "Trình duyệt chưa hỗ trợ toàn màn hình. Bạn có thể chọn mở màn hình làm bài riêng.",
+      "Trình duyệt chưa hỗ trợ toàn màn hình. Hãy mở bài thi bằng trình duyệt hỗ trợ chế độ này.",
     );
   try {
     await document.documentElement.requestFullscreen();
   } catch {
-    throw new Error(
-      "Chưa thể vào toàn màn hình. Hãy cho phép hoặc chọn mở màn hình làm bài riêng.",
-    );
+    throw new Error("Chưa thể vào toàn màn hình. Hãy cho phép rồi thử lại.");
   }
 }
 
@@ -20,7 +18,6 @@ export async function exitExamFullscreen() {
 
 /** Fullscreen must be requested in the click handler, before any network await. */
 export async function prepareExamEntry(
-  fullscreen: boolean,
   started: boolean,
   actions: {
     fullscreen: () => Promise<void>;
@@ -28,7 +25,7 @@ export async function prepareExamEntry(
     navigate: () => void;
   },
 ) {
-  if (fullscreen) await actions.fullscreen();
+  await actions.fullscreen();
   if (!started) await actions.start();
   actions.navigate();
 }

@@ -63,14 +63,14 @@ export function ParticipationAction({
       setPending(false);
     }
   }
-  async function startAttempt(fullscreen: boolean) {
+  async function startAttempt() {
     if (entering.current) return;
     entering.current = true;
     setPending(true);
     setError("");
     let enteredFullscreen = false;
     try {
-      await prepareExamEntry(fullscreen, attemptStarted, {
+      await prepareExamEntry(attemptStarted, {
         fullscreen: async () => {
           const wasFullscreen = !!document.fullscreenElement;
           await enterExamFullscreen();
@@ -186,7 +186,7 @@ export function ParticipationAction({
         started={attemptStarted}
         pending={pending}
         error={error}
-        onEnter={(fullscreen) => void startAttempt(fullscreen)}
+        onEnter={() => void startAttempt()}
         onCancel={() => setEntryOpen(false)}
       />
       {error && !entryOpen && (
