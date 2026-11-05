@@ -6,6 +6,7 @@ import {
   XpSource,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { MILESTONE_BADGES } from "../src/features/progress/badges";
 
 const prisma = new PrismaClient();
 
@@ -142,18 +143,24 @@ async function main() {
     update: {},
     create: { contestId: contest.id, graderId: grader.id },
   });
-  await prisma.badge.upsert({
-    where: { slug: "first-step" },
-    update: {
-      name: "Bước đầu tiên",
-      description: "Hoàn thành bài tập đầu tiên",
-    },
-    create: {
+  const badgeCatalog = [
+    {
       slug: "first-step",
       name: "Bước đầu tiên",
       description: "Hoàn thành bài tập đầu tiên",
     },
-  });
+    ...MILESTONE_BADGES,
+  ];
+  for (const badge of badgeCatalog) {
+    await prisma.badge.upsert({
+      where: { slug: badge.slug },
+      update: {
+        name: badge.name,
+        description: badge.description,
+      },
+      create: badge,
+    });
+  }
   const student =
     users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
   await seedStudentDemo(student.id, teacher.id, path.id, "Minh Thư");
