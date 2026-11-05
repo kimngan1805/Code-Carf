@@ -16,10 +16,10 @@ export default function PublicProfileNotFound() {
       </p>
       <div className="mt-6 flex flex-wrap justify-center gap-3">
         <Button asChild variant="outline" className="rounded-full px-5">
-          <Link href="/paths">Xem lộ trình học</Link>
+          <Link href="/hv/paths">Xem lộ trình học</Link>
         </Button>
         <Button asChild className="rounded-full px-5">
-          <Link href="/dashboard">Về trang chủ</Link>
+          <Link href="/hv/dashboard">Về trang chủ</Link>
         </Button>
       </div>
     </div>

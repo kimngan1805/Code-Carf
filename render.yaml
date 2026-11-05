@@ -1,0 +1,27 @@
+# Render Blueprint: one web service built from the Dockerfile.
+# Secrets are marked sync:false and are entered in the Render dashboard, never committed.
+services:
+  - type: web
+    name: code-carf
+    runtime: docker
+    plan: free
+    healthCheckPath: /login
+    # Deploy only after the GitHub CI checks pass on main.
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: AUTH_TRUST_HOST
+        value: "true"
+      - key: GRADER_ADAPTER
+        value: mock
+      - key: STORAGE_DRIVER
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: teacher-documents

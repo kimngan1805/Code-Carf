@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BadgeCheck,
   BookOpen,
   House,
   LayoutDashboard,
@@ -29,13 +30,13 @@ export const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Học tập",
     items: [
       {
-        href: "/dashboard",
+        href: "/hv/dashboard",
         label: "Trang chủ",
         short: "Trang chủ",
         icon: House,
       },
       {
-        href: "/paths",
+        href: "/hv/paths",
         label: "Lộ trình học",
         short: "Lộ trình",
         icon: BookOpen,
@@ -58,12 +59,12 @@ export const navGroups: { title: string; items: NavItem[] }[] = [
     title: "Cá nhân",
     items: [
       {
-        href: "/achievements",
+        href: "/hv/achievements",
         label: "Thành tích",
         short: "Thành tích",
         icon: Award,
       },
-      { href: "/profile", label: "Hồ sơ", short: "Hồ sơ", icon: User },
+      { href: "/hv/profile", label: "Hồ sơ", short: "Hồ sơ", icon: User },
     ],
   },
 ];
@@ -73,13 +74,13 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
     title: "Giảng dạy",
     items: [
       {
-        href: "/creator",
+        href: "/gv",
         label: "Tổng quan",
         short: "Tổng quan",
         icon: LayoutDashboard,
       },
       {
-        href: "/creator/paths",
+        href: "/gv/paths",
         label: "Lộ trình học",
         short: "Lộ trình",
         icon: BookOpen,
@@ -94,18 +95,55 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+export const adminNavGroups: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Quản trị",
+    items: [
+      {
+        href: "/admin",
+        label: "Tổng quan",
+        short: "Tổng quan",
+        icon: LayoutDashboard,
+      },
+      {
+        href: "/admin/teacher-applications",
+        label: "Duyệt giảng viên",
+        short: "Giảng viên",
+        icon: BadgeCheck,
+      },
+    ],
+  },
+  {
+    title: "Nội dung",
+    items: [
+      {
+        href: "/gv/paths",
+        label: "Lộ trình học",
+        short: "Lộ trình",
+        icon: BookOpen,
+      },
+      { href: "/contests", label: "Cuộc thi", short: "Cuộc thi", icon: Trophy },
+    ],
+  },
+];
+
 function useIsActive() {
   const pathname = usePathname();
   return (href: string) =>
-    href === "/creator"
+    href === "/gv" || href === "/admin"
       ? pathname === href
       : pathname === href ||
         pathname.startsWith(`${href}/`) ||
-        (href === "/paths" && pathname.startsWith("/rooms/"));
+        (href === "/hv/paths" && pathname.startsWith("/hv/rooms/"));
 }
 
 function getVisibleNavGroups(role: RoleName) {
-  const base = isTeacherRole(role) ? teacherNavGroups : navGroups;
+  const base =
+    role === RoleName.ADMIN
+      ? adminNavGroups
+      : isTeacherRole(role)
+        ? teacherNavGroups
+        : navGroups;
   return base
     .map((group) => ({
       ...group,
