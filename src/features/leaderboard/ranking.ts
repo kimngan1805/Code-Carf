@@ -97,10 +97,38 @@ function assertSingleContestScope(
   }
 }
 
-function compareUserIds(a: string, b: string): number {
+export function compareUserIds(a: string, b: string): number {
   if (a < b) return -1;
   if (a > b) return 1;
   return 0;
+}
+
+/**
+ * Pure generic helper that sorts items using `compareItems` and assigns
+ * standard competition ranks (1, 1, 3) whenever consecutive sorted entries
+ * satisfy `isSameRank`. Does not mutate `items`.
+ */
+export function rankWithCompetitionTies<T, R>(
+  items: readonly T[],
+  compareItems: (a: T, b: T) => number,
+  isSameRank: (previous: T, current: T) => boolean,
+  mapRanked: (item: T, rank: number) => R,
+): R[] {
+  const sorted = [...items].sort(compareItems);
+  const ranked: R[] = [];
+  let previousItem: T | null = null;
+  let previousRank = 0;
+
+  for (let index = 0; index < sorted.length; index += 1) {
+    const entry = sorted[index];
+    const isTie = previousItem !== null && isSameRank(previousItem, entry);
+    const rank = isTie ? previousRank : index + 1;
+    ranked.push(mapRanked(entry, rank));
+    previousItem = entry;
+    previousRank = rank;
+  }
+
+  return ranked;
 }
 
 function toNullableMs(date: Date | null): number | null {
@@ -233,29 +261,22 @@ function cloneExerciseBests(
 export function rankContestParticipants(
   summaries: readonly ParticipantScoreSummary[],
 ): RankedParticipant[] {
-  const sorted = [...summaries].sort(compareSummaries);
-  const ranked: RankedParticipant[] = [];
-
-  for (let index = 0; index < sorted.length; index += 1) {
-    const entry = sorted[index];
-    const previous = index > 0 ? ranked[index - 1] : null;
-    const isTie =
-      previous !== null &&
+  return rankWithCompetitionTies(
+    summaries,
+    compareSummaries,
+    (previous, entry) =>
       previous.totalScore === entry.totalScore &&
-      toNullableMs(previous.achievedAt) === toNullableMs(entry.achievedAt);
-
-    ranked.push({
+      toNullableMs(previous.achievedAt) === toNullableMs(entry.achievedAt),
+    (entry, rank) => ({
       userId: entry.userId,
       totalScore: entry.totalScore,
       achievedAt: entry.achievedAt
         ? new Date(entry.achievedAt.getTime())
         : null,
       exerciseBests: cloneExerciseBests(entry.exerciseBests),
-      rank: isTie && previous !== null ? previous.rank : index + 1,
-    });
-  }
-
-  return ranked;
+      rank,
+    }),
+  );
 }
 
 /**
