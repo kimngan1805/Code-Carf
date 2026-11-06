@@ -39,7 +39,7 @@ async function login(email, password) {
       csrfToken,
       email,
       password,
-      callbackUrl: `${base}/paths`,
+      callbackUrl: `${base}/hv/paths`,
     }),
   });
   remember(signedIn);
@@ -115,15 +115,13 @@ try {
     "PASS anonymous/unenrolled denied; first room open; next room locked",
   );
 
-  const direct = await get(`/rooms/${second.id}`);
-  assert.ok([303, 307].includes(direct.status));
-  assert.equal(
-    new URL(direct.headers.get("location"), base).pathname,
-    "/forbidden",
-  );
-  assert.ok(!(await direct.text()).includes(secret));
+  const direct = await get(`/hv/rooms/${second.id}`);
+  assert.equal(direct.status, 200);
+  const lockedHtml = await direct.text();
+  assert.ok(!lockedHtml.includes(secret));
+  assert.ok(lockedHtml.includes("Bài học đang khóa"));
   console.log(
-    "PASS locked direct URL redirected on server without leaking theory",
+    "PASS locked direct URL shows only the lock explanation without leaking theory",
   );
 
   await db.roomProgress.create({

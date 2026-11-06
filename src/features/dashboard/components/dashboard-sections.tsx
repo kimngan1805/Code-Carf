@@ -606,8 +606,8 @@ export function ContestSchedule({
                 </span>
                 <span className="inline-flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                   <CalendarClock className="size-3.5" aria-hidden />
-                  {contest.startsAt
-                    ? contestTime.format(contest.startsAt)
+                  {contest.examStartsAt
+                    ? contestTime.format(contest.examStartsAt)
                     : "Sắp mở"}
                 </span>
               </Link>
