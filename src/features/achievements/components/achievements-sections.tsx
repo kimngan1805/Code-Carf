@@ -35,6 +35,9 @@ const slugIconMap: Record<string, LucideIcon> = {
   "first-path-room": Medal,
   "fast-solver": Trophy,
   "night-owl": Shield,
+  "path-completed": GraduationCap,
+  "five-exercises": Target,
+  "weekly-top-1": Trophy,
 };
 
 const fallbackIcons: LucideIcon[] = [Award, Medal, Shield, Star, Flame, Trophy];

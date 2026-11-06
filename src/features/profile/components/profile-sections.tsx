@@ -23,6 +23,7 @@ import {
   Shield,
   Sparkles,
   Star,
+  Target,
   Trophy,
   XCircle,
   Zap,
@@ -52,6 +53,9 @@ const slugIconMap: Record<string, LucideIcon> = {
   "first-path-room": Medal,
   "fast-solver": Trophy,
   "night-owl": Shield,
+  "path-completed": GraduationCap,
+  "five-exercises": Target,
+  "weekly-top-1": Trophy,
 };
 
 const fallbackBadgeIcons: LucideIcon[] = [

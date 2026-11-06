@@ -7,6 +7,7 @@ import {
   XpSource,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { MILESTONE_BADGES } from "../src/features/progress/badges";
 import { SAMPLE_SCHOOLS } from "./schools";
 
 const prisma = new PrismaClient();
@@ -154,9 +155,13 @@ async function main() {
   });
   const sampleStudent =
     users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
+
   await prisma.contestParticipant.upsert({
     where: {
-      contestId_userId: { contestId: contest.id, userId: sampleStudent.id },
+      contestId_userId: {
+        contestId: contest.id,
+        userId: sampleStudent.id,
+      },
     },
     update: {},
     create: {
@@ -165,21 +170,29 @@ async function main() {
       joinedAt: new Date(sampleNow - 120000),
     },
   });
+
   console.log(
     "Sample Contest is ready: sign in as student@local.test and open /contests/sample-contest. The exam stays open for 24 hours; click Start for your own 120-minute timer. Existing attempts are kept.",
   );
-  await prisma.badge.upsert({
-    where: { slug: "first-step" },
-    update: {
-      name: "Bước đầu tiên",
-      description: "Hoàn thành bài tập đầu tiên",
-    },
-    create: {
+
+  const badgeCatalog = [
+    {
       slug: "first-step",
       name: "Bước đầu tiên",
       description: "Hoàn thành bài tập đầu tiên",
     },
-  });
+    ...MILESTONE_BADGES,
+  ];
+  for (const badge of badgeCatalog) {
+    await prisma.badge.upsert({
+      where: { slug: badge.slug },
+      update: {
+        name: badge.name,
+        description: badge.description,
+      },
+      create: badge,
+    });
+  }
   const student =
     users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
   await seedStudentDemo(student.id, teacher.id, path.id, "Minh Thư");

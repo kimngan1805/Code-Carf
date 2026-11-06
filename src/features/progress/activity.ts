@@ -2,6 +2,7 @@ import { XpSource, type XpEvent } from "@prisma/client";
 import { z } from "zod";
 import { db } from "../../lib/db";
 import { AppError } from "../../lib/errors";
+import { awardActivityBadgesInTx } from "./badge-awarding";
 
 const activityInputSchema = z.object({
   userId: z.string().trim().min(1, "userId không được để trống"),
@@ -27,11 +28,12 @@ export interface RecordLearningActivityResult {
 }
 
 /**
- * Records an XP ledger event and increments the user's cached XP total
- * atomically inside a single Prisma transaction.
+ * Records an XP ledger event, increments the user's cached XP total, and
+ * evaluates/awards eligible activity milestone badges atomically inside a
+ * single Prisma transaction.
  *
- * Streak updates (#22) and badge awards (#23) will be wired inside this
- * transaction in follow-up tasks.
+ * Streak updates (#22) will be wired inside this transaction before badge
+ * evaluation in a follow-up task.
  */
 export async function recordLearningActivity(
   input: RecordLearningActivityInput,
@@ -63,6 +65,8 @@ export async function recordLearningActivity(
       data: { xp: { increment: xp } },
       select: { xp: true },
     });
+
+    await awardActivityBadgesInTx(tx, userId);
 
     return { xpEvent, xp: user.xp };
   });
