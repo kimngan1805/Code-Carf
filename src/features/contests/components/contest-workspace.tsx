@@ -14,7 +14,7 @@ import type {
 import { draftKey } from "../clock";
 import { formatDuration } from "../time";
 import { useServerClock } from "./use-server-clock";
-import { useContestDraft } from "./use-contest-draft";
+import { useLocalDraft } from "@/hooks/use-local-draft";
 import { useServerDraft } from "./use-server-draft";
 import { useContestFinalization } from "./use-contest-finalization";
 import { FinalizationNotice } from "./expired-contest";
@@ -60,7 +60,7 @@ function SolutionPanel({
 }) {
   const [language, setLanguage] = useState<SolutionLanguage>("python");
   const selected = languages.find((item) => item.id === language)!;
-  const { source, setSource } = useContestDraft(
+  const { source, setSource } = useLocalDraft(
     draftKey(data.userId, data.contest.id, exercise.id, language),
     selected.starter,
   );
