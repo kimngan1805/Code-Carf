@@ -11,6 +11,18 @@ export interface WeekDay {
   status: DayStatus;
 }
 
+export interface WeekWindow {
+  startsAt: Date;
+  endsAt: Date;
+}
+
+const VN_UTC_OFFSET = "+07:00";
+
+/** Converts a YYYY-MM-DD calendar date in Asia/Ho_Chi_Minh to midnight UTC instant. */
+export function toVnMidnight(dateKey: string): Date {
+  return new Date(`${dateKey}T00:00:00${VN_UTC_OFFSET}`);
+}
+
 /** Calendar date (YYYY-MM-DD) of an instant in the app time zone. */
 export function toDateKey(date: Date, timeZone = APP_TIME_ZONE): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -49,4 +61,25 @@ export function getWeekActivity(
       status,
     };
   });
+}
+
+/**
+ * Returns the half-open `[startsAt, endsAt)` range from Monday 00:00 to the
+ * next Monday 00:00 in `Asia/Ho_Chi_Minh` containing `referenceDate`.
+ */
+export function getCurrentWeekRange(
+  referenceDate: Date = new Date(),
+): WeekWindow {
+  if (Number.isNaN(referenceDate.getTime())) {
+    throw new Error("Invalid referenceDate");
+  }
+  const todayKey = toDateKey(referenceDate, APP_TIME_ZONE);
+  const weekday = (new Date(`${todayKey}T00:00:00Z`).getUTCDay() + 6) % 7;
+  const mondayKey = addDays(todayKey, -weekday);
+  const nextMondayKey = addDays(mondayKey, 7);
+
+  return {
+    startsAt: toVnMidnight(mondayKey),
+    endsAt: toVnMidnight(nextMondayKey),
+  };
 }

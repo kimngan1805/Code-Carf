@@ -195,8 +195,13 @@ async function main() {
   }
   const student =
     users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
-  await seedStudentDemo(student.id, teacher.id, path.id, "Minh Thư");
-  await seedDemoLearners(student.passwordHash);
+  const demoPathIds = await seedStudentDemo(
+    student.id,
+    teacher.id,
+    path.id,
+    "Minh Thư",
+  );
+  await seedDemoLearners(student.passwordHash, demoPathIds);
   await seedPersonalDemo(teacher.id, path.id);
   await seedSchools();
 }
@@ -268,6 +273,7 @@ async function seedStudentDemo(
   await prisma.enrollment.deleteMany({
     where: { userId: studentId, pathId: basicsPathId },
   });
+  const demoPathIds: Record<string, string> = {};
   for (const demo of demoPaths) {
     const path = await prisma.path.upsert({
       where: { slug: demo.slug },
@@ -287,6 +293,7 @@ async function seedStudentDemo(
       },
       include: { rooms: { orderBy: { position: "asc" } } },
     });
+    demoPathIds[demo.slug] = path.id;
     await prisma.enrollment.upsert({
       where: { userId_pathId: { userId: studentId, pathId: path.id } },
       update: {},
@@ -347,6 +354,10 @@ async function seedStudentDemo(
       userId: studentId,
       amount: 10 + ((daysAgo * 53) % 4) * 5,
       source: XpSource.ROOM_COMPLETED,
+      pathId:
+        daysAgo % 2 === 0
+          ? demoPathIds["ctdl-giai-thuat"]
+          : demoPathIds["nhap-mon-lap-trinh"],
       createdAt: new Date(Date.now() - daysAgo * day),
     }));
   const historyXp = history.reduce((sum, event) => sum + event.amount, 0);
@@ -359,6 +370,7 @@ async function seedStudentDemo(
         userId: studentId,
         amount: startingXp,
         source: XpSource.ADMIN_ADJUSTMENT,
+        pathId: demoPathIds["nhap-mon-lap-trinh"],
         createdAt: new Date(Date.now() - 120 * day),
       },
     ],
@@ -373,28 +385,58 @@ async function seedStudentDemo(
       lastActiveOn: new Date(Date.now() - day),
     },
   });
+  return demoPathIds;
 }
 
-/** Other learners so the weekly leaderboard has people to compare with. */
-async function seedDemoLearners(passwordHash: string) {
+/** Other learners so the leaderboard (overall, weekly, and by path) stays consistent. */
+async function seedDemoLearners(
+  passwordHash: string,
+  demoPathIds: Record<string, string>,
+) {
   const role = await prisma.role.findUniqueOrThrow({
     where: { name: RoleName.STUDENT },
   });
+  const day = 24 * 60 * 60 * 1000;
+  const now = new Date();
+  const pastDate = new Date(now.getTime() - 10 * day);
   const learners = [
     {
       email: "demo-minhanh@local.test",
       name: "Trần Minh Anh",
       xp: 2100,
-      week: 120,
+      weekByPath: [
+        { slug: "nhap-mon-lap-trinh", amount: 70 },
+        { slug: "ctdl-giai-thuat", amount: 50 },
+      ],
+      pastPrimarySlug: "nhap-mon-lap-trinh",
     },
     {
       email: "demo-quocbao@local.test",
       name: "Lê Quốc Bảo",
       xp: 1600,
-      week: 85,
+      weekByPath: [
+        { slug: "nhap-mon-lap-trinh", amount: 50 },
+        { slug: "phat-trien-web-co-ban", amount: 35 },
+      ],
+      pastPrimarySlug: "ctdl-giai-thuat",
     },
-    { email: "demo-thuha@local.test", name: "Phạm Thu Hà", xp: 900, week: 30 },
-    { email: "demo-giahuy@local.test", name: "Võ Gia Huy", xp: 400, week: 15 },
+    {
+      email: "demo-thuha@local.test",
+      name: "Phạm Thu Hà",
+      xp: 900,
+      weekByPath: [
+        { slug: "ctdl-giai-thuat", amount: 15 },
+        { slug: "phat-trien-web-co-ban", amount: 15 },
+      ],
+      pastPrimarySlug: "phat-trien-web-co-ban",
+    },
+    {
+      email: "demo-giahuy@local.test",
+      name: "Võ Gia Huy",
+      xp: 400,
+      weekByPath: [{ slug: "phat-trien-web-co-ban", amount: 15 }],
+      pastPrimarySlug: "nhap-mon-lap-trinh",
+    },
   ];
   for (const learner of learners) {
     const user = await prisma.user.upsert({
@@ -409,15 +451,34 @@ async function seedDemoLearners(passwordHash: string) {
         onboardedAt: new Date(),
       },
     });
+    const weeklyTotal = learner.weekByPath.reduce(
+      (sum, entry) => sum + entry.amount,
+      0,
+    );
+    const pastXp = Math.max(0, learner.xp - weeklyTotal);
     await prisma.xpEvent.deleteMany({ where: { userId: user.id } });
-    await prisma.xpEvent.create({
-      data: {
-        userId: user.id,
-        amount: learner.week,
-        source: XpSource.ROOM_COMPLETED,
-        // A minute ago, so it always counts for the current week.
-        createdAt: new Date(Date.now() - 60 * 1000),
-      },
+    await prisma.xpEvent.createMany({
+      data: [
+        ...learner.weekByPath.map((entry) => ({
+          userId: user.id,
+          amount: entry.amount,
+          source: XpSource.ROOM_COMPLETED,
+          pathId: demoPathIds[entry.slug] ?? null,
+          // Exact current timestamp ensures it stays inside the active VN week.
+          createdAt: now,
+        })),
+        ...(pastXp > 0
+          ? [
+              {
+                userId: user.id,
+                amount: pastXp,
+                source: XpSource.ROOM_COMPLETED,
+                pathId: demoPathIds[learner.pastPrimarySlug] ?? null,
+                createdAt: pastDate,
+              },
+            ]
+          : []),
+      ],
     });
   }
 }

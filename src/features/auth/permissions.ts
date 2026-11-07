@@ -8,6 +8,7 @@ export const routeRoles: Record<string, RoleName[]> = {
   "/settings": Object.values(RoleName),
   "/hv/achievements": [RoleName.STUDENT],
   "/hv/profile": [RoleName.STUDENT],
+  "/leaderboard": [RoleName.STUDENT],
   "/u": Object.values(RoleName),
   "/hv/paths": [RoleName.STUDENT, RoleName.TEACHER, RoleName.ADMIN],
   "/hv/rooms": [RoleName.STUDENT, RoleName.TEACHER, RoleName.ADMIN],
