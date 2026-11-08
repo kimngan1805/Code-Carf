@@ -25,6 +25,7 @@ export const config = {
     "/u/:path*",
     "/hv/paths/:path*",
     "/hv/rooms/:path*",
+    "/hv/exercises/:path*",
     "/contests/:path*",
     "/gv/:path*",
     "/grading/:path*",
