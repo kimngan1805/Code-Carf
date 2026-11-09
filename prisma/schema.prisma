@@ -1,0 +1,167 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum RoleName {
+  STUDENT
+  TEACHER
+  ADMIN
+  GRADER
+}
+
+enum ExerciseKind {
+  CODE
+  HANDWRITTEN
+}
+
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  ERROR
+}
+
+enum ContestStatus {
+  DRAFT
+  PUBLISHED
+  FINISHED
+}
+
+model Role {
+  id    String   @id @default(cuid())
+  name  RoleName @unique
+  users User[]
+}
+
+model User {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  name             String
+  passwordHash     String
+  roleId           String
+  role             Role            @relation(fields: [roleId], references: [id])
+  xp               Int             @default(0)
+  createdAt        DateTime        @default(now())
+  paths            Path[]          @relation("PathCreator")
+  enrollments      Enrollment[]
+  submissions      Submission[]
+  badges           UserBadge[]
+  assignedContests ContestGrader[]
+}
+
+model Path {
+  id          String       @id @default(cuid())
+  slug        String       @unique
+  title       String
+  description String       @default("")
+  creatorId   String
+  creator     User         @relation("PathCreator", fields: [creatorId], references: [id])
+  rooms       Room[]
+  enrollments Enrollment[]
+  createdAt   DateTime     @default(now())
+}
+
+model Room {
+  id          String     @id @default(cuid())
+  pathId      String
+  path        Path       @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  title       String
+  description String     @default("")
+  position    Int
+  exercises   Exercise[]
+
+  @@unique([pathId, position])
+}
+
+model Exercise {
+  id          String        @id @default(cuid())
+  roomId      String?
+  room        Room?         @relation(fields: [roomId], references: [id])
+  contestId   String?
+  contest     Contest?      @relation(fields: [contestId], references: [id])
+  title       String
+  prompt      String
+  kind        ExerciseKind  @default(CODE)
+  points      Int           @default(100)
+  testCases   TestCase[]
+  submissions Submission[]
+}
+
+model TestCase {
+  id         String   @id @default(cuid())
+  exerciseId String
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  input      String
+  expected   String
+  isHidden   Boolean  @default(true)
+  weight     Int      @default(1)
+}
+
+model Submission {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id])
+  exerciseId String
+  exercise   Exercise         @relation(fields: [exerciseId], references: [id])
+  source     String
+  language   String
+  status     SubmissionStatus @default(PENDING)
+  score      Int?
+  feedback   String?
+  createdAt  DateTime         @default(now())
+}
+
+model Contest {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  status      ContestStatus   @default(DRAFT)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  exercises   Exercise[]
+  graders     ContestGrader[]
+  createdAt   DateTime        @default(now())
+}
+
+model ContestGrader {
+  contestId String
+  graderId  String
+  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  grader    User     @relation(fields: [graderId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+
+  @@id([contestId, graderId])
+}
+
+model Enrollment {
+  userId     String
+  pathId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  path       Path     @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  enrolledAt DateTime @default(now())
+
+  @@id([userId, pathId])
+}
+
+model Badge {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  name        String
+  description String
+  users       UserBadge[]
+}
+
+model UserBadge {
+  userId    String
+  badgeId   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge     Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  awardedAt DateTime @default(now())
+
+  @@id([userId, badgeId])
+}
