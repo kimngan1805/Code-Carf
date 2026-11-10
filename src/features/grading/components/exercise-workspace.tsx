@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, RotateCcw, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useLocalDraft } from "@/hooks/use-local-draft";
@@ -17,6 +17,7 @@ import { languages, type SubmissionLanguage } from "../languages";
 import { submitPracticeAction } from "../actions";
 import type { PracticeSubmissionView } from "../practice-submit";
 import { createSingleFlight } from "../single-flight";
+import { summaryView } from "../result-view";
 import { SubmissionResult } from "./submission-result";
 
 const CodeEditor = dynamic(
@@ -61,6 +62,20 @@ export function ExerciseWorkspace({
   const [error, setError] = useState("");
   const [result, setResult] = useState<PracticeSubmissionView | null>(null);
 
+  const resultRef = useRef<HTMLDivElement>(null);
+  // On desktop (lg) the result is docked under the editor and already on
+  // screen. On smaller screens it is below the fold, so bring it into view.
+  useEffect(() => {
+    if (!result || window.matchMedia("(min-width: 1024px)").matches) return;
+    const reduceMotion = window.matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    resultRef.current?.scrollIntoView({
+      block: "start",
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+  }, [result]);
+
   async function submit() {
     // The lock flips synchronously, so two fast clicks start one submission.
     await flight.run(async () => {
@@ -91,13 +106,35 @@ export function ExerciseWorkspace({
     setStorageFailed(!saveLanguage(next));
   }
 
+  const message = error
+    ? { text: error, tone: "error" as const }
+    : pending
+      ? {
+          text: "Đang chấm bài, vui lòng đợi trong giây lát...",
+          tone: "muted" as const,
+        }
+      : tooLong
+        ? {
+            text: "Mã nguồn vượt quá giới hạn 64 KB, hãy rút gọn trước khi nộp.",
+            tone: "warn" as const,
+          }
+        : storageFailed
+          ? {
+              text: "Không lưu được bản nháp. Hãy sao chép code trước khi rời trang.",
+              tone: "warn" as const,
+            }
+          : {
+              text: "Bản nháp được lưu trên trình duyệt này.",
+              tone: "muted" as const,
+            };
+
   return (
     <section
-      className="min-w-0 overflow-hidden rounded-2xl border bg-background"
+      className="flex min-w-0 flex-col overflow-hidden rounded-2xl border bg-background lg:h-full"
       aria-label="Trình soạn thảo bài làm"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3">
-        <label className="flex items-center gap-3 text-sm font-semibold">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b px-4 py-2.5">
+        <label className="flex items-center gap-2 text-sm font-semibold">
           Ngôn ngữ
           <select
             value={language}
@@ -119,82 +156,83 @@ export function ExerciseWorkspace({
             type="button"
             onClick={() => updateSource(starter)}
             disabled={source === starter || pending}
+            title="Khôi phục code mẫu"
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline underline-offset-4 focus-visible:outline-2 disabled:no-underline disabled:opacity-50"
           >
             <RotateCcw className="size-3.5" aria-hidden />
-            Khôi phục code mẫu
+            Code mẫu
+            <span className="sr-only">: khôi phục code mẫu</span>
           </button>
           <button
             type="button"
             onClick={() => setSimpleEditor(!simpleEditor)}
             className="text-xs font-semibold text-primary underline underline-offset-4 focus-visible:outline-2"
           >
-            {simpleEditor ? "Dùng editor nâng cao" : "Dùng editor đơn giản"}
+            {simpleEditor ? "Editor nâng cao" : "Editor đơn giản"}
           </button>
         </div>
       </div>
-      {simpleEditor ? (
-        <textarea
-          aria-label="Mã nguồn"
-          spellCheck={false}
-          value={source}
-          readOnly={pending}
-          onChange={(event) => updateSource(event.target.value)}
-          className="block h-[480px] w-full resize-y bg-background p-4 font-mono text-sm focus-visible:outline-2"
-        />
-      ) : (
-        <CodeEditor
-          key={language}
-          value={source}
-          onChange={updateSource}
-          language={language}
-          readOnly={pending}
-          height="480px"
-        />
-      )}
-      <div className="space-y-3 border-t p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p
-            className={cn(
-              "flex items-center gap-1.5 text-xs",
-              storageFailed || tooLong
-                ? "text-warning"
-                : "text-muted-foreground",
-            )}
-          >
-            <Check className="size-3.5" aria-hidden />
-            {tooLong
-              ? "Mã nguồn vượt quá giới hạn 64 KB, hãy rút gọn trước khi nộp."
-              : storageFailed
-                ? "Không lưu được bản nháp. Hãy sao chép code trước khi rời trang."
-                : "Bản nháp được lưu trên trình duyệt này."}
-          </p>
-          <Button
-            onClick={() => void submit()}
-            disabled={pending || !source.trim() || tooLong}
-          >
-            {pending ? (
-              <Loader2 className="size-4 animate-spin" aria-hidden />
-            ) : (
-              <Send className="size-4" aria-hidden />
-            )}
-            {pending ? "Đang chấm..." : "Nộp bài"}
-          </Button>
-        </div>
-        <div role="status" aria-live="polite">
-          {pending && (
-            <p className="text-sm text-muted-foreground">
-              Đang chấm bài, vui lòng đợi trong giây lát...
-            </p>
-          )}
-        </div>
-        {error && (
-          <p role="alert" className="text-sm font-semibold text-destructive">
-            {error}
-          </p>
+      <div className="h-[22rem] shrink-0 lg:h-auto lg:min-h-40 lg:flex-1 lg:shrink">
+        {simpleEditor ? (
+          <textarea
+            aria-label="Mã nguồn"
+            spellCheck={false}
+            value={source}
+            readOnly={pending}
+            onChange={(event) => updateSource(event.target.value)}
+            className="block h-full w-full resize-none bg-background p-4 font-mono text-sm focus-visible:outline-2"
+          />
+        ) : (
+          <CodeEditor
+            key={language}
+            value={source}
+            onChange={updateSource}
+            language={language}
+            readOnly={pending}
+            height="100%"
+          />
         )}
       </div>
-      {result && <SubmissionResult result={result} />}
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-4 py-3">
+        <p
+          role={message.tone === "error" ? "alert" : undefined}
+          className={cn(
+            "flex min-w-0 flex-1 items-center gap-1.5 text-xs",
+            message.tone === "error" && "font-semibold text-destructive",
+            message.tone === "warn" && "text-warning",
+            message.tone === "muted" && "text-muted-foreground",
+          )}
+        >
+          <Check className="size-3.5 shrink-0" aria-hidden />
+          {message.text}
+        </p>
+        <Button
+          onClick={() => void submit()}
+          disabled={pending || !source.trim() || tooLong}
+        >
+          {pending ? (
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+          ) : (
+            <Send className="size-4" aria-hidden />
+          )}
+          {pending ? "Đang chấm..." : "Nộp bài"}
+        </Button>
+      </div>
+      <div role="status" aria-live="polite" className="sr-only">
+        {pending
+          ? "Đang chấm bài"
+          : result
+            ? `Đã chấm xong: ${summaryView(result.status).title}, ${result.score}/${result.maxScore} điểm`
+            : ""}
+      </div>
+      {result && (
+        <div
+          ref={resultRef}
+          className="scroll-mt-20 border-t lg:max-h-[45%] lg:min-h-24 lg:overflow-y-auto"
+        >
+          <SubmissionResult result={result} onDismiss={() => setResult(null)} />
+        </div>
+      )}
     </section>
   );
 }
