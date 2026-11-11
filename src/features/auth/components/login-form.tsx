@@ -38,6 +38,14 @@ export function LoginForm({ callbackUrl }: { callbackUrl?: string }) {
         placeholder="Nhập mật khẩu"
         required
       />
+      <div className="text-right">
+        <Link
+          href="/forgot-password"
+          className="text-sm font-semibold text-primary hover:underline"
+        >
+          Quên mật khẩu?
+        </Link>
+      </div>
       <SubmitButton pending={pending} pendingLabel="Đang đăng nhập...">
         Đăng nhập
       </SubmitButton>

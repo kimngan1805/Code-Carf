@@ -118,8 +118,30 @@ model User {
   assignedContests     ContestGrader[]
   contestEntries       ContestParticipant[]
   proctoringEvents     ProctoringEvent[]
+  passwordResetToken   PasswordResetToken?
 
   @@index([xp])
+}
+
+model PasswordResetToken {
+  userId         String    @id
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash      String    @unique
+  passwordDigest String
+  expiresAt      DateTime
+  usedAt         DateTime?
+  createdAt      DateTime  @default(now())
+
+  @@index([expiresAt])
+}
+
+model PasswordResetRateLimit {
+  key         String
+  windowStart DateTime
+  count       Int      @default(1)
+
+  @@id([key, windowStart])
+  @@index([windowStart])
 }
 
 /// Danh mục trường để giảng viên chọn khi nộp hồ sơ.
