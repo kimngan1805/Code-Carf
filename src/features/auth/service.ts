@@ -15,6 +15,13 @@ export async function requireRole(roles: RoleName[]) {
   return user;
 }
 
+/** Signed-in user from the database, or null when there is no session or the account no longer exists. */
+export async function getCurrentUser() {
+  const session = await auth();
+  if (!session?.user?.id) return null;
+  return findUserWithRole(session.user.id);
+}
+
 /** Self-registration always creates a STUDENT; other roles are assigned by an admin. */
 export async function registerUser(input: RegisterInput) {
   const passwordHash = await hash(input.password, 12);
