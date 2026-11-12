@@ -19,8 +19,10 @@ enum ExerciseKind {
   HANDWRITTEN
 }
 
+/// PENDING: chờ chấm. NEEDS_REVIEW: bài viết tay AI đã chấm sơ bộ, chờ grader duyệt.
 enum SubmissionStatus {
   PENDING
+  NEEDS_REVIEW
   ACCEPTED
   REJECTED
   ERROR
@@ -32,6 +34,24 @@ enum ContestStatus {
   FINISHED
 }
 
+enum XpSource {
+  ROOM_COMPLETED
+  CONTEST_RESULT
+  BADGE
+  STREAK_BONUS
+  ADMIN_ADJUSTMENT
+}
+
+enum ProctoringEventType {
+  TAB_SWITCH
+  WINDOW_BLUR
+  FULLSCREEN_EXIT
+  PASTE
+  FACE_MISSING
+  FACE_MISMATCH
+  MULTIPLE_FACES
+}
+
 model Role {
   id    String   @id @default(cuid())
   name  RoleName @unique
@@ -39,19 +59,32 @@ model Role {
 }
 
 model User {
-  id               String          @id @default(cuid())
-  email            String          @unique
-  name             String
-  passwordHash     String
-  roleId           String
-  role             Role            @relation(fields: [roleId], references: [id])
-  xp               Int             @default(0)
-  createdAt        DateTime        @default(now())
-  paths            Path[]          @relation("PathCreator")
-  enrollments      Enrollment[]
-  submissions      Submission[]
-  badges           UserBadge[]
-  assignedContests ContestGrader[]
+  id                  String               @id @default(cuid())
+  email               String               @unique
+  name                String
+  passwordHash        String
+  roleId              String
+  role                Role                 @relation(fields: [roleId], references: [id])
+  /// Tổng XP, cache của XpEvent. Cấp độ được tính từ xp trong code, không lưu.
+  xp                  Int                  @default(0)
+  currentStreak       Int                  @default(0)
+  longestStreak       Int                  @default(0)
+  /// Ngày học gần nhất, dùng để tính chuỗi ngày học liên tục.
+  lastActiveOn        DateTime?            @db.Date
+  createdAt           DateTime             @default(now())
+  paths               Path[]               @relation("PathCreator")
+  createdContests     Contest[]            @relation("ContestCreator")
+  enrollments         Enrollment[]
+  roomProgress        RoomProgress[]
+  submissions         Submission[]         @relation("SubmissionAuthor")
+  reviewedSubmissions Submission[]         @relation("SubmissionReviewer")
+  xpEvents            XpEvent[]
+  badges              UserBadge[]
+  assignedContests    ContestGrader[]
+  contestEntries      ContestParticipant[]
+  proctoringEvents    ProctoringEvent[]
+
+  @@index([xp])
 }
 
 model Path {
@@ -63,33 +96,56 @@ model Path {
   creator     User         @relation("PathCreator", fields: [creatorId], references: [id])
   rooms       Room[]
   enrollments Enrollment[]
+  xpEvents    XpEvent[]
   createdAt   DateTime     @default(now())
 }
 
 model Room {
-  id          String     @id @default(cuid())
+  id          String         @id @default(cuid())
   pathId      String
-  path        Path       @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  path        Path           @relation(fields: [pathId], references: [id], onDelete: Cascade)
   title       String
-  description String     @default("")
+  description String         @default("")
+  /// Phần lý thuyết của bài học, dạng Markdown.
+  content     String         @default("")
+  /// Thứ tự trong path; room position N mở khóa khi đã xong room trước đó.
   position    Int
+  xpReward    Int            @default(50)
   exercises   Exercise[]
+  progress    RoomProgress[]
+  xpEvents    XpEvent[]
 
   @@unique([pathId, position])
 }
 
+/// Một dòng = người học đã hoàn thành room, dùng cho mở khóa tuần tự.
+model RoomProgress {
+  userId      String
+  roomId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@id([userId, roomId])
+  @@index([roomId])
+}
+
+/// Bài tập dùng cho room luyện tập; cũng có thể đưa vào nhiều contest qua ContestExercise.
 model Exercise {
-  id          String        @id @default(cuid())
-  roomId      String?
-  room        Room?         @relation(fields: [roomId], references: [id])
-  contestId   String?
-  contest     Contest?      @relation(fields: [contestId], references: [id])
-  title       String
-  prompt      String
-  kind        ExerciseKind  @default(CODE)
-  points      Int           @default(100)
-  testCases   TestCase[]
-  submissions Submission[]
+  id            String            @id @default(cuid())
+  roomId        String?
+  room          Room?             @relation(fields: [roomId], references: [id])
+  title         String
+  prompt        String
+  kind          ExerciseKind      @default(CODE)
+  points        Int               @default(100)
+  timeLimitMs   Int               @default(2000)
+  memoryLimitKb Int               @default(262144)
+  /// Đáp án mẫu / tiêu chí chấm cho bài viết tay, dùng cho AI và grader.
+  rubric        String?
+  testCases     TestCase[]
+  submissions   Submission[]
+  contests      ContestExercise[]
 }
 
 model TestCase {
@@ -105,37 +161,131 @@ model TestCase {
 model Submission {
   id         String           @id @default(cuid())
   userId     String
-  user       User             @relation(fields: [userId], references: [id])
+  user       User             @relation("SubmissionAuthor", fields: [userId], references: [id])
   exerciseId String
   exercise   Exercise         @relation(fields: [exerciseId], references: [id])
-  source     String
-  language   String
+  /// Null khi nộp ở chế độ học; có giá trị khi nộp trong cuộc thi.
+  contestId  String?
+  contest    Contest?         @relation(fields: [contestId], references: [id])
+  /// Mã nguồn (bài CODE). Null với bài viết tay.
+  source     String?
+  language   String?
+  /// Ảnh bài viết tay đã upload (bài HANDWRITTEN).
+  imageUrl   String?
   status     SubmissionStatus @default(PENDING)
   score      Int?
   feedback   String?
+  runtimeMs  Int?
+  memoryKb   Int?
+  /// Điểm và nhận xét AI đề xuất cho bài viết tay, trước khi grader duyệt.
+  aiScore    Int?
+  aiFeedback String?
+  reviewerId String?
+  reviewer   User?            @relation("SubmissionReviewer", fields: [reviewerId], references: [id])
+  reviewedAt DateTime?
   createdAt  DateTime         @default(now())
+
+  @@index([userId, exerciseId])
+  @@index([contestId, createdAt])
+  @@index([status])
+}
+
+/// Sổ ghi XP, cho phép xếp hạng theo path và theo tuần. User.xp là tổng cộng dồn.
+model XpEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  source    XpSource
+  pathId    String?
+  path      Path?    @relation(fields: [pathId], references: [id], onDelete: SetNull)
+  roomId    String?
+  room      Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  contestId String?
+  contest   Contest? @relation(fields: [contestId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([pathId, userId])
+  @@index([createdAt])
 }
 
 model Contest {
-  id          String          @id @default(cuid())
-  slug        String          @unique
-  title       String
-  status      ContestStatus   @default(DRAFT)
-  startsAt    DateTime?
-  endsAt      DateTime?
-  exercises   Exercise[]
-  graders     ContestGrader[]
-  createdAt   DateTime        @default(now())
+  id               String               @id @default(cuid())
+  slug             String               @unique
+  title            String
+  description      String               @default("")
+  status           ContestStatus        @default(DRAFT)
+  creatorId        String?
+  creator          User?                @relation("ContestCreator", fields: [creatorId], references: [id], onDelete: SetNull)
+  startsAt         DateTime?
+  endsAt           DateTime?
+  /// Phạt (phút) cho mỗi lần nộp sai, dùng khi xếp hạng.
+  penaltyMinutes   Int                  @default(20)
+  requireFaceCheck Boolean              @default(false)
+  exercises        ContestExercise[]
+  graders          ContestGrader[]
+  participants     ContestParticipant[]
+  submissions      Submission[]
+  xpEvents         XpEvent[]
+  proctoringEvents ProctoringEvent[]
+  createdAt        DateTime             @default(now())
+}
+
+model ContestExercise {
+  contestId  String
+  exerciseId String
+  contest    Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  exercise   Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  /// Thứ tự đề: A, B, C... hiển thị theo position.
+  position   Int
+  /// Ghi đè Exercise.points trong cuộc thi này, nếu có.
+  points     Int?
+
+  @@id([contestId, exerciseId])
+  @@unique([contestId, position])
 }
 
 model ContestGrader {
-  contestId String
-  graderId  String
-  contest   Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
-  grader    User     @relation(fields: [graderId], references: [id], onDelete: Cascade)
+  contestId  String
+  graderId   String
+  contest    Contest  @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  grader     User     @relation(fields: [graderId], references: [id], onDelete: Cascade)
   assignedAt DateTime @default(now())
 
   @@id([contestId, graderId])
+}
+
+/// Thí sinh tham gia một cuộc thi; score/penalty được cập nhật khi chấm để xếp hạng nhanh.
+model ContestParticipant {
+  contestId        String
+  userId           String
+  contest          Contest   @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt         DateTime  @default(now())
+  finishedAt       DateTime?
+  score            Int       @default(0)
+  penaltyMinutes   Int       @default(0)
+  /// Ảnh khuôn mặt tham chiếu chụp lúc vào thi, dùng để so khớp.
+  faceReferenceUrl String?
+  faceVerifiedAt   DateTime?
+
+  @@id([contestId, userId])
+  @@index([contestId, score(sort: Desc), penaltyMinutes])
+}
+
+model ProctoringEvent {
+  id        String              @id @default(cuid())
+  contestId String
+  userId    String
+  contest   Contest             @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ProctoringEventType
+  /// Chi tiết tùy loại: độ dài đoạn dán, độ tương đồng khuôn mặt...
+  metadata  Json?
+  createdAt DateTime            @default(now())
+
+  @@index([contestId, userId, createdAt])
 }
 
 model Enrollment {
