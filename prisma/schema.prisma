@@ -42,6 +42,20 @@ enum XpSource {
   ADMIN_ADJUSTMENT
 }
 
+/// Trình độ học viên tự đánh giá khi onboarding.
+enum SkillLevel {
+  BEGINNER
+  BASIC
+  INTERMEDIATE
+}
+
+enum LearningGoal {
+  FUNDAMENTALS
+  ALGORITHMS
+  CONTESTS
+  WEB
+}
+
 enum ProctoringEventType {
   TAB_SWITCH
   WINDOW_BLUR
@@ -71,7 +85,10 @@ model User {
   longestStreak       Int                  @default(0)
   /// Ngày học gần nhất, dùng để tính chuỗi ngày học liên tục.
   lastActiveOn        DateTime?            @db.Date
+  /// Thời điểm hoàn tất câu hỏi làm quen sau đăng ký; null thì cần làm onboarding.
+  onboardedAt         DateTime?
   createdAt           DateTime             @default(now())
+  learnerProfile      LearnerProfile?
   paths               Path[]               @relation("PathCreator")
   createdContests     Contest[]            @relation("ContestCreator")
   enrollments         Enrollment[]
@@ -85,6 +102,18 @@ model User {
   proctoringEvents    ProctoringEvent[]
 
   @@index([xp])
+}
+
+/// Câu trả lời onboarding của học viên, dùng để gợi ý lộ trình.
+model LearnerProfile {
+  userId       String       @id
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  level        SkillLevel
+  goal         LearningGoal
+  languages    String[]
+  dailyMinutes Int
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
 }
 
 model Path {

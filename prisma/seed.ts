@@ -29,6 +29,7 @@ async function main() {
           name: role.name,
           passwordHash,
           roleId: role.id,
+          onboardedAt: new Date(),
         },
       }),
     ),
@@ -173,12 +174,14 @@ async function seedPersonalDemo(teacherId: string, basicsPathId: string) {
   const passwordHash = await hash(password, 12);
   const user = await prisma.user.upsert({
     where: { email },
-    update: { passwordHash },
+    // Demo progress replaces onboarding answers for this account.
+    update: { passwordHash, onboardedAt: new Date() },
     create: {
       email,
       name: process.env.DEMO_USER_NAME?.trim() || email.split("@")[0],
       passwordHash,
       roleId: role.id,
+      onboardedAt: new Date(),
     },
   });
   await seedStudentDemo(user.id, teacherId, basicsPathId);
@@ -358,6 +361,7 @@ async function seedDemoLearners(passwordHash: string) {
         passwordHash,
         roleId: role.id,
         xp: learner.xp,
+        onboardedAt: new Date(),
       },
     });
     await prisma.xpEvent.deleteMany({ where: { userId: user.id } });
