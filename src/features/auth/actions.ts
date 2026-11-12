@@ -81,7 +81,8 @@ export async function registerAction(
   await signIn("credentials", {
     email: parsed.data.email,
     password: parsed.data.password,
-    redirectTo: AFTER_LOGIN_PATH,
+    // New accounts answer a few questions before reaching the dashboard.
+    redirectTo: "/onboarding",
   });
   return {};
 }
