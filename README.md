@@ -41,7 +41,13 @@ The module names are `auth`, `paths`, `rooms`, `contests`, `grading`, `leaderboa
 
 ## Data model
 
-`User` belongs to `Role`; `Path` contains `Room`, which contains `Exercise` and `TestCase`. `Contest` can also contain exercises. `ContestGrader` assigns a grader to a contest. `Submission`, `Enrollment`, `Badge`, and `UserBadge` provide the remaining foundations. Contests begin in `DRAFT`; publishing rules will be implemented with the contest workflow, including requiring a grader assignment.
+`User` belongs to `Role`; `Path` contains ordered `Room`s (theory in `Room.content`, Markdown), which contain `Exercise` and `TestCase`. Exercises have time and memory limits; handwritten exercises carry a `rubric`.
+
+- **Learning:** `RoomProgress` records completed rooms; a room unlocks when the room at the previous `position` is completed. `XpEvent` is the XP ledger (per path, room, or contest) used for per-path and weekly leaderboards; `User.xp` is its running total. Levels are derived from `xp` in code. `User.currentStreak`, `longestStreak`, and `lastActiveOn` track daily streaks. `Badge` and `UserBadge` store achievements.
+- **Contests:** `ContestExercise` links reusable exercises to contests with an order and optional point override. `ContestParticipant` stores join time, score, and penalty for the live leaderboard, plus the face reference when `Contest.requireFaceCheck` is set. `ProctoringEvent` logs tab switches, pastes, and face-check failures. `ContestGrader` assigns graders.
+- **Submissions:** `Submission.contestId` is null for practice. Code submissions use `source` and `language`; handwritten ones use `imageUrl`. AI grading writes `aiScore` and `aiFeedback` with status `NEEDS_REVIEW`, then a grader sets the final `score` (`reviewerId`, `reviewedAt`).
+
+Contests begin in `DRAFT`; publishing rules will be implemented with the contest workflow, including requiring a grader assignment.
 
 ## Team workflow
 
