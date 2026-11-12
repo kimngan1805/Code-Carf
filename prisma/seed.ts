@@ -1,4 +1,10 @@
-import { ExerciseKind, PrismaClient, RoleName } from "@prisma/client";
+import {
+  ContestStatus,
+  ExerciseKind,
+  PrismaClient,
+  RoleName,
+  XpSource,
+} from "@prisma/client";
 import { hash } from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -33,10 +39,15 @@ async function main() {
     users[roles.findIndex((role) => role.name === RoleName.GRADER)];
   const path = await prisma.path.upsert({
     where: { slug: "typescript-basics" },
-    update: {},
+    update: {
+      description:
+        "Làm quen kiểu dữ liệu, hàm và interface trong TypeScript qua các bài tập ngắn.",
+    },
     create: {
       slug: "typescript-basics",
       title: "TypeScript Basics",
+      description:
+        "Làm quen kiểu dữ liệu, hàm và interface trong TypeScript qua các bài tập ngắn.",
       creatorId: teacher.id,
       rooms: {
         create: {
@@ -57,10 +68,18 @@ async function main() {
       },
     },
   });
+  // Demo schedule relative to the seed time, so the dashboard always shows upcoming contests.
+  const hour = 60 * 60 * 1000;
+  const sampleSchedule = {
+    status: ContestStatus.PUBLISHED,
+    startsAt: new Date(Date.now() + 72 * hour),
+    endsAt: new Date(Date.now() + 74 * hour),
+  };
   const contest = await prisma.contest.upsert({
     where: { slug: "sample-contest" },
-    update: {},
+    update: sampleSchedule,
     create: {
+      ...sampleSchedule,
       slug: "sample-contest",
       title: "Sample Contest",
       creatorId: teacher.id,
@@ -98,6 +117,21 @@ async function main() {
       },
     },
   });
+  const weeklySchedule = {
+    status: ContestStatus.PUBLISHED,
+    startsAt: new Date(Date.now() + 26 * hour),
+    endsAt: new Date(Date.now() + 27.5 * hour),
+  };
+  await prisma.contest.upsert({
+    where: { slug: "weekly-warmup" },
+    update: weeklySchedule,
+    create: {
+      ...weeklySchedule,
+      slug: "weekly-warmup",
+      title: "Khởi động cuối tuần",
+      creatorId: teacher.id,
+    },
+  });
   await prisma.contestGrader.upsert({
     where: {
       contestId_graderId: { contestId: contest.id, graderId: grader.id },
@@ -105,20 +139,238 @@ async function main() {
     update: {},
     create: { contestId: contest.id, graderId: grader.id },
   });
-  await prisma.enrollment.upsert({
-    where: { userId_pathId: { userId: users[0].id, pathId: path.id } },
-    update: {},
-    create: { userId: users[0].id, pathId: path.id },
-  });
   await prisma.badge.upsert({
     where: { slug: "first-step" },
-    update: {},
+    update: {
+      name: "Bước đầu tiên",
+      description: "Hoàn thành bài tập đầu tiên",
+    },
     create: {
       slug: "first-step",
-      name: "First Step",
-      description: "Complete your first exercise",
+      name: "Bước đầu tiên",
+      description: "Hoàn thành bài tập đầu tiên",
     },
   });
+  const student =
+    users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
+  await seedStudentDemo(student.id, teacher.id, path.id, "Minh Thư");
+  await seedDemoLearners(student.passwordHash);
+  await seedPersonalDemo(teacher.id, path.id);
+}
+
+/**
+ * Optional: give your own account the same demo progress.
+ * Set DEMO_USER_EMAIL and DEMO_USER_PASSWORD in .env (never in this file),
+ * and DEMO_USER_NAME if the account does not exist yet.
+ */
+async function seedPersonalDemo(teacherId: string, basicsPathId: string) {
+  const email = process.env.DEMO_USER_EMAIL?.trim().toLowerCase();
+  const password = process.env.DEMO_USER_PASSWORD;
+  if (!email || !password) return;
+  const role = await prisma.role.findUniqueOrThrow({
+    where: { name: RoleName.STUDENT },
+  });
+  const passwordHash = await hash(password, 12);
+  const user = await prisma.user.upsert({
+    where: { email },
+    update: { passwordHash },
+    create: {
+      email,
+      name: process.env.DEMO_USER_NAME?.trim() || email.split("@")[0],
+      passwordHash,
+      roleId: role.id,
+    },
+  });
+  await seedStudentDemo(user.id, teacherId, basicsPathId);
+  console.log(`Seeded demo progress for ${email}`);
+}
+
+/** Demo progress (paths, badges, XP history, streak) so the dashboard has data to show. */
+async function seedStudentDemo(
+  studentId: string,
+  teacherId: string,
+  basicsPathId: string,
+  /** Rename the account, e.g. the generic seed student. Omit to keep the current name. */
+  name?: string,
+) {
+  const demoPaths = [
+    {
+      slug: "nhap-mon-lap-trinh",
+      title: "Nhập môn lập trình",
+      description:
+        "Biến, điều kiện, vòng lặp và hàm. Nền tảng cho người mới bắt đầu.",
+      rooms: 12,
+      done: 5,
+    },
+    {
+      slug: "ctdl-giai-thuat",
+      title: "Cấu trúc dữ liệu & giải thuật",
+      description:
+        "Mảng, danh sách liên kết, cây, đồ thị cùng các thuật toán sắp xếp và tìm kiếm.",
+      rooms: 10,
+      done: 2,
+    },
+    {
+      slug: "phat-trien-web-co-ban",
+      title: "Phát triển web cơ bản",
+      description:
+        "HTML, CSS và JavaScript để tự dựng một trang web hoàn chỉnh.",
+      rooms: 8,
+      done: 0,
+    },
+  ];
+  // The demo student follows the three paths above instead of the sample path.
+  await prisma.enrollment.deleteMany({
+    where: { userId: studentId, pathId: basicsPathId },
+  });
+  for (const demo of demoPaths) {
+    const path = await prisma.path.upsert({
+      where: { slug: demo.slug },
+      update: { description: demo.description },
+      create: {
+        slug: demo.slug,
+        title: demo.title,
+        description: demo.description,
+        creatorId: teacherId,
+        rooms: {
+          create: Array.from({ length: demo.rooms }, (_, index) => ({
+            title: `Bài ${index + 1}`,
+            position: index + 1,
+          })),
+        },
+      },
+      include: { rooms: { orderBy: { position: "asc" } } },
+    });
+    await prisma.enrollment.upsert({
+      where: { userId_pathId: { userId: studentId, pathId: path.id } },
+      update: {},
+      create: { userId: studentId, pathId: path.id },
+    });
+    for (const room of path.rooms.slice(0, demo.done))
+      await prisma.roomProgress.upsert({
+        where: { userId_roomId: { userId: studentId, roomId: room.id } },
+        update: {},
+        create: { userId: studentId, roomId: room.id },
+      });
+  }
+
+  const badges = [
+    {
+      slug: "streak-7",
+      name: "Chuỗi 7 ngày",
+      description: "Học 7 ngày liên tiếp",
+    },
+    {
+      slug: "first-path-room",
+      name: "Khởi động",
+      description: "Hoàn thành 5 bài học",
+    },
+    {
+      slug: "fast-solver",
+      name: "Tốc độ",
+      description: "Giải đúng trong 5 phút",
+    },
+    { slug: "night-owl", name: "Cú đêm", description: "Học sau 22 giờ" },
+  ];
+  for (const badge of [{ slug: "first-step" }, ...badges]) {
+    const saved =
+      "name" in badge
+        ? await prisma.badge.upsert({
+            where: { slug: badge.slug },
+            update: {},
+            create: badge,
+          })
+        : await prisma.badge.findUniqueOrThrow({ where: { slug: badge.slug } });
+    await prisma.userBadge.upsert({
+      where: { userId_badgeId: { userId: studentId, badgeId: saved.id } },
+      update: {},
+      create: { userId: studentId, badgeId: saved.id },
+    });
+  }
+
+  // XP history is rebuilt on every seed so the demo always looks current:
+  // the last 7 days build the streak, earlier days fill the activity heatmap.
+  const day = 24 * 60 * 60 * 1000;
+  const history = Array.from({ length: 83 }, (_, index) => index + 1)
+    .filter(
+      (daysAgo) => daysAgo <= 7 || ![0, 3, 5].includes((daysAgo * 37) % 7),
+    )
+    .map((daysAgo) => ({
+      userId: studentId,
+      amount: 10 + ((daysAgo * 53) % 4) * 5,
+      source: XpSource.ROOM_COMPLETED,
+      createdAt: new Date(Date.now() - daysAgo * day),
+    }));
+  const historyXp = history.reduce((sum, event) => sum + event.amount, 0);
+  const startingXp = Math.max(0, 1250 - historyXp);
+  await prisma.xpEvent.deleteMany({ where: { userId: studentId } });
+  await prisma.xpEvent.createMany({
+    data: [
+      ...history,
+      {
+        userId: studentId,
+        amount: startingXp,
+        source: XpSource.ADMIN_ADJUSTMENT,
+        createdAt: new Date(Date.now() - 120 * day),
+      },
+    ],
+  });
+  await prisma.user.update({
+    where: { id: studentId },
+    data: {
+      ...(name ? { name } : {}),
+      xp: historyXp + startingXp,
+      currentStreak: 7,
+      longestStreak: 12,
+      lastActiveOn: new Date(Date.now() - day),
+    },
+  });
+}
+
+/** Other learners so the weekly leaderboard has people to compare with. */
+async function seedDemoLearners(passwordHash: string) {
+  const role = await prisma.role.findUniqueOrThrow({
+    where: { name: RoleName.STUDENT },
+  });
+  const learners = [
+    {
+      email: "demo-minhanh@local.test",
+      name: "Trần Minh Anh",
+      xp: 2100,
+      week: 120,
+    },
+    {
+      email: "demo-quocbao@local.test",
+      name: "Lê Quốc Bảo",
+      xp: 1600,
+      week: 85,
+    },
+    { email: "demo-thuha@local.test", name: "Phạm Thu Hà", xp: 900, week: 30 },
+    { email: "demo-giahuy@local.test", name: "Võ Gia Huy", xp: 400, week: 15 },
+  ];
+  for (const learner of learners) {
+    const user = await prisma.user.upsert({
+      where: { email: learner.email },
+      update: { xp: learner.xp },
+      create: {
+        email: learner.email,
+        name: learner.name,
+        passwordHash,
+        roleId: role.id,
+        xp: learner.xp,
+      },
+    });
+    await prisma.xpEvent.deleteMany({ where: { userId: user.id } });
+    await prisma.xpEvent.create({
+      data: {
+        userId: user.id,
+        amount: learner.week,
+        source: XpSource.ROOM_COMPLETED,
+        // A minute ago, so it always counts for the current week.
+        createdAt: new Date(Date.now() - 60 * 1000),
+      },
+    });
+  }
 }
 
 main().finally(() => prisma.$disconnect());
