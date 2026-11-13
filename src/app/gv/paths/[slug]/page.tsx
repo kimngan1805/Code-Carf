@@ -3,6 +3,8 @@ import { notFound } from "next/navigation";
 import { getManagedPath } from "@/features/paths/management";
 import { PathUnlockSetting } from "@/features/paths/components/path-unlock-setting";
 import { AppError } from "@/lib/errors";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export default async function ManagedPathPage({
   params,
@@ -48,7 +50,15 @@ export default async function ManagedPathPage({
         />
       </section>
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Nội dung lộ trình</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Nội dung lộ trình</h2>
+          <Button asChild>
+            <Link href={`/gv/paths/${path.slug}/rooms/new`}>
+              <Plus className="size-4" aria-hidden />
+              Thêm bài học
+            </Link>
+          </Button>
+        </div>
         {!path.rooms.length && (
           <p className="text-muted-foreground">Lộ trình chưa có bài học.</p>
         )}
