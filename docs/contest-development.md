@@ -1,12 +1,14 @@
 # Contest tasks 64, 76, and 77
 
-The branches are stacked. Review and merge them in this order:
+The branches are stacked. Open reviews with these bases:
 
 1. `feat/64-contest-list-and-details` into `main`.
 2. `feat/76-contest-registration-and-access` into the branch for task 64.
 3. `feat/77-contest-workspace-and-timer` into the branch for task 76.
 
 The final branch contains all three tasks. No schema migration or new dependency is required.
+
+Merge task 64 into `main` first. Then retarget the review for task 76 to `main` and merge it. Finally retarget task 77 to `main` and merge it. Do not merge later tasks back into a branch that has already been merged and retired.
 
 ## Local use
 
