@@ -2,7 +2,7 @@ import { ExerciseKind, type SubmissionStatus } from "@prisma/client";
 import { z } from "zod";
 import { AppError } from "../../lib/errors";
 import { logger } from "../../lib/logger";
-import type { GradeResult } from "./adapter";
+import type { GradeResult, GradeStatus } from "./adapter";
 import {
   getJudge0LanguageId,
   submissionLanguages,
@@ -15,6 +15,7 @@ import {
   isExerciseInContest,
   markSubmissionRunning,
 } from "./repository";
+import { isPassing, summarizeTests } from "./scoring";
 import { getGradingAdapter } from "./service";
 
 export const MAX_SOURCE_LENGTH = 64 * 1024;
@@ -45,8 +46,11 @@ export interface SubmitSolutionInput {
 export interface TestResult {
   testCaseId: string;
   passed: boolean;
-  status: GradeResult["status"];
+  status: GradeStatus;
   feedback: string;
+  weight: number;
+  runtimeMs?: number;
+  memoryKb?: number;
   /** Only present for visible test cases; hidden ones never expose data. */
   input?: string;
   expected?: string;
@@ -58,14 +62,21 @@ export interface SubmissionResult {
   score: number;
   maxScore: number;
   feedback: string;
+  /** Highest CPU time / memory used by any test, when the grader reports it. */
+  runtimeMs: number | null;
+  memoryKb: number | null;
   tests: TestResult[];
 }
 
-const PASSING_STATUSES: ReadonlySet<GradeResult["status"]> = new Set([
-  "ACCEPTED",
-  // Mock mode never runs code; treat it as a pass so dev flows can complete.
-  "MOCKED",
-]);
+const STATUS_LABELS: Record<GradeStatus, string> = {
+  MOCKED: "Chưa chạy (mock)",
+  ACCEPTED: "Đúng",
+  WRONG_ANSWER: "Sai kết quả",
+  TIME_LIMIT_EXCEEDED: "Quá thời gian",
+  RUNTIME_ERROR: "Lỗi khi chạy",
+  COMPILE_ERROR: "Lỗi biên dịch",
+  ERROR: "Lỗi hệ thống chấm",
+};
 
 /**
  * Saves a code submission and grades it against every test case of the
@@ -126,38 +137,52 @@ export async function submitSolution(
         status: "ERROR",
         score: 0,
         feedback: "Bài tập chưa có test case để chấm",
+        runtimeMs: null,
+        memoryKb: null,
         tests: [],
       };
     } else {
       const adapter = getGradingAdapter();
       const languageId = getJudge0LanguageId(language);
       const tests: TestResult[] = [];
+      let compileError: string | null = null;
       for (const testCase of exercise.testCases) {
-        const result = await adapter.grade({
-          source,
-          languageId,
-          input: testCase.input,
-          expected: testCase.expected,
-        });
+        // The same source fails to compile for every test; don't rerun it.
+        const result: GradeResult = compileError
+          ? { status: "COMPILE_ERROR", feedback: compileError }
+          : await adapter.grade({
+              source,
+              languageId,
+              input: testCase.input,
+              expected: testCase.expected,
+              timeLimitMs: exercise.timeLimitMs,
+              memoryLimitKb: exercise.memoryLimitKb,
+            });
+        if (result.status === "COMPILE_ERROR") compileError = result.feedback;
         tests.push({
           testCaseId: testCase.id,
-          passed: PASSING_STATUSES.has(result.status),
+          passed: isPassing(result.status),
           status: result.status,
           feedback: result.feedback,
+          weight: testCase.weight,
+          ...(result.runtimeMs !== undefined
+            ? { runtimeMs: result.runtimeMs }
+            : {}),
+          ...(result.memoryKb !== undefined
+            ? { memoryKb: result.memoryKb }
+            : {}),
           ...(testCase.isHidden
             ? {}
             : { input: testCase.input, expected: testCase.expected }),
         });
       }
-      const passedCount = tests.filter((test) => test.passed).length;
-      const accepted = passedCount === tests.length;
-      const mocked = tests.some((test) => test.status === "MOCKED");
+      const summary = summarizeTests(tests, maxScore);
       outcome = {
-        status: accepted ? "ACCEPTED" : "REJECTED",
-        score: accepted ? maxScore : 0,
-        feedback:
-          `Đạt ${passedCount}/${tests.length} test case.` +
-          (mocked ? " Chế độ mock: mã nguồn không được chạy thật." : ""),
+        status: summary.status,
+        score: summary.score,
+        feedback: buildFeedback(tests, summary.passedCount),
+        runtimeMs: summary.runtimeMs,
+        memoryKb: summary.memoryKb,
         tests,
       };
     }
@@ -170,6 +195,8 @@ export async function submitSolution(
       status: "ERROR",
       score: 0,
       feedback: "Hệ thống chấm gặp lỗi, vui lòng thử lại sau",
+      runtimeMs: null,
+      memoryKb: null,
       tests: [],
     };
   }
@@ -178,6 +205,8 @@ export async function submitSolution(
     status: outcome.status,
     score: outcome.score,
     feedback: outcome.feedback,
+    runtimeMs: outcome.runtimeMs,
+    memoryKb: outcome.memoryKb,
   });
   logger.info("submission.graded", {
     submissionId,
@@ -187,4 +216,25 @@ export async function submitSolution(
   });
 
   return { submissionId, maxScore, ...outcome };
+}
+
+/** e.g. "Đạt 3/5 test case. Sai kết quả: 1, Quá thời gian: 1." */
+function buildFeedback(tests: readonly TestResult[], passedCount: number) {
+  const failures = new Map<GradeStatus, number>();
+  for (const test of tests) {
+    if (!test.passed) {
+      failures.set(test.status, (failures.get(test.status) ?? 0) + 1);
+    }
+  }
+  const failureText = [...failures]
+    .map(([status, count]) => `${STATUS_LABELS[status]}: ${count}`)
+    .join(", ");
+  const mocked = tests.some((test) => test.status === "MOCKED");
+  return [
+    `Đạt ${passedCount}/${tests.length} test case.`,
+    failureText ? `${failureText}.` : "",
+    mocked ? "Chế độ mock: mã nguồn không được chạy thật." : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
 }
