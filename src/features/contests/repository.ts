@@ -105,3 +105,14 @@ export function listUserContestSubmissions(contestId: string, userId: string) {
     },
   });
 }
+
+export function findUserContestSubmission(
+  id: string,
+  contestId: string,
+  userId: string,
+) {
+  return db.submission.findFirstOrThrow({
+    where: { id, contestId, userId },
+    select: { createdAt: true },
+  });
+}
