@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/env";
+import { getEnv } from "../../lib/env";
 import type { GradingAdapter } from "./adapter";
 
 export const judge0GradingAdapter: GradingAdapter = {

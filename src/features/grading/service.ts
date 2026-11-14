@@ -1,4 +1,4 @@
-import { getEnv } from "@/lib/env";
+import { getEnv } from "../../lib/env";
 import { judge0GradingAdapter } from "./judge0-adapter";
 import { mockGradingAdapter } from "./mock-adapter";
 

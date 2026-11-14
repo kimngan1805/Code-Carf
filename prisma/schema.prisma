@@ -19,9 +19,10 @@ enum ExerciseKind {
   HANDWRITTEN
 }
 
-/// PENDING: chờ chấm. NEEDS_REVIEW: bài viết tay AI đã chấm sơ bộ, chờ grader duyệt.
+/// PENDING: chờ chấm. RUNNING: đang chạy test case. NEEDS_REVIEW: bài viết tay AI đã chấm sơ bộ, chờ grader duyệt.
 enum SubmissionStatus {
   PENDING
+  RUNNING
   NEEDS_REVIEW
   ACCEPTED
   REJECTED
