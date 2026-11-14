@@ -18,6 +18,8 @@ Scaffold for a learning and coding contest platform. The repository contains arc
 
 The seed creates `student@local.test`, `teacher@local.test`, `admin@local.test`, and `grader@local.test`. Their local password is `SEED_PASSWORD` from `.env`, or `LocalDev123!` if unset. Change it before sharing a database. The seed also creates a path, room, exercise, contest, grader assignment, enrollment, and badge.
 
+Paths are drafts by default (`Path.published = false`). The seed explicitly publishes its sample paths. After applying the path-publication migration, existing non-seed paths stay hidden until published. Learners can browse `/paths`, open `/paths/<slug>`, and enroll once; progress is the rounded percentage of rooms with a `RoomProgress` record for that learner (zero for an empty path). Room content and sequential unlock follow in #12 and #13.
+
 For an app container, run `docker compose up --build app`; Compose applies migrations before starting the app. Seed with the local npm command after the database is running. To use Supabase, set `DATABASE_URL` to its PostgreSQL connection string and skip the local `db` service.
 
 ## Judge0
