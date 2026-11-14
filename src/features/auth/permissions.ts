@@ -24,3 +24,7 @@ export function allowedRole(pathname: string, role?: RoleName): boolean {
   );
   return !entry || Boolean(role && entry[1].includes(role));
 }
+
+export function isTeacherRole(role?: RoleName): boolean {
+  return role === RoleName.TEACHER || role === RoleName.ADMIN;
+}
