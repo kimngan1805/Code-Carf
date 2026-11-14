@@ -29,9 +29,11 @@ const exercise = {
   id: "ex-1",
   kind: ExerciseKind.CODE,
   points: 100,
+  timeLimitMs: 2000,
+  memoryLimitKb: 262144,
   testCases: [
-    { id: "tc-1", input: "1 2", expected: "3", isHidden: false },
-    { id: "tc-2", input: "-5 10", expected: "5", isHidden: true },
+    { id: "tc-1", input: "1 2", expected: "3", isHidden: false, weight: 1 },
+    { id: "tc-2", input: "-5 10", expected: "5", isHidden: true, weight: 3 },
   ],
 };
 
@@ -70,6 +72,8 @@ describe("submitSolution", () => {
       status: "ACCEPTED",
       score: 100,
       feedback: expect.stringContaining("mock"),
+      runtimeMs: null,
+      memoryKb: null,
     });
     const order = [
       repo.createPendingSubmission.mock.invocationCallOrder[0],
@@ -88,7 +92,7 @@ describe("submitSolution", () => {
     expect(result.tests.every((test) => test.passed)).toBe(true);
   });
 
-  it("passes source, Judge0 language id, input and expected to the adapter", async () => {
+  it("passes source, Judge0 language id, test data and limits to the adapter", async () => {
     await submitSolution(validInput);
 
     expect(adapter.grade).toHaveBeenNthCalledWith(1, {
@@ -96,24 +100,27 @@ describe("submitSolution", () => {
       languageId: 71,
       input: "1 2",
       expected: "3",
+      timeLimitMs: 2000,
+      memoryLimitKb: 262144,
     });
     expect(adapter.grade).toHaveBeenCalledTimes(2);
   });
 
-  it("rejects with score 0 when any test fails", async () => {
+  it("rejects with a weighted partial score when a test fails", async () => {
     adapter.grade
       .mockResolvedValueOnce({ status: "ACCEPTED", feedback: "Accepted" })
-      .mockResolvedValueOnce({ status: "REJECTED", feedback: "Wrong Answer" });
+      .mockResolvedValueOnce({ status: "WRONG_ANSWER", feedback: "Wrong" });
 
     const result = await submitSolution(validInput);
 
+    // tc-1 (weight 1) passed, tc-2 (weight 3) failed: 100 * 1/4.
     expect(result.status).toBe("REJECTED");
-    expect(result.score).toBe(0);
+    expect(result.score).toBe(25);
     expect(result.tests.map((test) => test.passed)).toEqual([true, false]);
-    expect(result.feedback).toContain("1/2");
+    expect(result.feedback).toBe("Đạt 1/2 test case. Sai kết quả: 1.");
     expect(repo.finishSubmission).toHaveBeenCalledWith(
       "sub-1",
-      expect.objectContaining({ status: "REJECTED", score: 0 }),
+      expect.objectContaining({ status: "REJECTED", score: 25 }),
     );
   });
 
@@ -158,6 +165,69 @@ describe("submitSolution", () => {
     expect(repo.createPendingSubmission).toHaveBeenCalledWith(
       expect.objectContaining({ contestId: "contest-1" }),
     );
+  });
+
+  it("reports each test's own status, time and memory, storing the maximum", async () => {
+    adapter.grade
+      .mockResolvedValueOnce({
+        status: "TIME_LIMIT_EXCEEDED",
+        feedback: "Time Limit Exceeded",
+        runtimeMs: 2004,
+        memoryKb: 3000,
+      })
+      .mockResolvedValueOnce({
+        status: "RUNTIME_ERROR",
+        feedback: "Runtime Error (NZEC): boom",
+        runtimeMs: 12,
+        memoryKb: 9000,
+      });
+
+    const result = await submitSolution(validInput);
+
+    expect(result.tests).toMatchObject([
+      { status: "TIME_LIMIT_EXCEEDED", passed: false, runtimeMs: 2004 },
+      { status: "RUNTIME_ERROR", passed: false, memoryKb: 9000 },
+    ]);
+    expect(result).toMatchObject({
+      status: "REJECTED",
+      score: 0,
+      runtimeMs: 2004,
+      memoryKb: 9000,
+    });
+    expect(result.feedback).toBe(
+      "Đạt 0/2 test case. Quá thời gian: 1, Lỗi khi chạy: 1.",
+    );
+    expect(repo.finishSubmission).toHaveBeenCalledWith(
+      "sub-1",
+      expect.objectContaining({ runtimeMs: 2004, memoryKb: 9000 }),
+    );
+  });
+
+  it("stops calling the grader after a compile error", async () => {
+    adapter.grade.mockResolvedValue({
+      status: "COMPILE_ERROR",
+      feedback: "Compilation Error: missing ;",
+    });
+
+    const result = await submitSolution(validInput);
+
+    expect(adapter.grade).toHaveBeenCalledTimes(1);
+    expect(result.tests.map((test) => test.status)).toEqual([
+      "COMPILE_ERROR",
+      "COMPILE_ERROR",
+    ]);
+    expect(result.tests[1]?.feedback).toBe("Compilation Error: missing ;");
+    expect(result).toMatchObject({ status: "REJECTED", score: 0 });
+  });
+
+  it("finishes as ERROR when the grader reports its own failure", async () => {
+    adapter.grade
+      .mockResolvedValueOnce({ status: "ACCEPTED", feedback: "Accepted" })
+      .mockResolvedValueOnce({ status: "ERROR", feedback: "Judge0 HTTP 503" });
+
+    const result = await submitSolution(validInput);
+
+    expect(result).toMatchObject({ status: "ERROR", score: 0 });
   });
 
   it("does not check contest membership for practice submissions", async () => {
