@@ -18,6 +18,7 @@ export const config = {
   matcher: [
     "/dashboard/:path*",
     "/onboarding/:path*",
+    "/achievements/:path*",
     "/paths/:path*",
     "/rooms/:path*",
     "/contests/:path*",
