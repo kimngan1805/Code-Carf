@@ -122,6 +122,7 @@ model Path {
   slug        String       @unique
   title       String
   description String       @default("")
+  published   Boolean      @default(false)
   creatorId   String
   creator     User         @relation("PathCreator", fields: [creatorId], references: [id])
   rooms       Room[]
