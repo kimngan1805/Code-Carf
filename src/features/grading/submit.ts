@@ -9,6 +9,7 @@ import {
   type SubmissionLanguage,
 } from "./languages";
 import {
+  countRecentSubmissions,
   createPendingSubmission,
   findCodeExerciseWithTests,
   finishSubmission,
@@ -19,6 +20,9 @@ import { isPassing, summarizeTests } from "./scoring";
 import { getGradingAdapter } from "./service";
 
 export const MAX_SOURCE_LENGTH = 64 * 1024;
+/** At most this many submissions per user in any rolling window (#75). */
+export const SUBMISSION_RATE_LIMIT = 10;
+export const SUBMISSION_RATE_WINDOW_MS = 60_000;
 
 const submitInputSchema = z.object({
   userId: z.string().trim().min(1, "userId không được để trống"),
@@ -119,6 +123,20 @@ export async function submitSolution(
   // TODO(#70): check canAccessRoom(userId, exercise.roomId) once stream A
   // merges src/features/rooms/access.ts.
 
+  // Counted in the DB so the limit holds across server instances. Parallel
+  // requests can still slip one or two over; that is acceptable here.
+  const recent = await countRecentSubmissions(
+    userId,
+    new Date(Date.now() - SUBMISSION_RATE_WINDOW_MS),
+  );
+  if (recent >= SUBMISSION_RATE_LIMIT) {
+    throw new AppError(
+      429,
+      "TOO_MANY_SUBMISSIONS",
+      `Bạn chỉ được nộp tối đa ${SUBMISSION_RATE_LIMIT} lần mỗi phút, vui lòng thử lại sau`,
+    );
+  }
+
   const { id: submissionId } = await createPendingSubmission({
     userId,
     exerciseId,
@@ -163,7 +181,13 @@ export async function submitSolution(
           testCaseId: testCase.id,
           passed: isPassing(result.status),
           status: result.status,
-          feedback: result.feedback,
+          // Program output (stderr, runtime messages) can echo the hidden
+          // input, so hidden tests only get a generic label. Compiler output
+          // does not depend on the input and stays useful.
+          feedback:
+            testCase.isHidden && result.status !== "COMPILE_ERROR"
+              ? STATUS_LABELS[result.status]
+              : result.feedback,
           weight: testCase.weight,
           ...(result.runtimeMs !== undefined
             ? { runtimeMs: result.runtimeMs }
