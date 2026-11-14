@@ -1,14 +1,13 @@
 # Contest tasks 64, 76, and 77
 
-The branches are stacked. Open reviews with these bases:
+Tasks 64 and 76 are merged into `main`. Task 77 is rebased onto `origin/main`; open its review from `feat/77-contest-workspace-and-timer` into `main`. Its diff contains only the workspace and grading integration changes.
 
-1. `feat/64-contest-list-and-details` into `main`.
-2. `feat/76-contest-registration-and-access` into the branch for task 64.
-3. `feat/77-contest-workspace-and-timer` into the branch for task 76.
+Task 77 adds no dependencies or schema migrations. Apply the migrations from `main`, including the `RUNNING` submission status, and regenerate Prisma Client before running the updated app:
 
-The final branch contains all three tasks. No schema migration or new dependency is required.
-
-Merge task 64 into `main` first. Then retarget the review for task 76 to `main` and merge it. Finally retarget task 77 to `main` and merge it. Do not merge later tasks back into a branch that has already been merged and retired.
+```powershell
+npx.cmd prisma generate
+npm.cmd run db:deploy
+```
 
 ## Local use
 
@@ -20,7 +19,9 @@ Start the database, apply migrations, seed the sample accounts, and start the ap
 
 Task 64 supplies the registration button UI; task 76 connects it to the registration API. The database's participant key prevents duplicates, and simultaneous registration requests return the same registration.
 
-Task 77 calls the `submitSolution` stub from the integration contract in issue 62. It saves a `Submission` with `contestId` and status `PENDING`, reports `MOCKED`, and never executes code or awards points. This stub is for contest submissions; practice submissions remain the grading stream's responsibility. Replace the stub when that stream's implementation is ready. It intentionally uses the mock adapter even when Judge0 is configured.
+Task 77 calls stream B's `submitSolution` implementation from `main`. The contest layer checks authentication, entry time, and participation; grading validates the exercise, limits submission frequency, runs its test cases, and stores the final status and score. The contest API maps `submissionId` to the history row's `id` and uses its saved creation time. Hidden test data stays excluded from results.
+
+The editor uses the grading stream's supported languages (Python, C++, Java, JavaScript) and shared 64 KB source limit. `GRADER_ADAPTER` selects mock or Judge0. In mock mode code is not executed, but the grading stream treats mocked tests as passing for local development; history labels these results as simulated. Judge0 performs real execution when configured and available.
 
 The server checks the participant, exercise membership, and time before storing a submission. Hidden tests and other students' submissions are excluded from workspace queries. A contest requiring face checks cannot be entered until `faceVerifiedAt` exists; camera verification belongs to task 65.
 
