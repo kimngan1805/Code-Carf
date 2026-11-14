@@ -103,7 +103,10 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
 
 function useIsActive() {
   const pathname = usePathname();
-  return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  return (href: string) =>
+    pathname === href ||
+    pathname.startsWith(`${href}/`) ||
+    (href === "/paths" && pathname.startsWith("/rooms/"));
 }
 
 function getVisibleNavGroups(role: RoleName) {
