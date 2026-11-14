@@ -1,16 +1,20 @@
 "use client";
 
+import { RoleName } from "@prisma/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
   BookOpen,
   House,
+  Layers,
+  LayoutDashboard,
   Trophy,
   User,
   Users,
   type LucideIcon,
 } from "lucide-react";
+import { isTeacherRole } from "@/features/auth/permissions";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -65,16 +69,55 @@ export const navGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Giảng dạy",
+    items: [
+      {
+        href: "/creator",
+        label: "Tổng quan",
+        short: "Tổng quan",
+        icon: LayoutDashboard,
+      },
+      {
+        href: "/paths",
+        label: "Lộ trình học",
+        short: "Lộ trình",
+        icon: BookOpen,
+      },
+      {
+        href: "/rooms",
+        label: "Bài học",
+        short: "Bài học",
+        icon: Layers,
+      },
+    ],
+  },
+  {
+    title: "Tổ chức",
+    items: [
+      { href: "/contests", label: "Cuộc thi", short: "Cuộc thi", icon: Trophy },
+    ],
+  },
+];
+
 function useIsActive() {
   const pathname = usePathname();
   return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 }
 
-export function SidebarNav({ collapsed = false }: { collapsed?: boolean }) {
+export function SidebarNav({
+  collapsed = false,
+  role = RoleName.STUDENT,
+}: {
+  collapsed?: boolean;
+  role?: RoleName;
+}) {
   const isActive = useIsActive();
+  const groups = isTeacherRole(role) ? teacherNavGroups : navGroups;
   return (
     <div className={collapsed ? "space-y-3" : "space-y-6"}>
-      {navGroups.map((group, groupIndex) => (
+      {groups.map((group, groupIndex) => (
         <div key={group.title}>
           {collapsed ? (
             groupIndex > 0 && (
@@ -116,35 +159,38 @@ export function SidebarNav({ collapsed = false }: { collapsed?: boolean }) {
   );
 }
 
-export function MobileTabBar() {
+export function MobileTabBar({ role = RoleName.STUDENT }: { role?: RoleName }) {
   const isActive = useIsActive();
+  const items = (isTeacherRole(role) ? teacherNavGroups : navGroups).flatMap(
+    (group) => group.items,
+  );
   return (
-    <ul className="grid grid-cols-6">
-      {navGroups
-        .flatMap((group) => group.items)
-        .map(({ href, short, icon: Icon }) => {
-          const active = isActive(href);
-          return (
-            <li key={href}>
-              <Link
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors",
-                  active
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                <Icon
-                  className={cn("size-5", active && "stroke-[2.25]")}
-                  aria-hidden
-                />
-                {short}
-              </Link>
-            </li>
-          );
-        })}
+    <ul
+      className={items.length === 4 ? "grid grid-cols-4" : "grid grid-cols-6"}
+    >
+      {items.map(({ href, short, icon: Icon }) => {
+        const active = isActive(href);
+        return (
+          <li key={href}>
+            <Link
+              href={href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "flex flex-col items-center gap-1 py-2 text-[10px] font-medium transition-colors",
+                active
+                  ? "text-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <Icon
+                className={cn("size-5", active && "stroke-[2.25]")}
+                aria-hidden
+              />
+              {short}
+            </Link>
+          </li>
+        );
+      })}
     </ul>
   );
 }

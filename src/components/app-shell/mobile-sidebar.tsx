@@ -1,10 +1,15 @@
 "use client";
 
+import { RoleName } from "@prisma/client";
 import { useEffect, useRef, useState } from "react";
 import { Menu, X } from "lucide-react";
 import { SidebarNav } from "./sidebar-nav";
 
-export function MobileSidebar() {
+export function MobileSidebar({
+  role = RoleName.STUDENT,
+}: {
+  role?: RoleName;
+}) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [open, setOpen] = useState(false);
 
@@ -73,7 +78,7 @@ export function MobileSidebar() {
               dialog.current?.close();
           }}
         >
-          <SidebarNav />
+          <SidebarNav role={role} />
         </nav>
       </dialog>
     </>

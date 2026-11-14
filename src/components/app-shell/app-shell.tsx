@@ -1,6 +1,8 @@
+import { RoleName } from "@prisma/client";
 import Link from "next/link";
-import { Bell, CodeXml, LogOut, Plus, Search } from "lucide-react";
+import { Bell, BookOpen, CodeXml, LogOut, Plus, Search } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
+import { isTeacherRole } from "@/features/auth/permissions";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
 import { Sidebar } from "./sidebar";
 import { MobileSidebar } from "./mobile-sidebar";
@@ -12,10 +14,10 @@ function initials(name: string) {
 const roundButton =
   "grid size-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-primary";
 
-function Logo() {
+function Logo({ href }: { href: string }) {
   return (
     <Link
-      href="/dashboard"
+      href={href}
       className="flex items-center gap-2.5 text-lg font-bold text-primary"
     >
       <span className="grid size-9 place-items-center rounded-xl bg-primary text-primary-foreground">
@@ -29,12 +31,16 @@ function Logo() {
 export function AppShell({
   userName,
   sidebarCollapsed = false,
+  role = RoleName.STUDENT,
   children,
 }: {
   userName: string;
   sidebarCollapsed?: boolean;
+  role?: RoleName;
   children: React.ReactNode;
 }) {
+  const teacherMode = isTeacherRole(role);
+  const homeHref = teacherMode ? "/creator" : "/dashboard";
   const today = new Intl.DateTimeFormat("vi-VN", {
     timeZone: APP_TIME_ZONE,
     weekday: "long",
@@ -45,15 +51,19 @@ export function AppShell({
 
   return (
     <div className="min-h-dvh bg-muted/40 lg:flex">
-      <Sidebar userName={userName} initialCollapsed={sidebarCollapsed} />
+      <Sidebar
+        userName={userName}
+        initialCollapsed={sidebarCollapsed}
+        role={role}
+      />
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Top bar */}
         <header className="sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur">
           <div className="flex h-16 items-center gap-2 px-4 sm:gap-4 sm:px-6 lg:px-8">
-            <MobileSidebar />
+            <MobileSidebar role={role} />
             <div className="min-w-0 lg:hidden">
-              <Logo />
+              <Logo href={homeHref} />
             </div>
             <div className="hidden min-w-0 lg:block">
               <p className="truncate text-base font-semibold">
@@ -89,8 +99,17 @@ export function AppShell({
                 href="/paths"
                 className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
               >
-                <Plus className="size-4" aria-hidden />
-                <span className="hidden sm:inline">Lộ trình mới</span>
+                {teacherMode ? (
+                  <>
+                    <BookOpen className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Lộ trình học</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus className="size-4" aria-hidden />
+                    <span className="hidden sm:inline">Lộ trình mới</span>
+                  </>
+                )}
               </Link>
 
               {/* Account menu on small screens; desktop uses the sidebar footer */}
@@ -106,10 +125,10 @@ export function AppShell({
                     {userName}
                   </p>
                   <Link
-                    href="/profile"
+                    href={teacherMode ? "/creator" : "/profile"}
                     className="block rounded-xl px-3 py-2 text-sm hover:bg-muted"
                   >
-                    Hồ sơ của tôi
+                    {teacherMode ? "Không gian giảng viên" : "Hồ sơ của tôi"}
                   </Link>
                   <form action={logoutAction}>
                     <button
