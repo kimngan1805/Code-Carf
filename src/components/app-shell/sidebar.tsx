@@ -3,7 +3,13 @@
 import { RoleName } from "@prisma/client";
 import Link from "next/link";
 import { useState } from "react";
-import { CodeXml, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import {
+  CodeXml,
+  LogOut,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Settings,
+} from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
 import { isTeacherRole } from "@/features/auth/permissions";
 import { cn } from "@/lib/utils";
@@ -109,6 +115,14 @@ export function Sidebar({
             >
               {initials(userName)}
             </Link>
+            <Link
+              href="/settings"
+              aria-label="Cài đặt tài khoản"
+              title="Cài đặt tài khoản"
+              className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Settings className="size-[18px]" aria-hidden />
+            </Link>
             <form action={logoutAction}>
               <button
                 type="submit"
@@ -121,31 +135,36 @@ export function Sidebar({
             </form>
           </div>
         ) : (
-          <div className="flex items-center gap-3 rounded-xl px-3 py-2">
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2">
             <span className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary/60 text-sm font-semibold text-primary">
               {initials(userName)}
             </span>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold">{userName}</p>
-              {teacherMode ? (
-                <p className="truncate text-xs text-muted-foreground">
-                  {roleLabel}
-                </p>
-              ) : (
-                <Link
-                  href="/profile"
-                  className="text-xs text-muted-foreground hover:text-primary"
-                >
-                  Xem hồ sơ
-                </Link>
-              )}
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {teacherMode ? (
+                  <span className="truncate">{roleLabel}</span>
+                ) : (
+                  <Link href="/profile" className="hover:text-primary">
+                    Xem hồ sơ
+                  </Link>
+                )}
+              </div>
             </div>
+            <Link
+              href="/settings"
+              aria-label="Cài đặt tài khoản"
+              title="Cài đặt tài khoản"
+              className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <Settings className="size-[18px]" aria-hidden />
+            </Link>
             <form action={logoutAction}>
               <button
                 type="submit"
                 aria-label="Đăng xuất"
                 title="Đăng xuất"
-                className="grid size-9 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/5 hover:text-destructive"
+                className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-destructive/5 hover:text-destructive"
               >
                 <LogOut className="size-[18px]" aria-hidden />
               </button>

@@ -130,6 +130,12 @@ export function AppShell({
                   >
                     {teacherMode ? "Không gian giảng viên" : "Hồ sơ của tôi"}
                   </Link>
+                  <Link
+                    href="/settings"
+                    className="block rounded-xl px-3 py-2 text-sm hover:bg-muted"
+                  >
+                    Cài đặt tài khoản
+                  </Link>
                   <form action={logoutAction}>
                     <button
                       type="submit"
