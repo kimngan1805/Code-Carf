@@ -61,3 +61,47 @@ export async function registerContestParticipant(
     throw error;
   }
 }
+
+export function listContestExercises(contestId: string) {
+  return db.contestExercise.findMany({
+    where: { contestId },
+    orderBy: { position: "asc" },
+    select: {
+      position: true,
+      points: true,
+      exercise: {
+        select: {
+          id: true,
+          title: true,
+          prompt: true,
+          kind: true,
+          points: true,
+          timeLimitMs: true,
+          memoryLimitKb: true,
+          testCases: {
+            where: { isHidden: false },
+            orderBy: { id: "asc" },
+            select: { id: true, input: true, expected: true },
+          },
+        },
+      },
+    },
+  });
+}
+
+export function listUserContestSubmissions(contestId: string, userId: string) {
+  return db.submission.findMany({
+    where: { contestId, userId },
+    orderBy: { createdAt: "desc" },
+    take: 20,
+    select: {
+      id: true,
+      exerciseId: true,
+      language: true,
+      status: true,
+      score: true,
+      feedback: true,
+      createdAt: true,
+    },
+  });
+}
