@@ -1,7 +1,7 @@
 import type { TeacherDashboardData } from "./types";
 
 /**
- * Structured mock dataset for the Teacher Dashboard overview (/creator).
+ * Structured mock dataset for the Teacher Dashboard overview (/gv).
  * Kept separate from UI components so it can be replaced with real Prisma
  * queries from a teacher-dashboard service/repository later.
  */

@@ -19,7 +19,7 @@ export function Hero() {
           </p>
           <div className="mt-8 flex flex-wrap gap-4">
             <Button asChild size="lg" className="rounded-full px-8">
-              <Link href="/paths">Bắt đầu học ngay</Link>
+              <Link href="/hv/paths">Bắt đầu học ngay</Link>
             </Button>
             <Button
               asChild
