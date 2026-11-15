@@ -53,6 +53,11 @@ export async function getManagedPath(slug: string) {
       description: true,
       published: true,
       sequentialUnlock: true,
+      difficulty: true,
+      tags: true,
+      estimatedMinutes: true,
+      coverTheme: true,
+      publishedAt: true,
       rooms: {
         orderBy: { position: "asc" },
         select: {
