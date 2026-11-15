@@ -116,3 +116,29 @@ it("handles Vietnamese, punctuation, empty slugs and reserved routes", () => {
   expect(pathSlug("New")).toBe("lo-trinh-new");
   expect(pathSlug("a".repeat(100))).toHaveLength(80);
 });
+it("saves the community metadata and returns it for a retry", async () => {
+  const withMeta = {
+    ...input,
+    difficulty: "HARD",
+    tags: [" C++ ", "c++", "thuật toán"],
+    estimatedMinutes: 90,
+    coverTheme: "orange",
+  };
+  const first = await createManagedPath(withMeta);
+  expect(first).toMatchObject({
+    difficulty: "HARD",
+    tags: ["C++", "thuật toán"],
+    estimatedMinutes: 90,
+    coverTheme: "orange",
+  });
+  mocks.find.mockResolvedValue(first);
+  await expect(createManagedPath(withMeta)).resolves.toEqual(first);
+  expect(mocks.create).toHaveBeenCalledTimes(1);
+});
+it("rejects reusing a request id with different metadata", async () => {
+  const first = await createManagedPath({ ...input, tags: ["a"] });
+  mocks.find.mockResolvedValue(first);
+  await expect(
+    createManagedPath({ ...input, tags: ["b"] }),
+  ).rejects.toMatchObject({ status: 409, code: "CREATION_REQUEST_REUSED" });
+});

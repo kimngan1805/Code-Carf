@@ -32,7 +32,7 @@ export async function setPathPublication(pathId: string, published: boolean) {
       ...where,
       ...(published ? { rooms: { some: {}, none: { content: "" } } } : {}),
     },
-    data: { published },
+    data: published ? { published, publishedAt: new Date() } : { published },
   });
   if (!result.count)
     throw new AppError(
