@@ -71,6 +71,8 @@ To preview the issue plan, run `python3 scripts/seed_sprint_issues.py --repo kim
 
 ## Checks
 
+To interactively test sequential room unlock on localhost, set `ROOM_UNLOCK_LAB="1"`, restart the app, and open `/paths/unlock-lab` as a student. This uses a separate per-user test path; see `docs/room-unlock-development.md`. The flag defaults to disabled and requires a loopback host and database.
+
 Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` before a PR. GitHub Actions runs the same checks on every PR. Pre-commit hooks format and lint staged files; commit messages follow Conventional Commits.
 
 ## API contract
