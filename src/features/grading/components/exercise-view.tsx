@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
 import type { ExercisePage } from "../exercise-page";
+import { MAX_SOURCE_LENGTH } from "../submit";
 import { ExerciseWorkspace } from "./exercise-workspace";
 
 export function ExerciseView({ exercise }: { exercise: ExercisePage }) {
@@ -59,7 +60,11 @@ export function ExerciseView({ exercise }: { exercise: ExercisePage }) {
             </section>
           )}
         </div>
-        <ExerciseWorkspace userId={exercise.userId} exerciseId={exercise.id} />
+        <ExerciseWorkspace
+          userId={exercise.userId}
+          exerciseId={exercise.id}
+          maxSourceLength={MAX_SOURCE_LENGTH}
+        />
       </div>
     </div>
   );

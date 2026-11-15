@@ -2,7 +2,8 @@
 
 import dynamic from "next/dynamic";
 import { useState } from "react";
-import { Check, RotateCcw } from "lucide-react";
+import { Check, Loader2, RotateCcw, Send } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { useLocalDraft } from "@/hooks/use-local-draft";
 import { cn } from "@/lib/utils";
 import {
@@ -13,6 +14,10 @@ import {
   starterFor,
 } from "../draft";
 import { languages, type SubmissionLanguage } from "../languages";
+import { submitPracticeAction } from "../actions";
+import type { PracticeSubmissionView } from "../practice-submit";
+import { createSingleFlight } from "../single-flight";
+import { SubmissionResult } from "./submission-result";
 
 const CodeEditor = dynamic(
   () => import("./code-editor").then((module) => module.CodeEditor),
@@ -33,9 +38,11 @@ const CodeEditor = dynamic(
 export function ExerciseWorkspace({
   userId,
   exerciseId,
+  maxSourceLength,
 }: {
   userId: string;
   exerciseId: string;
+  maxSourceLength: number;
 }) {
   const { source: savedLanguage, setSource: saveLanguage } = useLocalDraft(
     practiceLanguageKey(userId, exerciseId),
@@ -49,6 +56,32 @@ export function ExerciseWorkspace({
   );
   const [storageFailed, setStorageFailed] = useState(false);
   const [simpleEditor, setSimpleEditor] = useState(false);
+  const [flight] = useState(createSingleFlight);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<PracticeSubmissionView | null>(null);
+
+  async function submit() {
+    // The lock flips synchronously, so two fast clicks start one submission.
+    await flight.run(async () => {
+      setPending(true);
+      setError("");
+      try {
+        const state = await submitPracticeAction(exerciseId, {
+          source,
+          language,
+        });
+        if (state.ok) setResult(state.result);
+        else setError(state.message);
+      } catch {
+        setError("Mất kết nối. Vui lòng thử lại.");
+      } finally {
+        setPending(false);
+      }
+    });
+  }
+
+  const tooLong = source.length > maxSourceLength;
 
   function updateSource(value: string) {
     setStorageFailed(!setSource(value));
@@ -68,6 +101,7 @@ export function ExerciseWorkspace({
           Ngôn ngữ
           <select
             value={language}
+            disabled={pending}
             onChange={(event) =>
               changeLanguage(event.target.value as SubmissionLanguage)
             }
@@ -84,7 +118,7 @@ export function ExerciseWorkspace({
           <button
             type="button"
             onClick={() => updateSource(starter)}
-            disabled={source === starter}
+            disabled={source === starter || pending}
             className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary underline underline-offset-4 focus-visible:outline-2 disabled:no-underline disabled:opacity-50"
           >
             <RotateCcw className="size-3.5" aria-hidden />
@@ -104,6 +138,7 @@ export function ExerciseWorkspace({
           aria-label="Mã nguồn"
           spellCheck={false}
           value={source}
+          readOnly={pending}
           onChange={(event) => updateSource(event.target.value)}
           className="block h-[480px] w-full resize-y bg-background p-4 font-mono text-sm focus-visible:outline-2"
         />
@@ -113,22 +148,53 @@ export function ExerciseWorkspace({
           value={source}
           onChange={updateSource}
           language={language}
+          readOnly={pending}
           height="480px"
         />
       )}
-      <div className="border-t p-4">
-        <p
-          className={cn(
-            "flex items-center gap-1.5 text-xs",
-            storageFailed ? "text-warning" : "text-muted-foreground",
+      <div className="space-y-3 border-t p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p
+            className={cn(
+              "flex items-center gap-1.5 text-xs",
+              storageFailed || tooLong
+                ? "text-warning"
+                : "text-muted-foreground",
+            )}
+          >
+            <Check className="size-3.5" aria-hidden />
+            {tooLong
+              ? "Mã nguồn vượt quá giới hạn 64 KB, hãy rút gọn trước khi nộp."
+              : storageFailed
+                ? "Không lưu được bản nháp. Hãy sao chép code trước khi rời trang."
+                : "Bản nháp được lưu trên trình duyệt này."}
+          </p>
+          <Button
+            onClick={() => void submit()}
+            disabled={pending || !source.trim() || tooLong}
+          >
+            {pending ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden />
+            ) : (
+              <Send className="size-4" aria-hidden />
+            )}
+            {pending ? "Đang chấm..." : "Nộp bài"}
+          </Button>
+        </div>
+        <div role="status" aria-live="polite">
+          {pending && (
+            <p className="text-sm text-muted-foreground">
+              Đang chấm bài, vui lòng đợi trong giây lát...
+            </p>
           )}
-        >
-          <Check className="size-3.5" aria-hidden />
-          {storageFailed
-            ? "Không lưu được bản nháp. Hãy sao chép code trước khi rời trang."
-            : "Bản nháp được lưu trên trình duyệt này."}
-        </p>
+        </div>
+        {error && (
+          <p role="alert" className="text-sm font-semibold text-destructive">
+            {error}
+          </p>
+        )}
       </div>
+      {result && <SubmissionResult result={result} />}
     </section>
   );
 }
