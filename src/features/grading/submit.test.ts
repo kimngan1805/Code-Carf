@@ -4,26 +4,32 @@ import { AppError } from "../../lib/errors";
 import type { GradeRequest, GradeResult } from "./adapter";
 import { mockGradingAdapter } from "./mock-adapter";
 
-const { repo, adapter, canAccessRoom } = vi.hoisted(() => ({
-  canAccessRoom: vi.fn(),
-  repo: {
-    findCodeExerciseWithTests: vi.fn(),
-    isExerciseInContest: vi.fn(),
-    createPendingSubmission: vi.fn(),
-    markSubmissionRunning: vi.fn(),
-    finishSubmission: vi.fn(),
-    countRecentSubmissions: vi.fn(),
-    findStoredSubmission: vi.fn(),
-    claimPendingSubmission: vi.fn(),
-  },
-  adapter: {
-    grade: vi.fn<(request: GradeRequest) => Promise<GradeResult>>(),
-  },
-}));
+const { repo, adapter, canAccessRoom, emitContestLeaderboardUpdated } =
+  vi.hoisted(() => ({
+    canAccessRoom: vi.fn(),
+    emitContestLeaderboardUpdated: vi.fn(),
+    repo: {
+      findCodeExerciseWithTests: vi.fn(),
+      isExerciseInContest: vi.fn(),
+      findContestExercisePoints: vi.fn(),
+      createPendingSubmission: vi.fn(),
+      markSubmissionRunning: vi.fn(),
+      finishSubmission: vi.fn(),
+      countRecentSubmissions: vi.fn(),
+      findStoredSubmission: vi.fn(),
+      claimPendingSubmission: vi.fn(),
+    },
+    adapter: {
+      grade: vi.fn<(request: GradeRequest) => Promise<GradeResult>>(),
+    },
+  }));
 
 vi.mock("./repository", () => repo);
 vi.mock("../rooms/access", () => ({ canAccessRoom }));
 vi.mock("./service", () => ({ getGradingAdapter: () => adapter }));
+vi.mock("../leaderboard/contest-events", () => ({
+  emitContestLeaderboardUpdated,
+}));
 vi.mock("../../lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
 }));
@@ -60,6 +66,7 @@ describe("submitSolution", () => {
     canAccessRoom.mockResolvedValue(true);
     repo.findCodeExerciseWithTests.mockResolvedValue(exercise);
     repo.isExerciseInContest.mockResolvedValue(true);
+    repo.findContestExercisePoints.mockResolvedValue(null);
     repo.createPendingSubmission.mockResolvedValue({ id: "sub-1" });
     repo.markSubmissionRunning.mockResolvedValue({ id: "sub-1" });
     repo.finishSubmission.mockResolvedValue({ id: "sub-1" });
@@ -435,5 +442,68 @@ describe("submitSolution", () => {
     });
     expect(repo.findCodeExerciseWithTests).not.toHaveBeenCalled();
     expect(repo.createPendingSubmission).not.toHaveBeenCalled();
+  });
+
+  it("uses ContestExercise.points override, forwards contest context, and emits leaderboard update after commit", async () => {
+    repo.findContestExercisePoints.mockResolvedValue(250);
+    adapter.grade.mockResolvedValue({ status: "ACCEPTED", feedback: "OK" });
+
+    const result = await submitSolution({
+      ...validInput,
+      contestId: "contest-1",
+    });
+
+    expect(result.maxScore).toBe(250);
+    expect(result.score).toBe(250);
+    expect(repo.findContestExercisePoints).toHaveBeenCalledWith(
+      "contest-1",
+      "ex-1",
+    );
+    expect(repo.finishSubmission).toHaveBeenCalledWith(
+      "sub-1",
+      expect.objectContaining({ status: "ACCEPTED", score: 250 }),
+      { contestId: "contest-1", userId: "user-1" },
+    );
+    expect(emitContestLeaderboardUpdated).toHaveBeenCalledTimes(1);
+    expect(emitContestLeaderboardUpdated).toHaveBeenCalledWith("contest-1");
+    expect(canAccessRoom).not.toHaveBeenCalled();
+  });
+
+  it("does not emit leaderboard update if finishSubmission rejects", async () => {
+    repo.finishSubmission.mockRejectedValueOnce(new Error("DB tx failed"));
+    adapter.grade.mockResolvedValue({ status: "ACCEPTED", feedback: "OK" });
+
+    await expect(
+      submitSolution({
+        ...validInput,
+        contestId: "contest-1",
+      }),
+    ).rejects.toThrow("DB tx failed");
+
+    expect(emitContestLeaderboardUpdated).not.toHaveBeenCalled();
+  });
+
+  it("synchronizes contest standing and emits leaderboard update in gradePendingSubmission", async () => {
+    repo.findStoredSubmission.mockResolvedValue({
+      id: "sub-auto-1",
+      userId: "user-1",
+      exerciseId: "ex-1",
+      contestId: "contest-1",
+      source: validInput.source,
+      language: validInput.language,
+      status: "PENDING",
+    });
+    repo.claimPendingSubmission.mockResolvedValue(true);
+    adapter.grade.mockResolvedValue({ status: "WRONG_ANSWER", feedback: "WA" });
+
+    await gradePendingSubmission("sub-auto-1");
+
+    expect(repo.finishSubmission).toHaveBeenCalledWith(
+      "sub-auto-1",
+      expect.objectContaining({ status: "REJECTED", score: 0 }),
+      { contestId: "contest-1", userId: "user-1" },
+    );
+    expect(emitContestLeaderboardUpdated).toHaveBeenCalledTimes(1);
+    expect(emitContestLeaderboardUpdated).toHaveBeenCalledWith("contest-1");
   });
 });
