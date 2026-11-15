@@ -14,7 +14,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { isTeacherRole } from "@/features/auth/permissions";
+import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -106,6 +106,16 @@ function useIsActive() {
   return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function getVisibleNavGroups(role: RoleName) {
+  const base = isTeacherRole(role) ? teacherNavGroups : navGroups;
+  return base
+    .map((group) => ({
+      ...group,
+      items: group.items.filter((item) => allowedRole(item.href, role)),
+    }))
+    .filter((group) => group.items.length > 0);
+}
+
 export function SidebarNav({
   collapsed = false,
   role = RoleName.STUDENT,
@@ -114,7 +124,7 @@ export function SidebarNav({
   role?: RoleName;
 }) {
   const isActive = useIsActive();
-  const groups = isTeacherRole(role) ? teacherNavGroups : navGroups;
+  const groups = getVisibleNavGroups(role);
   return (
     <div className={collapsed ? "space-y-3" : "space-y-6"}>
       {groups.map((group, groupIndex) => (
@@ -161,12 +171,16 @@ export function SidebarNav({
 
 export function MobileTabBar({ role = RoleName.STUDENT }: { role?: RoleName }) {
   const isActive = useIsActive();
-  const items = (isTeacherRole(role) ? teacherNavGroups : navGroups).flatMap(
-    (group) => group.items,
-  );
+  const items = getVisibleNavGroups(role).flatMap((group) => group.items);
   return (
     <ul
-      className={items.length === 4 ? "grid grid-cols-4" : "grid grid-cols-6"}
+      className={
+        items.length === 4
+          ? "grid grid-cols-4"
+          : items.length === 3
+            ? "grid grid-cols-3"
+            : "grid grid-cols-6"
+      }
     >
       {items.map(({ href, short, icon: Icon }) => {
         const active = isActive(href);

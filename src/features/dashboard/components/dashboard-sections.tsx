@@ -731,53 +731,66 @@ export function TopLearners({
         </Link>
       </div>
       <ol className="mt-3 space-y-1">
-        {learners.map((learner) => (
-          <li
-            key={learner.id}
-            className={cn(
-              "flex items-center gap-3 rounded-2xl px-2 py-2",
-              learner.isMe && "bg-secondary/40",
-            )}
-          >
-            <span
-              className={cn(
-                "grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold",
-                medal[learner.position - 1] ?? "bg-muted text-muted-foreground",
-              )}
+        {learners.map((learner) => {
+          const href = learner.isMe ? "/profile" : `/u/${learner.id}`;
+          return (
+            <li key={learner.id}>
+              <Link
+                href={href}
+                className={cn(
+                  "flex items-center gap-3 rounded-2xl px-2 py-2 transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2",
+                  learner.isMe && "bg-secondary/40 hover:bg-secondary/60",
+                )}
+              >
+                <span
+                  className={cn(
+                    "grid size-7 shrink-0 place-items-center rounded-full text-xs font-bold",
+                    medal[learner.position - 1] ??
+                      "bg-muted text-muted-foreground",
+                  )}
+                >
+                  {learner.position}
+                </span>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {learner.name}
+                  {learner.isMe && (
+                    <span className="ml-1 text-xs text-muted-foreground">
+                      (bạn)
+                    </span>
+                  )}
+                </span>
+                <span className="text-sm font-semibold tabular-nums">
+                  {numberFormat.format(learner.xp)}
+                  <span className="ml-0.5 text-xs font-normal text-muted-foreground">
+                    XP
+                  </span>
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+        {!meInTop && (
+          <li className="mt-2">
+            <Link
+              href="/profile"
+              className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-secondary/20 px-2 py-2 transition-colors hover:bg-secondary/35 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
-              {learner.position}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">
-              {learner.name}
-              {learner.isMe && (
+              <span className="grid size-7 shrink-0 place-items-center rounded-full bg-background text-xs font-bold text-primary">
+                {rank}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                {me.name}
                 <span className="ml-1 text-xs text-muted-foreground">
                   (bạn)
                 </span>
-              )}
-            </span>
-            <span className="text-sm font-semibold tabular-nums">
-              {numberFormat.format(learner.xp)}
-              <span className="ml-0.5 text-xs font-normal text-muted-foreground">
-                XP
               </span>
-            </span>
-          </li>
-        ))}
-        {!meInTop && (
-          <li className="mt-2 flex items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-secondary/20 px-2 py-2">
-            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-background text-xs font-bold text-primary">
-              {rank}
-            </span>
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">
-              {me.name}
-              <span className="ml-1 text-xs text-muted-foreground">(bạn)</span>
-            </span>
-            <span className="text-sm font-semibold tabular-nums">
-              {numberFormat.format(me.xp)}
-              <span className="ml-0.5 text-xs font-normal text-muted-foreground">
-                XP
+              <span className="text-sm font-semibold tabular-nums">
+                {numberFormat.format(me.xp)}
+                <span className="ml-0.5 text-xs font-normal text-muted-foreground">
+                  XP
+                </span>
               </span>
-            </span>
+            </Link>
           </li>
         )}
       </ol>
