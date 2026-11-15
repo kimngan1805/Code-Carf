@@ -24,7 +24,7 @@ Teachers open **Giám sát cuộc thi** in the sidebar (`/gv/contests`) to confi
 
 ## Focused attempt screen and fullscreen
 
-Start and Continue open a confirmation dialog. Choose fullscreen or a normal focused page. Cancel sends no Start request. Fullscreen is requested directly from the button gesture before the Start network request; denial keeps the dialog open without starting the clock, with normal mode as a fallback. See [MDN's fullscreen API reference](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen). A resumed attempt never restarts its clock.
+Start and Continue open a confirmation dialog with one primary action, **Vào làm bài**, and **Hủy**. Cancel sends no Start request. Confirmation requests fullscreen directly from the button gesture before the Start network request; denial keeps the dialog open without starting the clock. See [MDN's fullscreen API reference](https://developer.mozilla.org/en-US/docs/Web/API/Element/requestFullscreen). A resumed attempt never restarts its clock. The active workspace omits the link back to contest details; returning to details is available after completion.
 
 The `/contests/[slug]/play` URL is kept, but its route lives in `(contest-attempt)` with a dedicated layout, preserving authentication/onboarding checks while omitting the normal sidebar and header. The workspace includes a button to re-enter fullscreen. Browser fullscreen exit is allowed; it emits `FULLSCREEN_EXIT` only after a genuine fullscreen-to-normal transition. Tab/fullscreen changes from one action are coalesced for one second. Finishing, expiry or leaving the attempt releases fullscreen; effect replay in React Strict Mode does not eject the user on entry.
 

@@ -1,11 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import {
-  ArrowLeft,
   Check,
   Clock3,
   FileCode2,
@@ -359,14 +357,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
       />
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-5">
         <div className="min-w-0">
-          <Link
-            href={`/contests/${data.contest.slug}`}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-primary focus-visible:outline-2"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden />
-            Chi tiết cuộc thi
-          </Link>
-          <h1 className="mt-2 break-words text-xl font-bold">
+          <h1 className="break-words text-xl font-bold">
             {data.contest.title}
           </h1>
         </div>
