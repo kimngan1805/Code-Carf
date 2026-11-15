@@ -18,7 +18,7 @@ import {
   type Tone,
 } from "../result-view";
 
-const toneClass: Record<Tone, string> = {
+export const toneClass: Record<Tone, string> = {
   pass: "bg-success/15 text-success",
   fail: "bg-destructive/15 text-destructive",
   warn: "bg-warning/15 text-warning",
