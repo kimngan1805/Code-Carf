@@ -64,6 +64,29 @@ afterEach(() => {
 });
 
 describe("workspace event listeners and warnings", () => {
+  it("records an actual fullscreen departure but not initial normal mode or entry", async () => {
+    useContestEvents("sample", true, initial);
+    cleanup = hooks.effects[0]();
+    documentEvents.dispatchEvent(new Event("fullscreenchange"));
+    Object.defineProperty(documentEvents, "fullscreenElement", {
+      value: {},
+      configurable: true,
+    });
+    documentEvents.dispatchEvent(new Event("fullscreenchange"));
+    Object.defineProperty(documentEvents, "fullscreenElement", {
+      value: null,
+      configurable: true,
+    });
+    documentEvents.dispatchEvent(new Event("fullscreenchange"));
+    visible("hidden");
+    await vi.advanceTimersByTimeAsync(1);
+    const posts = fetchMock.mock.calls.filter(
+      ([, options]) => options?.method === "POST",
+    );
+    expect(posts).toHaveLength(1);
+    expect(JSON.parse(posts[0][1].body).type).toBe("FULLSCREEN_EXIT");
+    expect(hooks.states[1]).toBe("FULLSCREEN_EXIT");
+  });
   it("does not register or send while the attempt is closed", () => {
     useContestEvents("sample", false, initial);
     cleanup = hooks.effects[0]();

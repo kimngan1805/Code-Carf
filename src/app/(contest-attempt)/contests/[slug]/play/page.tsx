@@ -6,6 +6,7 @@ import { ContestWorkspace } from "@/features/contests/components/contest-workspa
 import { ExpiredContest } from "@/features/contests/components/expired-contest";
 import { getExpiredContest } from "@/features/contests/deadline";
 import { AppError } from "@/lib/errors";
+import { getAttemptReview } from "@/features/proctoring/review";
 
 export default async function ContestPlayPage({
   params,
@@ -25,7 +26,10 @@ export default async function ContestPlayPage({
           ].includes(error.code)
         ) {
           const expired = await getExpiredContest(slug);
-          if (expired) return { expired };
+          if (expired)
+            return {
+              expired: { ...expired, review: await getAttemptReview(slug) },
+            };
         }
         if (error.status === 404) notFound();
         if (error.status === 401)

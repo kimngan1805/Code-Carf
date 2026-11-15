@@ -9,6 +9,7 @@ export function ProctoringNotice({
 }) {
   const { status, lastEvent, connectionLost } = state;
   const warning = status.flagged || !!lastEvent;
+  if (!warning && !connectionLost) return null;
   return (
     <div
       role={warning ? "alert" : "status"}
@@ -30,16 +31,16 @@ export function ProctoringNotice({
             ? "Lượt thi đã được gắn cờ để giáo viên xem xét"
             : lastEvent === "TAB_SWITCH"
               ? "Bạn vừa chuyển sang tab khác"
-              : lastEvent === "PASTE"
-                ? "Bạn vừa dán nội dung vào trang thi"
-                : "Cuộc thi có ghi nhận chuyển tab và dán code"}
+              : lastEvent === "FULLSCREEN_EXIT"
+                ? "Bạn vừa thoát chế độ toàn màn hình"
+                : lastEvent === "PASTE"
+                  ? "Bạn vừa dán nội dung vào trang thi"
+                  : "Cuộc thi có ghi nhận chuyển tab và dán code"}
         </p>
         <p className="text-xs leading-5 text-muted-foreground">
-          Đã ghi nhận {status.violationCount} lần · Ngưỡng cho phép{" "}
-          {status.threshold} lần.{" "}
           {status.flagged
             ? "Bạn vẫn có thể tiếp tục làm và nộp bài bình thường."
-            : `Từ lần thứ ${status.threshold + 1}, bài làm sẽ được gắn cờ; không tự động hủy bài.`}
+            : "Bạn vẫn có thể tiếp tục làm bài. Thống kê sẽ hiển thị khi xem kết quả."}
         </p>
         {connectionLost && (
           <p className="text-xs text-warning">

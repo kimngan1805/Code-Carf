@@ -7,7 +7,7 @@ export function createEventReporter(
 ) {
   const recent: number[] = [];
   const last = new Map<string, number>();
-  return (type: "TAB_SWITCH" | "PASTE", pasteLength = 0) => {
+  return (type: ProctoringEventInput["type"], pasteLength = 0) => {
     try {
       const now = clock();
       while (recent.length && recent[0] <= now - 60_000) recent.shift();

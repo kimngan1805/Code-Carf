@@ -695,6 +695,8 @@ try {
       assert.equal((await restarted.json()).data.deadlineAt, firstDeadline);
       const html = await (await request(`/contests/${live.slug}/play`)).text();
       assert.ok(html.includes(prompt) && !html.includes(hidden));
+      assert.ok(html.includes('aria-label="Màn hình làm bài riêng"'));
+      assert.ok(!html.includes('placeholder="Tìm bài học, cuộc thi..."'));
       assert.equal(
         (await (await request(`${prefix}/clock`)).json()).data.deadlineAt,
         firstDeadline,
@@ -748,6 +750,21 @@ try {
       assert.equal(participant.violationCount, 4);
       assert.ok(participant.flaggedAt);
       assert.equal(participant.finishedAt, null);
+    },
+  );
+  await check(
+    "fullscreen exits are accepted only for an active attempt",
+    async () => {
+      const response = await otherRequest(`${prefix}/proctoring-events`, {
+        method: "POST",
+        ...json({
+          clientEventId: randomUUID(),
+          type: "FULLSCREEN_EXIT",
+          occurredAt: new Date().toISOString(),
+        }),
+      });
+      assert.equal(response.status, 200);
+      assert.equal((await response.json()).data.status.violationCount, 5);
     },
   );
   await check(
@@ -834,7 +851,12 @@ try {
       assert.ok(participant.finishedAt < participant.deadlineAt);
       const page = await otherRequest(`/contests/${live.slug}/play`);
       assert.equal(page.status, 200);
-      assert.ok((await page.text()).includes("Bạn đã nộp tất cả bài"));
+      const resultHtml = await page.text();
+      assert.ok(resultHtml.includes("Bạn đã nộp tất cả bài"));
+      assert.ok(resultHtml.includes("Thống kê trong lúc thi"));
+      assert.ok(resultHtml.includes('aria-label="Dán code: 0"'));
+      assert.ok(resultHtml.includes('aria-label="Chuyển tab: 4"'));
+      assert.ok(resultHtml.includes('aria-label="Thoát toàn màn hình: 1"'));
       const response = await otherRequest(`${prefix}/finalize`, {
         method: "POST",
       });
@@ -949,6 +971,9 @@ try {
       assert.equal(page.status, 200);
       assert.ok(!html.includes(prompt));
       assert.ok(html.includes("Lượt làm bài của bạn đã hết giờ"));
+      assert.ok(html.includes('aria-label="Dán code: 1"'));
+      assert.ok(html.includes('aria-label="Chuyển tab: 29"'));
+      assert.ok(html.includes('aria-label="Thoát toàn màn hình: 0"'));
       assert.equal(
         (await request(`${prefix}/start`, { method: "POST" })).status,
         403,

@@ -1,12 +1,17 @@
 import { z } from "zod";
 
-export const trackedEventTypes = ["TAB_SWITCH", "PASTE"] as const;
+export const trackedEventTypes = [
+  "TAB_SWITCH",
+  "PASTE",
+  "FULLSCREEN_EXIT",
+] as const;
 const common = {
   clientEventId: z.uuid(),
   occurredAt: z.iso.datetime(),
 };
 export const proctoringEventSchema = z.discriminatedUnion("type", [
   z.object({ ...common, type: z.literal("TAB_SWITCH") }).strict(),
+  z.object({ ...common, type: z.literal("FULLSCREEN_EXIT") }).strict(),
   z
     .object({
       ...common,

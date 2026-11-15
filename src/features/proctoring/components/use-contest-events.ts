@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createEventReporter } from "../reporter";
 import type { ViolationStatus } from "../rules";
+import type { ProctoringEventInput } from "../schema";
 
 export function useContestEvents(
   slug: string,
@@ -10,13 +11,15 @@ export function useContestEvents(
   initial: ViolationStatus,
 ) {
   const [status, setStatus] = useState(initial);
-  const [lastEvent, setLastEvent] = useState<"TAB_SWITCH" | "PASTE" | null>(
-    null,
-  );
+  const [lastEvent, setLastEvent] = useState<
+    ProctoringEventInput["type"] | null
+  >(null);
   const [connectionLost, setConnectionLost] = useState(false);
   useEffect(() => {
     if (!enabled) return;
     let stopped = false;
+    let wasFullscreen = !!document.fullscreenElement;
+    let lastLeaveAt = -Infinity;
     const url = `/api/contests/${encodeURIComponent(slug)}/proctoring-events`;
     function acceptStatus(next: ViolationStatus) {
       if (stopped) return;
@@ -57,18 +60,31 @@ export function useContestEvents(
         if (!stopped) setConnectionLost(true);
       }
     });
+    const reportLeave = (type: "TAB_SWITCH" | "FULLSCREEN_EXIT") => {
+      // One action can trigger both visibility and fullscreen events.
+      if (Date.now() - lastLeaveAt < 1000) return;
+      lastLeaveAt = Date.now();
+      setLastEvent(type);
+      report(type);
+    };
     const onVisibility = () => {
       if (document.visibilityState === "hidden") {
-        setLastEvent("TAB_SWITCH");
-        report("TAB_SWITCH");
+        reportLeave("TAB_SWITCH");
       } else void sync();
     };
     const onPaste = (event: ClipboardEvent) => {
       setLastEvent("PASTE");
       report("PASTE", event.clipboardData?.getData("text").length ?? 0);
     };
+    const onFullscreen = () => {
+      const active = !!document.fullscreenElement;
+      if (wasFullscreen && !active && document.visibilityState !== "hidden")
+        reportLeave("FULLSCREEN_EXIT");
+      wasFullscreen = active;
+    };
     document.addEventListener("visibilitychange", onVisibility);
     document.addEventListener("paste", onPaste, { capture: true });
+    document.addEventListener("fullscreenchange", onFullscreen);
     void sync();
     const poll = window.setInterval(() => void sync(), 15000);
     return () => {
@@ -76,6 +92,7 @@ export function useContestEvents(
       window.clearInterval(poll);
       document.removeEventListener("visibilitychange", onVisibility);
       document.removeEventListener("paste", onPaste, { capture: true });
+      document.removeEventListener("fullscreenchange", onFullscreen);
     };
   }, [slug, enabled]);
   return { status, lastEvent, connectionLost };
