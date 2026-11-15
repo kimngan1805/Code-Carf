@@ -11,8 +11,12 @@ import {
 import { redirect } from "next/navigation";
 import { getDashboard } from "@/features/dashboard/service";
 import { AppError } from "@/lib/errors";
+import { getCurrentUser } from "@/features/auth/service";
+import { isTeacherRole } from "@/features/auth/permissions";
 
 export default async function DashboardPage() {
+  const user = await getCurrentUser();
+  if (user && isTeacherRole(user.role.name)) redirect("/creator");
   // Layout and page render in parallel, so the page also handles a missing account.
   const dashboard = await getDashboard().catch((error) => {
     if (error instanceof AppError && [401, 403].includes(error.status))

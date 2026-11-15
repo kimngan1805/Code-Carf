@@ -2,6 +2,8 @@
 
 ## Automated checks
 
+Teacher/Admin navigation stays under `/creator/paths`: list → `/creator/paths/<slug>` → `/creator/paths/<slug>/rooms/<roomId>`. Back links return to the corresponding management page. These previews allow owned drafts and bypass learner enrollment/unlock requirements only after server-side role/ownership checks. Teachers opening learner `/paths` URLs are redirected to management; students keep the learner URLs and access rules. Default Teacher/Admin dashboard navigation leads to `/creator`.
+
 Apply migrations, regenerate the client (`npx prisma generate`), and seed the local database. Run the app, then run:
 
 ```sh

@@ -1,15 +1,29 @@
 import { beforeEach, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  find: vi.fn(),
+  room: vi.fn(),
   role: vi.fn(),
   list: vi.fn(),
   update: vi.fn(),
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.role }));
 vi.mock("@/lib/db", () => ({
-  db: { path: { findMany: mocks.list, updateMany: mocks.update } },
+  db: {
+    path: {
+      findMany: mocks.list,
+      updateMany: mocks.update,
+      findFirst: mocks.find,
+    },
+    room: { findFirst: mocks.room },
+  },
 }));
-import { getManagedPaths, setPathSequentialUnlock } from "./management";
+import {
+  getManagedPath,
+  getManagedRoom,
+  getManagedPaths,
+  setPathSequentialUnlock,
+} from "./management";
 
 beforeEach(() => {
   vi.resetAllMocks();
@@ -20,6 +34,35 @@ beforeEach(() => {
 it("only lists the authenticated teacher's real paths", async () => {
   await getManagedPaths();
   expect(mocks.list.mock.calls[0][0].where).toEqual({ creatorId: "teacher-1" });
+});
+
+it("lets teachers preview only owned paths, including drafts", async () => {
+  mocks.find.mockResolvedValue({ id: "path-1", published: false });
+  await expect(getManagedPath("draft")).resolves.toMatchObject({
+    published: false,
+  });
+  expect(mocks.find.mock.calls[0][0].where).toEqual({
+    slug: "draft",
+    creatorId: "teacher-1",
+  });
+});
+it("hides missing or foreign path previews", async () => {
+  mocks.find.mockResolvedValue(null);
+  await expect(getManagedPath("foreign")).rejects.toMatchObject({
+    status: 404,
+  });
+});
+it("checks both the room's parent path and its owner before previewing content", async () => {
+  mocks.room.mockResolvedValue({ id: "room-1" });
+  await getManagedRoom("owned", "room-1");
+  expect(mocks.room.mock.calls[0][0].where).toEqual({
+    id: "room-1",
+    path: { slug: "owned", creatorId: "teacher-1" },
+  });
+  mocks.room.mockResolvedValue(null);
+  await expect(getManagedRoom("other", "room-1")).rejects.toMatchObject({
+    status: 404,
+  });
 });
 it("atomically restricts teacher updates to owned paths", async () => {
   await setPathSequentialUnlock("path-1", false);
