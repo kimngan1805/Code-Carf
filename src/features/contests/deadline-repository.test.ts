@@ -4,9 +4,9 @@ const tx = vi.hoisted(() => ({
   $queryRaw: vi.fn(),
   contest: { findUnique: vi.fn() },
   contestParticipant: { findUnique: vi.fn(), update: vi.fn() },
-  contestExercise: { findUnique: vi.fn() },
+  contestExercise: { findUnique: vi.fn(), findMany: vi.fn() },
   contestDraft: { findUnique: vi.fn(), upsert: vi.fn(), update: vi.fn() },
-  submission: { create: vi.fn(), findFirst: vi.fn() },
+  submission: { create: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
 }));
 vi.mock("@/lib/db", () => ({
   db: { $transaction: async (run: (client: typeof tx) => unknown) => run(tx) },
@@ -61,6 +61,11 @@ beforeEach(() => {
   tx.contestDraft.findUnique.mockResolvedValue(draft);
   tx.submission.create.mockResolvedValue({ id: "final-submission" });
   tx.submission.findFirst.mockResolvedValue(null);
+  tx.contestExercise.findMany.mockResolvedValue([
+    { exerciseId: "exercise" },
+    { exerciseId: "next" },
+  ]);
+  tx.submission.findMany.mockResolvedValue([{ exerciseId: "exercise" }]);
 });
 afterEach(() => vi.useRealTimers());
 
@@ -166,6 +171,83 @@ describe("deadline persistence", () => {
       new Date(end - 1),
     );
   });
+  it.each([
+    input,
+    { ...input, source: "print(2)" },
+    { ...input, language: "javascript", source: "console.log(1)" },
+  ])(
+    "rejects resubmission even after code or language changes",
+    async (answer) => {
+      tx.submission.findFirst.mockResolvedValue({ id: "existing-submission" });
+      await expect(createTimedContestSubmission(answer)).rejects.toMatchObject({
+        status: 409,
+        code: "EXERCISE_ALREADY_SUBMITTED",
+      });
+      expect(tx.submission.findFirst).toHaveBeenCalledWith({
+        where: {
+          contestId: input.contestId,
+          userId: input.userId,
+          exerciseId: input.exerciseId,
+        },
+        select: { id: true },
+      });
+      expect(tx.submission.create).not.toHaveBeenCalled();
+    },
+  );
+  it("allows the first answer and scopes checks to the participant, contest and exercise", async () => {
+    const changed = { ...input, source: "print(2)" };
+    await expect(createTimedContestSubmission(changed)).resolves.toEqual({
+      id: "final-submission",
+    });
+    expect(tx.submission.findFirst).toHaveBeenCalledWith({
+      where: {
+        contestId: changed.contestId,
+        userId: changed.userId,
+        exerciseId: changed.exerciseId,
+      },
+      select: { id: true },
+    });
+    expect(tx.submission.create.mock.calls[0][0].data).toMatchObject(changed);
+    expect(tx.contestParticipant.update).not.toHaveBeenCalled();
+  });
+  it("finishes the attempt and stores the final result atomically when all exercises are submitted", async () => {
+    tx.submission.findMany.mockResolvedValue([
+      { exerciseId: "exercise" },
+      { exerciseId: "next" },
+    ]);
+    await createTimedContestSubmission(input);
+    expect(tx.contestParticipant.update).toHaveBeenCalledWith({
+      where: { contestId_userId: { contestId: "contest", userId: "student" } },
+      data: { finishedAt: new Date(end - 1) },
+    });
+    expect(tx.contestDraft.upsert.mock.calls[0][0].update).toEqual({
+      finalSubmissionId: "final-submission",
+    });
+  });
+  it("recovers a manually completed attempt before the timer expires", async () => {
+    tx.contestParticipant.findUnique.mockResolvedValue({
+      ...participant,
+      finishedAt: new Date(end - 10),
+    });
+    tx.contestDraft.findUnique.mockResolvedValue({
+      ...draft,
+      finalSubmissionId: "last-manual",
+    });
+    await expect(finalizeSavedDraft("contest", "student")).resolves.toEqual({
+      submissionId: "last-manual",
+    });
+    expect(tx.submission.create).not.toHaveBeenCalled();
+  });
+  it("rechecks the deadline after looking for an identical submission", async () => {
+    tx.submission.findFirst.mockImplementation(async () => {
+      vi.setSystemTime(end);
+      return null;
+    });
+    await expect(createTimedContestSubmission(input)).rejects.toMatchObject({
+      code: "CONTEST_NOT_OPEN",
+    });
+    expect(tx.submission.create).not.toHaveBeenCalled();
+  });
   it.each([end, end + 1])(
     "rejects manual submissions at or after the deadline (%s)",
     async (now) => {
@@ -236,6 +318,11 @@ describe("deadline persistence", () => {
       submissionId: "manual-submission",
     });
     expect(tx.submission.create).not.toHaveBeenCalled();
+    expect(tx.submission.findFirst.mock.calls[0][0].where).toEqual({
+      contestId: "contest",
+      userId: "student",
+      exerciseId: "exercise",
+    });
   });
   it.each([
     null,

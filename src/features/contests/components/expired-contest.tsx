@@ -41,17 +41,20 @@ export function FinalizationNotice({
 export function ExpiredContest({
   slug,
   title,
+  completed = false,
 }: {
   slug: string;
   title: string;
+  completed?: boolean;
 }) {
   const finalization = useContestFinalization(slug, true);
   return (
     <section className="mx-auto max-w-2xl space-y-5 rounded-2xl border bg-background p-6">
       <h1 className="text-2xl font-bold">{title}</h1>
       <p className="text-sm text-muted-foreground">
-        Lượt làm bài của bạn đã hết giờ. Bạn không thể sửa hoặc nộp thêm bài
-        mới.
+        {completed
+          ? "Bạn đã nộp tất cả bài và hoàn thành lượt thi."
+          : "Lượt làm bài của bạn đã hết giờ. Bạn không thể sửa hoặc nộp thêm bài mới."}
       </p>
       <FinalizationNotice finalization={finalization} />
       <Button asChild variant="outline">

@@ -365,6 +365,63 @@ try {
     },
   );
   await check(
+    "repeated identical manual submissions are rejected",
+    async () => {
+      const response = await request(`${prefix}/submissions`, {
+        method: "POST",
+        ...json(source),
+      });
+      assert.equal(response.status, 409);
+      assert.equal(
+        (await response.json()).error.code,
+        "EXERCISE_ALREADY_SUBMITTED",
+      );
+      assert.equal(
+        await db.submission.count({
+          where: { contestId: live.id, userId: student.id, ...source },
+        }),
+        1,
+      );
+    },
+  );
+  await check(
+    "parallel edited submissions cannot replace a submitted exercise",
+    async () => {
+      const edited = { ...source, source: 'print("edited answer")' };
+      const responses = await Promise.all(
+        Array.from({ length: 4 }, () =>
+          request(`${prefix}/submissions`, { method: "POST", ...json(edited) }),
+        ),
+      );
+      assert.equal(
+        responses.filter((response) => response.status === 201).length,
+        0,
+      );
+      assert.equal(
+        responses.filter((response) => response.status === 409).length,
+        4,
+      );
+      for (const response of responses.filter((item) => item.status === 409))
+        assert.equal(
+          (await response.json()).error.code,
+          "EXERCISE_ALREADY_SUBMITTED",
+        );
+      assert.equal(
+        await db.submission.count({
+          where: { contestId: live.id, userId: student.id, ...edited },
+        }),
+        0,
+      );
+    },
+  );
+  await check("changing the language cannot resubmit an exercise", async () => {
+    const response = await request(`${prefix}/submissions`, {
+      method: "POST",
+      ...json({ ...source, language: "javascript", source: "console.log(1)" }),
+    });
+    assert.equal(response.status, 409);
+  });
+  await check(
     "a registered student can start later and gets a separate full duration",
     async () => {
       const detail = await otherRequest(`/contests/${live.slug}`);
@@ -470,6 +527,63 @@ try {
         ).status,
         403,
       );
+      const responses = await Promise.all(
+        Array.from({ length: 4 }, (_, index) =>
+          otherRequest(`${prefix}/submissions`, {
+            method: "POST",
+            ...json({
+              ...source,
+              exerciseId: secondExercise.id,
+              source: `print(${index})`,
+            }),
+          }),
+        ),
+      );
+      assert.equal(
+        responses.filter((response) => response.status === 201).length,
+        1,
+      );
+      assert.ok(
+        responses.every((response) =>
+          [201, 403, 409].includes(response.status),
+        ),
+      );
+      assert.equal(
+        await db.submission.count({
+          where: {
+            contestId: live.id,
+            userId: other.id,
+            exerciseId: secondExercise.id,
+          },
+        }),
+        1,
+      );
+    },
+  );
+  await check(
+    "the last manual answer completes the attempt before expiry and survives reload",
+    async () => {
+      const participant = await db.contestParticipant.findUniqueOrThrow({
+        where: key(live.id, other.id),
+      });
+      assert.ok(participant.finishedAt);
+      assert.ok(participant.finishedAt < participant.deadlineAt);
+      const page = await otherRequest(`/contests/${live.slug}/play`);
+      assert.equal(page.status, 200);
+      assert.ok((await page.text()).includes("Bạn đã nộp tất cả bài"));
+      const response = await otherRequest(`${prefix}/finalize`, {
+        method: "POST",
+      });
+      assert.equal(response.status, 200);
+      const result = await response.json();
+      assert.equal(result.data.submission.exerciseId, secondExercise.id);
+      assert.equal(result.data.submission.autoSubmitted, false);
+      assert.equal(
+        await db.submission.count({
+          where: { contestId: live.id, userId: other.id },
+        }),
+        2,
+      );
       assert.equal(
         (
           await otherRequest(`${prefix}/submissions`, {
@@ -477,7 +591,11 @@ try {
             ...json(source),
           })
         ).status,
-        201,
+        403,
+      );
+      assert.equal(
+        (await otherRequest(`${prefix}/start`, { method: "POST" })).status,
+        403,
       );
     },
   );

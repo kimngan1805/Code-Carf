@@ -8,18 +8,23 @@ import {
 } from "./repository";
 import { contestSubmissionSchema } from "./submission-schema";
 import { assertParticipantCanEnter, getAttemptDeadline } from "./access";
-import { createTimedContestSubmission } from "./deadline-repository";
+import {
+  createTimedContestSubmission,
+  getContestSubmissionProgress,
+} from "./deadline-repository";
 
 export async function getContestWorkspace(slug: string) {
   const entry = await getContestEntry(slug);
-  const [exercises, submissions] = await Promise.all([
+  const [exercises, submissions, progress] = await Promise.all([
     listContestExercises(entry.contest.id),
     listUserContestSubmissions(entry.contest.id, entry.userId),
+    getContestSubmissionProgress(entry.contest.id, entry.userId),
   ]);
   const serverNow = Date.now();
   assertParticipantCanEnter(entry.contest, entry.participant, serverNow);
   return {
     userId: entry.userId,
+    progress,
     contest: {
       id: entry.contest.id,
       slug: entry.contest.slug,
@@ -72,6 +77,10 @@ export async function submitContestSolution(slug: string, body: unknown) {
   );
   return {
     ...result,
+    progress: await getContestSubmissionProgress(
+      entry.contest.id,
+      entry.userId,
+    ),
     id: result.submissionId,
     exerciseId: parsed.data.exerciseId,
     createdAt: saved.createdAt.toISOString(),
