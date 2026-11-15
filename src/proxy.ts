@@ -21,6 +21,7 @@ export const config = {
     "/settings/:path*",
     "/hv/achievements/:path*",
     "/hv/profile/:path*",
+    "/leaderboard/:path*",
     "/u/:path*",
     "/hv/paths/:path*",
     "/hv/rooms/:path*",

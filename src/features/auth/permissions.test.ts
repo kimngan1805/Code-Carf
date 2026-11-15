@@ -32,6 +32,14 @@ describe("role routing", () => {
     expect(allowedRole("/hv/profile", RoleName.ADMIN)).toBe(false);
     expect(allowedRole("/hv/profile", undefined)).toBe(false);
   });
+  it("allows only students into leaderboard", () => {
+    expect(allowedRole("/leaderboard", RoleName.STUDENT)).toBe(true);
+    expect(allowedRole("/leaderboard", RoleName.TEACHER)).toBe(false);
+    expect(allowedRole("/leaderboard", RoleName.GRADER)).toBe(false);
+    expect(allowedRole("/leaderboard", RoleName.ADMIN)).toBe(false);
+    expect(allowedRole("/leaderboard", RoleName.GUEST)).toBe(false);
+    expect(allowedRole("/leaderboard", undefined)).toBe(false);
+  });
   it("allows all authenticated roles to view public student profiles", () => {
     for (const role of Object.values(RoleName)) {
       expect(allowedRole("/u/student-1", role)).toBe(true);
