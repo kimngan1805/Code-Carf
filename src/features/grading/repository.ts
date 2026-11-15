@@ -1,5 +1,6 @@
 import type { SubmissionStatus } from "@prisma/client";
 import { db } from "../../lib/db";
+import { computeContestParticipantStanding } from "../leaderboard/contest-ranking";
 
 export function findCodeExerciseWithTests(exerciseId: string) {
   return db.exercise.findUnique({
@@ -34,6 +35,17 @@ export async function isExerciseInContest(
     select: { contestId: true },
   });
   return link !== null;
+}
+
+export async function findContestExercisePoints(
+  contestId: string,
+  exerciseId: string,
+): Promise<number | null> {
+  const link = await db.contestExercise.findUnique({
+    where: { contestId_exerciseId: { contestId, exerciseId } },
+    select: { points: true },
+  });
+  return link?.points ?? null;
 }
 
 export function countRecentSubmissions(userId: string, since: Date) {
@@ -72,11 +84,83 @@ export function finishSubmission(
     runtimeMs: number | null;
     memoryKb: number | null;
   },
+  contestContext?: { contestId: string; userId: string } | null,
 ) {
-  return db.submission.update({
-    where: { id },
-    data: result,
-    select: { id: true },
+  if (!contestContext) {
+    return db.submission.update({
+      where: { id },
+      data: result,
+      select: { id: true },
+    });
+  }
+
+  return db.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT "userId" FROM "ContestParticipant" WHERE "contestId" = ${contestContext.contestId} AND "userId" = ${contestContext.userId} FOR UPDATE`;
+
+    const updated = await tx.submission.update({
+      where: { id },
+      data: result,
+      select: { id: true },
+    });
+
+    const [contest, participant, submissions] = await Promise.all([
+      tx.contest.findUnique({
+        where: { id: contestContext.contestId },
+        select: { penaltyMinutes: true },
+      }),
+      tx.contestParticipant.findUnique({
+        where: {
+          contestId_userId: {
+            contestId: contestContext.contestId,
+            userId: contestContext.userId,
+          },
+        },
+        select: { userId: true },
+      }),
+      tx.submission.findMany({
+        where: {
+          contestId: contestContext.contestId,
+          userId: contestContext.userId,
+        },
+        select: {
+          exerciseId: true,
+          contestId: true,
+          status: true,
+          score: true,
+          createdAt: true,
+        },
+      }),
+    ]);
+
+    if (contest && participant) {
+      const standing = computeContestParticipantStanding(
+        submissions.map((item) => ({
+          userId: contestContext.userId,
+          exerciseId: item.exerciseId,
+          contestId: item.contestId,
+          status: item.status,
+          score: item.score,
+          createdAt: item.createdAt,
+        })),
+        contest.penaltyMinutes,
+        contestContext.contestId,
+      );
+
+      await tx.contestParticipant.update({
+        where: {
+          contestId_userId: {
+            contestId: contestContext.contestId,
+            userId: contestContext.userId,
+          },
+        },
+        data: {
+          score: standing.score,
+          penaltyMinutes: standing.penaltyMinutes,
+        },
+      });
+    }
+
+    return updated;
   });
 }
 

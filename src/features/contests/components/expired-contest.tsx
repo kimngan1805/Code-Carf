@@ -106,9 +106,16 @@ export function ExpiredContest({
             : "Lượt thi chưa bị gắn cờ."}
         </p>
       </section>
-      <Button asChild variant="outline">
-        <Link href={`/contests/${slug}`}>Về chi tiết cuộc thi</Link>
-      </Button>
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button asChild>
+          <Link href={`/contests/${slug}?tab=leaderboard`}>
+            Xem bảng xếp hạng
+          </Link>
+        </Button>
+        <Button asChild variant="outline">
+          <Link href={`/contests/${slug}`}>Về chi tiết cuộc thi</Link>
+        </Button>
+      </div>
     </section>
   );
 }

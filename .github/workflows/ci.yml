@@ -6,6 +6,20 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ci -d ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       AUTH_SECRET: ci-only-placeholder-secret-at-least-32-characters
@@ -19,10 +33,9 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npm run typecheck
+      - name: Apply database migrations
+        run: npx prisma migrate deploy
+
       - name: Test
         run: npm test
-        env:
-          # CI has no database. An empty URL makes integration tests skip themselves
-          # (see docs/testing.md) instead of failing on the placeholder URL above.
-          DATABASE_URL: ""
       - run: npm run build

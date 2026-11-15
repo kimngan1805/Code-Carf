@@ -12,12 +12,14 @@ import {
   countRecentSubmissions,
   createPendingSubmission,
   findCodeExerciseWithTests,
+  findContestExercisePoints,
   finishSubmission,
   isExerciseInContest,
   markSubmissionRunning,
   findStoredSubmission,
   claimPendingSubmission,
 } from "./repository";
+import { emitContestLeaderboardUpdated } from "../leaderboard/contest-events";
 import { isPassing, summarizeTests } from "./scoring";
 import { completeRoomIfDone, type RoomCompletion } from "./room-completion";
 import { getGradingAdapter } from "./service";
@@ -185,14 +187,24 @@ export async function gradePendingSubmission(submissionId: string) {
   const parsed = submitInputSchema.safeParse(saved);
   const exercise = await findCodeExerciseWithTests(saved.exerciseId);
   if (!parsed.success || !exercise || exercise.kind !== ExerciseKind.CODE) {
-    if (await claimPendingSubmission(submissionId))
-      await finishSubmission(submissionId, {
-        status: "ERROR",
+    if (await claimPendingSubmission(submissionId)) {
+      const errorOutcome = {
+        status: "ERROR" as const,
         score: 0,
         feedback: "Không thể chấm bản nháp đã lưu.",
         runtimeMs: null,
         memoryKb: null,
-      });
+      };
+      if (saved.contestId) {
+        await finishSubmission(submissionId, errorOutcome, {
+          contestId: saved.contestId,
+          userId: saved.userId,
+        });
+        emitContestLeaderboardUpdated(saved.contestId);
+      } else {
+        await finishSubmission(submissionId, errorOutcome);
+      }
+    }
     return;
   }
   if (!(await claimPendingSubmission(submissionId))) return;
@@ -216,7 +228,10 @@ async function gradeStoredSolution(
 ): Promise<SubmissionResult> {
   const exerciseId = exercise.id;
 
-  const maxScore = exercise.points;
+  const contestPoints = contestId
+    ? await findContestExercisePoints(contestId, exerciseId)
+    : null;
+  const maxScore = contestPoints ?? exercise.points;
   let outcome: Omit<SubmissionResult, "submissionId" | "maxScore">;
 
   try {
@@ -295,13 +310,22 @@ async function gradeStoredSolution(
     };
   }
 
-  await finishSubmission(submissionId, {
+  const submissionOutcome = {
     status: outcome.status,
     score: outcome.score,
     feedback: outcome.feedback,
     runtimeMs: outcome.runtimeMs,
     memoryKb: outcome.memoryKb,
-  });
+  };
+  if (contestId) {
+    await finishSubmission(submissionId, submissionOutcome, {
+      contestId,
+      userId,
+    });
+    emitContestLeaderboardUpdated(contestId);
+  } else {
+    await finishSubmission(submissionId, submissionOutcome);
+  }
   logger.info("submission.graded", {
     submissionId,
     exerciseId,
