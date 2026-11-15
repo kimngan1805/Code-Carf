@@ -1,4 +1,12 @@
+import type { Difficulty, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+
+export type CatalogFilters = {
+  q?: string;
+  difficulty?: Difficulty;
+  tag?: string;
+  sort: "newest" | "popular";
+};
 
 function learnerSelection(userId: string) {
   return {
@@ -7,6 +15,24 @@ function learnerSelection(userId: string) {
     title: true,
     description: true,
     sequentialUnlock: true,
+    difficulty: true,
+    tags: true,
+    estimatedMinutes: true,
+    coverTheme: true,
+    publishedAt: true,
+    // Only the display name and the approved teaching school are public; never the email.
+    creator: {
+      select: {
+        name: true,
+        teacherApplications: {
+          where: { status: "APPROVED" as const },
+          orderBy: { reviewedAt: "desc" as const },
+          take: 1,
+          select: { schoolName: true, province: true },
+        },
+      },
+    },
+    _count: { select: { enrollments: true } },
     enrollments: { where: { userId }, select: { userId: true }, take: 1 },
     rooms: {
       orderBy: { position: "asc" as const },
@@ -22,12 +48,47 @@ function learnerSelection(userId: string) {
   } as const;
 }
 
-export function listPaths(userId: string) {
+export function listPaths(userId: string, filters?: CatalogFilters) {
+  const where: Prisma.PathWhereInput = { published: true };
+  if (filters?.difficulty) where.difficulty = filters.difficulty;
+  if (filters?.tag) where.tags = { has: filters.tag };
+  if (filters?.q) {
+    const contains = { contains: filters.q, mode: "insensitive" as const };
+    where.OR = [
+      { title: contains },
+      { description: contains },
+      { tags: { has: filters.q } },
+      { creator: { name: contains } },
+    ];
+  }
+  const newest = [
+    { publishedAt: { sort: "desc" as const, nulls: "last" as const } },
+    { createdAt: "desc" as const },
+    { id: "asc" as const },
+  ];
   return db.path.findMany({
-    where: { published: true },
+    where,
     select: learnerSelection(userId),
-    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    orderBy:
+      filters?.sort === "popular"
+        ? [{ enrollments: { _count: "desc" as const } }, ...newest]
+        : newest,
   });
+}
+
+/** Chủ đề đang được dùng nhiều nhất trên các lộ trình đã xuất bản, để làm nút lọc nhanh. */
+export async function listPopularTags(limit = 12) {
+  const rows = await db.path.findMany({
+    where: { published: true },
+    select: { tags: true },
+  });
+  const counts = new Map<string, number>();
+  for (const { tags } of rows)
+    for (const tag of tags) counts.set(tag, (counts.get(tag) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([tag]) => tag);
 }
 
 export function findPublishedPath(slug: string, userId: string) {

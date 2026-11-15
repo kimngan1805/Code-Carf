@@ -4,7 +4,13 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { enrollAction } from "../actions";
 
-export function EnrollButton({ slug }: { slug: string }) {
+export function EnrollButton({
+  slug,
+  label = "Đăng ký học",
+}: {
+  slug: string;
+  label?: string;
+}) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string>();
   return (
@@ -19,7 +25,7 @@ export function EnrollButton({ slug }: { slug: string }) {
           })
         }
       >
-        {pending ? "Đang đăng ký..." : "Đăng ký học"}
+        {pending ? "Đang thêm..." : label}
       </Button>
       {error && (
         <p role="alert" className="text-sm text-destructive">
