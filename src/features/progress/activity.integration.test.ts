@@ -6,19 +6,10 @@ import {
 } from "@prisma/client";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { db } from "../../lib/db";
+import { canConnectToDatabase } from "../../test-utils/database";
 import { recordLearningActivity } from "./activity";
 import { awardCompletedWeekTopBadge } from "./badge-awarding";
 import { MILESTONE_BADGES } from "./badges";
-
-async function canConnectToDatabase(): Promise<boolean> {
-  if (!process.env.DATABASE_URL) return false;
-  try {
-    await db.$queryRawUnsafe("SELECT 1");
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 const hasDatabase = await canConnectToDatabase();
 
