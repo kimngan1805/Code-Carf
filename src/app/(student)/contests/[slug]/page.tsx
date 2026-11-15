@@ -6,7 +6,6 @@ import {
   Clock3,
   FileCode2,
   ShieldCheck,
-  Trophy,
   Users,
 } from "lucide-react";
 import { AppError } from "@/lib/errors";
@@ -76,15 +75,7 @@ export default async function ContestDetailPage({
         <ArrowLeft className="size-4" aria-hidden />
         Tất cả cuộc thi
       </Link>
-      <header className="rounded-3xl bg-primary p-7 text-primary-foreground sm:p-9">
-        <Trophy className="mb-4 size-9" aria-hidden />
-        <h1 className="break-words text-3xl font-bold sm:text-4xl">
-          {contest.title}
-        </h1>
-        <p className="mt-3 text-sm text-primary-foreground/80">
-          Một thử thách mới, một bước tiến mới.
-        </p>
-      </header>
+      <h1 className="sr-only">Chi tiết cuộc thi</h1>
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_340px]">
         <div className="space-y-6">
           <section className="rounded-2xl border bg-background p-6">
