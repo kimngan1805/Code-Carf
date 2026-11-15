@@ -39,6 +39,18 @@ DATABASE_URL="<supabase session pooler url>" SEED_PASSWORD="<strong password>" n
 This creates `admin@`, `teacher@`, `student@` and `grader@local.test` with that password
 plus sample paths and a contest. Share the password only with the people who need it.
 
+## 4. Sample C++ path (optional)
+
+After the deploy that includes the exercise migration has finished, seed the sample path
+from your machine. `SEED_TEACHER_EMAIL` is an existing teacher or admin account that will
+own the path (it defaults to `teacher@local.test`):
+
+```bash
+DATABASE_URL="<supabase session pooler url>" SEED_TEACHER_EMAIL="<teacher email>" npm run db:seed:cpp
+```
+
+It is safe to run again: the path, rooms, exercises and test cases are updated in place.
+
 ## Notes
 
 - Email is not sent yet (the console mailer only logs). Tracked in #109.

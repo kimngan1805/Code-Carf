@@ -1,6 +1,7 @@
 /**
  * Lộ trình mẫu "Lập trình C++ cơ bản": 12 bài học, 15 bài tập code có test case.
- * Chạy: npm run db:seed:cpp (cần chạy `npm run db:seed` trước để có tài khoản giáo viên).
+ * Chạy: npm run db:seed:cpp (cần chạy `npm run db:seed` trước để có tài khoản giáo viên,
+ * hoặc đặt SEED_TEACHER_EMAIL thành một giáo viên/admin đã có).
  * Chạy lại nhiều lần an toàn: mọi thứ upsert theo slug / id cố định, test case được ghi lại.
  * Đáp án của từng test được TÍNH bằng hàm solve bên dưới, không gõ tay, để tránh sai số.
  */
@@ -599,13 +600,19 @@ Bạn đã đi hết lộ trình **Lập trình C++ cơ bản**: từ dòng \`He
 ];
 
 async function main() {
+  // Mặc định dùng giáo viên của seed local; trên deploy đặt SEED_TEACHER_EMAIL
+  // thành email một giáo viên (hoặc admin) có thật để lộ trình thuộc về họ.
+  const teacherEmail = process.env.SEED_TEACHER_EMAIL ?? "teacher@local.test";
   const teacher = await prisma.user.findUnique({
-    where: { email: "teacher@local.test" },
+    where: { email: teacherEmail },
+    select: { id: true, role: { select: { name: true } } },
   });
   if (!teacher)
     throw new Error(
-      "Chưa có teacher@local.test. Hãy chạy `npm run db:seed` trước.",
+      `Chưa có tài khoản ${teacherEmail}. Hãy chạy \`npm run db:seed\` hoặc đặt SEED_TEACHER_EMAIL.`,
     );
+  if (!["TEACHER", "ADMIN"].includes(teacher.role.name))
+    throw new Error(`${teacherEmail} không phải giáo viên hay admin.`);
 
   const description =
     "Từ dòng code đầu tiên đến giải được các bài thuật toán nhập môn: biến, điều kiện, vòng lặp, hàm, mảng và chuỗi. Dành cho người chưa từng lập trình, khoảng 12 giờ học.";
