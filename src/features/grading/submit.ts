@@ -19,6 +19,7 @@ import {
   claimPendingSubmission,
 } from "./repository";
 import { isPassing, summarizeTests } from "./scoring";
+import { completeRoomIfDone, type RoomCompletion } from "./room-completion";
 import { getGradingAdapter } from "./service";
 import { canAccessRoom } from "../rooms/access";
 
@@ -73,6 +74,11 @@ export interface SubmissionResult {
   runtimeMs: number | null;
   memoryKb: number | null;
   tests: TestResult[];
+  /**
+   * Set only when this accepted practice submission finished the room and
+   * paid its XP; absent for repeats, contests and unfinished rooms.
+   */
+  roomCompletion?: RoomCompletion;
 }
 
 const STATUS_LABELS: Record<GradeStatus, string> = {
@@ -164,6 +170,7 @@ export async function submitSolution(
 
   return gradeStoredSolution(
     submissionId,
+    userId,
     exercise,
     source,
     language,
@@ -191,6 +198,7 @@ export async function gradePendingSubmission(submissionId: string) {
   if (!(await claimPendingSubmission(submissionId))) return;
   await gradeStoredSolution(
     submissionId,
+    saved.userId,
     exercise,
     parsed.data.source,
     parsed.data.language,
@@ -200,6 +208,7 @@ export async function gradePendingSubmission(submissionId: string) {
 
 async function gradeStoredSolution(
   submissionId: string,
+  userId: string,
   exercise: NonNullable<Awaited<ReturnType<typeof findCodeExerciseWithTests>>>,
   source: string,
   language: SubmissionLanguage,
@@ -300,7 +309,46 @@ async function gradeStoredSolution(
     status: outcome.status,
   });
 
-  return { submissionId, maxScore, ...outcome };
+  const roomCompletion = await completeRoomAfterAcceptance(
+    userId,
+    exercise.roomId,
+    contestId,
+    outcome.status,
+    submissionId,
+  );
+  return {
+    submissionId,
+    maxScore,
+    ...outcome,
+    ...(roomCompletion ? { roomCompletion } : {}),
+  };
+}
+
+/**
+ * Finishing the last exercise of a room completes it (progress, XP, next room
+ * unlock). Only accepted practice submissions count; contests are scored by
+ * their own flow. The submission is already saved, so a failure here must not
+ * lose the grading result: it is logged, and the next accepted submission
+ * retries (completion is idempotent).
+ */
+async function completeRoomAfterAcceptance(
+  userId: string,
+  roomId: string | null,
+  contestId: string | null,
+  status: SubmissionResult["status"],
+  submissionId: string,
+): Promise<RoomCompletion | null> {
+  if (contestId || !roomId || status !== "ACCEPTED") return null;
+  try {
+    return await completeRoomIfDone(userId, roomId);
+  } catch (error) {
+    logger.error("submission.room_completion_failed", {
+      submissionId,
+      roomId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
 }
 
 /** e.g. "Đạt 3/5 test case. Sai kết quả: 1, Quá thời gian: 1." */
