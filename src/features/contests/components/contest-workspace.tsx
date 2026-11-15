@@ -27,6 +27,7 @@ import { useServerDraft } from "./use-server-draft";
 import { useContestFinalization } from "./use-contest-finalization";
 import { FinalizationNotice } from "./expired-contest";
 import type { ContestDraftInput } from "../draft-schema";
+import { ContestSubmissionDialog } from "./contest-submission-dialog";
 
 const CodeEditor = dynamic(
   () =>
@@ -70,6 +71,7 @@ function SolutionPanel({
     selected.starter,
   );
   const [pending, setPending] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const router = useRouter();
   const inFlight = useRef(false);
   const [error, setError] = useState("");
@@ -206,7 +208,10 @@ function SolutionPanel({
               : "Bản nháp được lưu trên trình duyệt này."}
           </p>
           <Button
-            onClick={submit}
+            onClick={() => {
+              if (isLast) setConfirming(true);
+              else void submit();
+            }}
             disabled={
               closed ||
               pending ||
@@ -245,6 +250,14 @@ function SolutionPanel({
           </p>
         )}
       </div>
+      <ContestSubmissionDialog
+        open={confirming && !closed && !submitted}
+        onCancel={() => setConfirming(false)}
+        onConfirm={() => {
+          setConfirming(false);
+          void submit();
+        }}
+      />
     </section>
   );
 }
@@ -260,6 +273,14 @@ const resultLabels: Record<string, string> = {
 };
 
 export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
+  const router = useRouter();
+  const [completionOpen, setCompletionOpen] = useState(false);
+  const detailUrl = `/contests/${encodeURIComponent(data.contest.slug)}`;
+  useEffect(() => {
+    if (!completionOpen) return;
+    const timeout = window.setTimeout(() => router.replace(detailUrl), 2500);
+    return () => window.clearTimeout(timeout);
+  }, [completionOpen, detailUrl, router]);
   const [selectedId, setSelectedId] = useState(
     data.progress.nextExerciseId ?? data.exercises[0]?.id ?? "",
   );
@@ -296,6 +317,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const exercise = data.exercises.find((item) => item.id === selectedId);
   function recordResult(result: ContestSubmissionResult, language: string) {
     setProgress(result.progress);
+    if (result.progress.finished) setCompletionOpen(true);
     if (result.progress.nextExerciseId)
       setSelectedId(result.progress.nextExerciseId);
     setHistory((previous) =>
@@ -316,6 +338,12 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   }
   return (
     <div className="mx-auto max-w-screen-2xl space-y-5">
+      <ContestSubmissionDialog
+        open={completionOpen}
+        completed
+        onConfirm={() => router.replace(detailUrl)}
+        onCancel={() => router.replace(detailUrl)}
+      />
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-5">
         <div className="min-w-0">
           <Link

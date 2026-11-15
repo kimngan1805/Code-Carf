@@ -184,6 +184,8 @@ try {
     await check(`exam ${filter} filter`, async () => {
       const html = await (await request(`/contests?status=${filter}`)).text();
       assert.ok(html.includes(expected.title));
+      if (filter === "live")
+        assert.ok(html.includes('aria-label="Trạng thái cuộc thi: Đang thi"'));
       if (filter === "upcoming") {
         assert.ok(html.includes(live.title));
         assert.ok(html.includes("Đang mở đăng ký"));
@@ -348,6 +350,11 @@ try {
       });
       const clock = await request(`${prefix}/clock`);
       assert.equal(clock.status, 200);
+      const detailHtml = await (await request(`/contests/${live.slug}`)).text();
+      assert.ok(
+        detailHtml.includes('aria-label="Trạng thái cuộc thi: Đang thi"'),
+      );
+      assert.ok(detailHtml.includes("Đã đóng đăng ký"));
       assert.equal((await clock.json()).data.deadlineAt, firstDeadline);
       assert.equal(
         (await request(`${prefix}/finalize`, { method: "POST" })).status,

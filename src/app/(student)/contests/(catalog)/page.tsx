@@ -13,6 +13,7 @@ import {
   formatContestDate,
   getContestPhase,
   examPhaseLabels,
+  phaseLabels,
   getExamPhase,
   type ContestPhase,
 } from "@/features/contests/time";
@@ -100,7 +101,12 @@ export default async function ContestsPage({
               className="flex min-w-0 flex-col rounded-2xl border bg-background p-6 shadow-sm"
             >
               <div className="flex items-center justify-between gap-3">
-                <PhaseBadge phase={getContestPhase(contest, now)} />
+                <div className="space-y-2">
+                  <PhaseBadge phase={getExamPhase(contest, now)} />
+                  <p className="text-xs text-muted-foreground">
+                    {phaseLabels[getContestPhase(contest, now)]}
+                  </p>
+                </div>
                 <Trophy className="size-6 text-accent-strong" aria-hidden />
               </div>
               <h2 className="mt-5 break-words text-xl font-bold text-primary">
