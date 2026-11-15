@@ -21,13 +21,28 @@ once CI is green, and the container applies pending migrations on start.
    - `DATABASE_URL`: the Supabase session pooler URL
    - `SUPABASE_URL`: the project URL (`https://<ref>.supabase.co`)
    - `SUPABASE_SERVICE_ROLE_KEY`: the `service_role` key
+   - `CRON_SECRET`: a random secret string (>= 16 chars) used to authenticate `POST /api/cron/weekly-top-badge`
 3. Deploy. The first start runs `prisma migrate deploy` (this also inserts the roles).
 4. Open the Render URL.
 
 Free Render services sleep after about 15 minutes without traffic; the next visit takes
 30–60 seconds to wake. Open the site once before a demo.
 
-## 3. Demo accounts (once)
+## 3. Scheduled weekly badge job (GitHub Actions)
+
+`.github/workflows/weekly-top-badge.yml` runs every Monday at `00:15 Asia/Ho_Chi_Minh`
+(`15 17 * * 0` UTC) and calls `POST /api/cron/weekly-top-badge` so GitHub Actions never
+needs `DATABASE_URL` or Supabase credentials.
+
+In your GitHub repository → Settings → Secrets and variables → Actions, set:
+
+- Variable (or Secret) `APP_URL`: your Render service URL (e.g. `https://code-carf.onrender.com`)
+- Secret `CRON_SECRET`: the exact same `CRON_SECRET` configured on Render
+
+The job automatically catches up on recent missed weeks (up to 4 closed weeks) and is
+safe to re-trigger via **Actions → Weekly Top Badge → Run workflow**.
+
+## 4. Demo accounts (once)
 
 Migrations do not create accounts. From your machine, point the seed at Supabase and
 choose a password that is not the public default:
@@ -39,7 +54,7 @@ DATABASE_URL="<supabase session pooler url>" SEED_PASSWORD="<strong password>" n
 This creates `admin@`, `teacher@`, `student@` and `grader@local.test` with that password
 plus sample paths and a contest. Share the password only with the people who need it.
 
-## 4. Sample C++ path (optional)
+## 5. Sample C++ path (optional)
 
 After the deploy that includes the exercise migration has finished, seed the sample path
 from your machine. `SEED_TEACHER_EMAIL` is an existing teacher or admin account that will
