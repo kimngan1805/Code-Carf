@@ -91,3 +91,35 @@ export async function claimPendingSubmission(id: string) {
   });
   return result.count === 1;
 }
+
+/**
+ * Exercise data for the practice editor page. Only visible test cases are
+ * selected, so hidden input/expected never leave the database layer.
+ */
+export function findExerciseForPractice(exerciseId: string) {
+  return db.exercise.findUnique({
+    where: { id: exerciseId },
+    select: {
+      id: true,
+      title: true,
+      prompt: true,
+      kind: true,
+      points: true,
+      timeLimitMs: true,
+      memoryLimitKb: true,
+      roomId: true,
+      room: {
+        select: {
+          id: true,
+          title: true,
+          path: { select: { slug: true, title: true, published: true } },
+        },
+      },
+      testCases: {
+        where: { isHidden: false },
+        orderBy: { id: "asc" },
+        select: { id: true, input: true, expected: true },
+      },
+    },
+  });
+}
