@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/features/auth/service";
+import { isTeacherRole } from "@/features/auth/permissions";
 import { Progress } from "@/components/ui/progress";
 import { EnrollButton } from "@/features/paths/components/enroll-button";
 import { getPath } from "@/features/paths/service";
@@ -11,6 +13,9 @@ export default async function PathPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  const user = await getCurrentUser();
+  if (user && isTeacherRole(user.role.name))
+    redirect(`/creator/paths/${encodeURIComponent(slug)}`);
   const path = await getPath(slug).catch((error) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;
@@ -58,7 +63,18 @@ export default async function PathPage({
               className="space-y-2 rounded-xl border bg-background p-4"
             >
               <h3 className="font-semibold break-words">
-                {room.position}. {room.title}
+                {room.accessible && path.canEnroll ? (
+                  <Link
+                    href={`/rooms/${room.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {room.position}. {room.title}
+                  </Link>
+                ) : (
+                  <>
+                    {room.position}. {room.title}
+                  </>
+                )}
               </h3>
               {room.description && (
                 <p className="text-sm text-muted-foreground break-words">
@@ -69,6 +85,13 @@ export default async function PathPage({
                 {room.exercises} bài tập ·{" "}
                 {room.completed ? "Đã hoàn thành" : "Chưa hoàn thành"}
               </p>
+              {!room.accessible && (
+                <p className="text-sm text-muted-foreground">
+                  {path.enrolled
+                    ? "Hoàn thành bài học trước để mở khóa."
+                    : "Đăng ký lộ trình để mở bài học."}
+                </p>
+              )}
             </li>
           ))}
         </ol>

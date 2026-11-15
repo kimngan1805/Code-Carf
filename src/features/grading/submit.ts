@@ -18,6 +18,7 @@ import {
 } from "./repository";
 import { isPassing, summarizeTests } from "./scoring";
 import { getGradingAdapter } from "./service";
+import { canAccessRoom } from "../rooms/access";
 
 export const MAX_SOURCE_LENGTH = 64 * 1024;
 /** At most this many submissions per user in any rolling window (#75). */
@@ -120,8 +121,14 @@ export async function submitSolution(
       "Bài tập không thuộc cuộc thi này",
     );
   }
-  // TODO(#70): check canAccessRoom(userId, exercise.roomId) once stream A
-  // merges src/features/rooms/access.ts.
+  // Contest entry is authorized by the contest flow; reusable exercises may
+  // also belong to a practice room that the contestant has not unlocked.
+  if (
+    !contestId &&
+    exercise.roomId &&
+    !(await canAccessRoom(userId, exercise.roomId))
+  )
+    throw new AppError(403, "ROOM_LOCKED", "Bài học đang khóa.");
 
   // Counted in the DB so the limit holds across server instances. Parallel
   // requests can still slip one or two over; that is acceptable here.

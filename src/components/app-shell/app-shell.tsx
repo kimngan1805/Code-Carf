@@ -97,7 +97,7 @@ export function AppShell({
                 <span className="absolute top-2 right-2.5 size-2 rounded-full bg-accent ring-2 ring-background" />
               </button>
               <Link
-                href="/paths"
+                href={teacherMode ? "/creator/paths" : "/paths"}
                 className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
               >
                 {teacherMode ? (

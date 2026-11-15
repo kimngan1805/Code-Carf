@@ -7,7 +7,6 @@ import {
   Award,
   BookOpen,
   House,
-  Layers,
   LayoutDashboard,
   Trophy,
   User,
@@ -80,16 +79,10 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
         icon: LayoutDashboard,
       },
       {
-        href: "/paths",
+        href: "/creator/paths",
         label: "Lộ trình học",
         short: "Lộ trình",
         icon: BookOpen,
-      },
-      {
-        href: "/rooms",
-        label: "Bài học",
-        short: "Bài học",
-        icon: Layers,
       },
     ],
   },
@@ -103,7 +96,12 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
 
 function useIsActive() {
   const pathname = usePathname();
-  return (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+  return (href: string) =>
+    href === "/creator"
+      ? pathname === href
+      : pathname === href ||
+        pathname.startsWith(`${href}/`) ||
+        (href === "/paths" && pathname.startsWith("/rooms/"));
 }
 
 function getVisibleNavGroups(role: RoleName) {

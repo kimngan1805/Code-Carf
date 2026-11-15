@@ -19,12 +19,17 @@ function presentPath(path: PathRecord) {
     completed,
     total,
     percent: total === 0 ? 0 : Math.round((completed / total) * 100),
-    rooms: path.rooms.map((room) => ({
+    rooms: path.rooms.map((room, index) => ({
       id: room.id,
       title: room.title,
       description: room.description,
       position: room.position,
       completed: room.progress.length > 0,
+      accessible:
+        path.enrollments.length > 0 &&
+        (!path.sequentialUnlock ||
+          index === 0 ||
+          path.rooms[index - 1].progress.length > 0),
       exercises: room._count.exercises,
     })),
   };
