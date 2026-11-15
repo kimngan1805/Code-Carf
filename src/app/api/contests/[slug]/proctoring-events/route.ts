@@ -1,5 +1,8 @@
 import { assertSameOrigin } from "@/features/contests/http";
-import { reportContestEvent } from "@/features/proctoring/service";
+import {
+  reportContestEvent,
+  getOwnViolationStatus,
+} from "@/features/proctoring/service";
 import { AppError } from "@/lib/errors";
 import { fail, ok } from "@/lib/api-response";
 
@@ -19,6 +22,17 @@ export async function POST(
       throw new AppError(400, "INVALID_JSON", "Dữ liệu không hợp lệ.");
     }
     return ok(await reportContestEvent((await params).slug, body));
+  } catch (error) {
+    return fail(error);
+  }
+}
+
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ slug: string }> },
+) {
+  try {
+    return ok(await getOwnViolationStatus((await params).slug));
   } catch (error) {
     return fail(error);
   }

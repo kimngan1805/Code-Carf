@@ -157,7 +157,12 @@ export function createTimedContestSubmission(data: {
     assertParticipantCanEnter(contest, participant, Date.now());
     const submission = await tx.submission.create({
       // Reserve grading before exposing an early-finished attempt to recovery requests.
-      data: { ...data, status: "RUNNING", createdAt: acceptedAt },
+      data: {
+        ...data,
+        status: "RUNNING",
+        createdAt: acceptedAt,
+        flaggedForReview: !!participant.flaggedAt,
+      },
       select: { id: true },
     });
     const progress = await getContestSubmissionProgress(
@@ -234,6 +239,7 @@ export function finalizeSavedDraft(contestId: string, userId: string) {
           source: draft.source,
           language: draft.language,
           autoSubmitted: true,
+          flaggedForReview: !!participant.flaggedAt,
           status: "PENDING",
         },
         select: { id: true },
