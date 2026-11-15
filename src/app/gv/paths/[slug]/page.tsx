@@ -6,10 +6,13 @@ import { AppError } from "@/lib/errors";
 
 export default async function ManagedPathPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   const { slug } = await params;
+  const created = (await searchParams).created === "1";
   const path = await getManagedPath(slug).catch((error) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;
@@ -22,6 +25,14 @@ export default async function ManagedPathPage({
       >
         ← Quản lý lộ trình
       </Link>
+      {created && (
+        <p
+          role="status"
+          className="rounded-xl bg-success/10 p-4 text-sm font-medium text-success"
+        >
+          Đã tạo lộ trình thành công.
+        </p>
+      )}
       <section className="space-y-4 rounded-2xl border bg-background p-4 sm:p-6">
         <h1 className="text-2xl font-bold text-primary break-words">
           {path.title}
