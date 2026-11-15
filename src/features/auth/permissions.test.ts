@@ -3,6 +3,18 @@ import { RoleName } from "@prisma/client";
 import { allowedRole } from "./permissions";
 
 describe("role routing", () => {
+  it("restricts learner search to students", () => {
+    expect(allowedRole("/hv/search", RoleName.STUDENT)).toBe(true);
+    for (const role of [
+      RoleName.TEACHER,
+      RoleName.GRADER,
+      RoleName.ADMIN,
+      RoleName.GUEST,
+      undefined,
+    ]) {
+      expect(allowedRole("/hv/search", role)).toBe(false);
+    }
+  });
   it("allows admins into admin routes", () =>
     expect(allowedRole("/admin/users", RoleName.ADMIN)).toBe(true));
   it("blocks students from grader routes", () =>

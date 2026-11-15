@@ -16,6 +16,7 @@ export const proxy = auth((request) => {
 
 export const config = {
   matcher: [
+    "/hv/search/:path*",
     "/hv/dashboard/:path*",
     "/onboarding/:path*",
     "/settings/:path*",

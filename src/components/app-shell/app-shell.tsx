@@ -12,6 +12,7 @@ import {
 import { logoutAction } from "@/features/auth/actions";
 import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
+import { SearchForm } from "@/features/search/components/search-form";
 import { Sidebar } from "./sidebar";
 import { MobileSidebar } from "./mobile-sidebar";
 
@@ -85,18 +86,21 @@ export function AppShell({
             </div>
 
             <div className="ml-auto flex items-center gap-1.5">
-              <label className="relative mr-1 hidden md:block">
-                <span className="sr-only">Tìm kiếm</span>
-                <Search
-                  className="pointer-events-none absolute top-1/2 left-3.5 size-4 -translate-y-1/2 text-muted-foreground"
-                  aria-hidden
-                />
-                <input
-                  type="search"
-                  placeholder="Tìm bài học, cuộc thi..."
-                  className="h-10 w-72 rounded-full border border-border/80 bg-muted/50 pr-4 pl-10 text-sm transition-[box-shadow,background-color] placeholder:text-muted-foreground focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-highlight/20 focus-visible:outline-none"
-                />
-              </label>
+              {role === RoleName.STUDENT && (
+                <>
+                  <div className="mr-1 hidden w-80 md:block">
+                    <SearchForm />
+                  </div>
+                  <Link
+                    href="/hv/search"
+                    aria-label="Tìm kiếm"
+                    className={`${roundButton} md:hidden`}
+                  >
+                    <Search className="size-5" aria-hidden />
+                  </Link>
+                </>
+              )}
+
               <button
                 type="button"
                 aria-label="Thông báo"
