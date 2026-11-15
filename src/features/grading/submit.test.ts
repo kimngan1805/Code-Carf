@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "../../lib/errors";
 import type { GradeRequest, GradeResult } from "./adapter";
 import { mockGradingAdapter } from "./mock-adapter";
+import { logger } from "../../lib/logger";
 
-const { repo, adapter, canAccessRoom } = vi.hoisted(() => ({
+const { repo, adapter, canAccessRoom, completeRoomIfDone } = vi.hoisted(() => ({
   canAccessRoom: vi.fn(),
+  completeRoomIfDone: vi.fn(),
   repo: {
     findCodeExerciseWithTests: vi.fn(),
     isExerciseInContest: vi.fn(),
@@ -23,6 +25,7 @@ const { repo, adapter, canAccessRoom } = vi.hoisted(() => ({
 
 vi.mock("./repository", () => repo);
 vi.mock("../rooms/access", () => ({ canAccessRoom }));
+vi.mock("./room-completion", () => ({ completeRoomIfDone }));
 vi.mock("./service", () => ({ getGradingAdapter: () => adapter }));
 vi.mock("../../lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
@@ -435,5 +438,115 @@ describe("submitSolution", () => {
     });
     expect(repo.findCodeExerciseWithTests).not.toHaveBeenCalled();
     expect(repo.createPendingSubmission).not.toHaveBeenCalled();
+  });
+});
+
+describe("room completion after grading", () => {
+  const completion = {
+    roomId: "room-1",
+    roomTitle: "Room 1",
+    xpAwarded: 50,
+    totalXp: 50,
+    level: 1,
+    previousLevel: 1,
+    leveledUp: false,
+    nextRoom: { id: "room-2", title: "Room 2" },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    canAccessRoom.mockResolvedValue(true);
+    repo.findCodeExerciseWithTests.mockResolvedValue({
+      ...exercise,
+      roomId: "room-1",
+    });
+    repo.isExerciseInContest.mockResolvedValue(true);
+    repo.createPendingSubmission.mockResolvedValue({ id: "sub-1" });
+    repo.markSubmissionRunning.mockResolvedValue({ id: "sub-1" });
+    repo.finishSubmission.mockResolvedValue({ id: "sub-1" });
+    repo.countRecentSubmissions.mockResolvedValue(0);
+    adapter.grade.mockImplementation((request) =>
+      mockGradingAdapter.grade(request),
+    );
+    completeRoomIfDone.mockResolvedValue(completion);
+  });
+
+  it("completes the room after an accepted practice submission is saved", async () => {
+    const result = await submitSolution(validInput);
+
+    expect(result.status).toBe("ACCEPTED");
+    expect(completeRoomIfDone).toHaveBeenCalledTimes(1);
+    expect(completeRoomIfDone).toHaveBeenCalledWith("user-1", "room-1");
+    // the submission is stored as graded before progress is touched
+    expect(repo.finishSubmission.mock.invocationCallOrder[0]).toBeLessThan(
+      completeRoomIfDone.mock.invocationCallOrder[0],
+    );
+    expect(result.roomCompletion).toEqual(completion);
+  });
+
+  it("leaves roomCompletion out when the room is not finished or already done", async () => {
+    completeRoomIfDone.mockResolvedValue(null);
+    const result = await submitSolution(validInput);
+
+    expect(result.status).toBe("ACCEPTED");
+    expect(result).not.toHaveProperty("roomCompletion");
+  });
+
+  it("does not complete a room for a rejected submission", async () => {
+    adapter.grade.mockResolvedValue({
+      status: "WRONG_ANSWER",
+      feedback: "wrong",
+    });
+    const result = await submitSolution(validInput);
+
+    expect(result.status).toBe("REJECTED");
+    expect(completeRoomIfDone).not.toHaveBeenCalled();
+  });
+
+  it("does not complete a room for a contest submission", async () => {
+    const result = await submitSolution({
+      ...validInput,
+      contestId: "contest-1",
+    });
+
+    expect(result.status).toBe("ACCEPTED");
+    expect(completeRoomIfDone).not.toHaveBeenCalled();
+  });
+
+  it("does not complete anything for an exercise that is not in a room", async () => {
+    repo.findCodeExerciseWithTests.mockResolvedValue({
+      ...exercise,
+      roomId: null,
+    });
+    await submitSolution(validInput);
+
+    expect(completeRoomIfDone).not.toHaveBeenCalled();
+  });
+
+  it("keeps the graded result when completing the room fails", async () => {
+    completeRoomIfDone.mockRejectedValue(new Error("db down"));
+    const result = await submitSolution(validInput);
+
+    expect(result.status).toBe("ACCEPTED");
+    expect(result).not.toHaveProperty("roomCompletion");
+    expect(repo.finishSubmission).toHaveBeenCalledTimes(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      "submission.room_completion_failed",
+      expect.objectContaining({ roomId: "room-1", message: "db down" }),
+    );
+  });
+
+  it("never completes rooms from the contest deadline grader", async () => {
+    repo.findStoredSubmission.mockResolvedValue({
+      ...validInput,
+      id: "auto-1",
+      status: "PENDING",
+      contestId: "contest",
+    });
+    repo.claimPendingSubmission.mockResolvedValue(true);
+    await gradePendingSubmission("auto-1");
+
+    expect(repo.finishSubmission).toHaveBeenCalledTimes(1);
+    expect(completeRoomIfDone).not.toHaveBeenCalled();
   });
 });
