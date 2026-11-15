@@ -5,6 +5,7 @@ import { PathUnlockSetting } from "@/features/paths/components/path-unlock-setti
 import { AppError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { PathPublication } from "@/features/paths/components/path-publication";
 
 export default async function ManagedPathPage({
   params,
@@ -48,6 +49,7 @@ export default async function ManagedPathPage({
           pathId={path.id}
           initialEnabled={path.sequentialUnlock}
         />
+        <PathPublication pathId={path.id} published={path.published} />
       </section>
       <section className="space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">

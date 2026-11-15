@@ -6,8 +6,9 @@ an optional description (up to 5,000 characters), and sequential lesson unlockin
 (enabled by default). Cancel returns to the management list without saving.
 
 Saving creates an owned, unpublished path with no rooms and opens its management
-page with success feedback. Adding rooms, editing and publishing belong to the
-remaining CRUD work in #6. Drafts stay hidden from learners and other teachers;
+page with success feedback. The management page supports adding lessons and a
+separate **Xuất bản** action once every lesson has content. **Ẩn lộ trình** returns
+it to draft visibility without deleting lessons or enrollment. Drafts stay hidden from learners and other teachers;
 admins can manage all paths.
 
 `POST /api/paths` checks the live account role and same-origin requests. It accepts
