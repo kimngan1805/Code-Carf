@@ -4,7 +4,7 @@ import { useCallback, useSyncExternalStore } from "react";
 const memoryDrafts = new Map<string, string>();
 const eventName = "code-carf-draft-change";
 
-export function useContestDraft(key: string, starter: string) {
+export function useLocalDraft(key: string, starter: string) {
   const subscribe = useCallback(
     (listener: () => void) => {
       const storageChange = (event: StorageEvent) => {
