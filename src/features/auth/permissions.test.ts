@@ -25,6 +25,13 @@ describe("role routing", () => {
       expect(allowedRole("/hv/exercises/ex-1", role)).toBe(false);
     expect(allowedRole("/hv/exercises/ex-1", undefined)).toBe(false);
   });
+  it("allows only students into submission history", () => {
+    expect(allowedRole("/hv/submissions", RoleName.STUDENT)).toBe(true);
+    expect(allowedRole("/hv/submissions/sub-1", RoleName.STUDENT)).toBe(true);
+    for (const role of [RoleName.TEACHER, RoleName.GRADER, RoleName.ADMIN])
+      expect(allowedRole("/hv/submissions/sub-1", role)).toBe(false);
+    expect(allowedRole("/hv/submissions", undefined)).toBe(false);
+  });
   it("allows all authenticated roles into settings", () => {
     for (const role of Object.values(RoleName)) {
       expect(allowedRole("/settings", role)).toBe(true);
