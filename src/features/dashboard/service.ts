@@ -1,6 +1,7 @@
 import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { getLevel } from "@/features/progress/levels";
+import { resolveEffectiveStreak } from "@/features/progress/streak";
 import { getWeekActivity, toDateKey } from "@/features/progress/week-activity";
 import { getDashboardRecords } from "./repository";
 
@@ -13,6 +14,14 @@ export async function getDashboard() {
   const week = getWeekActivity(
     records.activity.map((event) => toDateKey(event.createdAt)),
     toDateKey(now),
+  );
+  const effectiveStreak = resolveEffectiveStreak(
+    {
+      currentStreak: user.currentStreak,
+      longestStreak: user.longestStreak,
+      lastActiveOn: user.lastActiveOn,
+    },
+    now,
   );
 
   const paths = records.enrollments.map(({ path }) => {
@@ -37,8 +46,8 @@ export async function getDashboard() {
     level: getLevel(user.xp),
     rank: records.rank,
     streak: {
-      current: user.currentStreak,
-      longest: user.longestStreak,
+      current: effectiveStreak.current,
+      longest: effectiveStreak.longest,
       week,
       daysThisWeek: week.filter((day) => day.status === "done").length,
     },

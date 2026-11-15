@@ -63,6 +63,7 @@ function mockPublicDbStudent(overrides?: {
   xp?: number;
   currentStreak?: number;
   longestStreak?: number;
+  lastActiveOn?: Date | null;
 }) {
   userFindFirstMock.mockResolvedValue({
     id: overrides?.id ?? "student-1",
@@ -70,6 +71,10 @@ function mockPublicDbStudent(overrides?: {
     xp: overrides?.xp ?? 1250,
     currentStreak: overrides?.currentStreak ?? 7,
     longestStreak: overrides?.longestStreak ?? 12,
+    lastActiveOn:
+      overrides?.lastActiveOn === undefined
+        ? new Date()
+        : overrides.lastActiveOn,
     createdAt: new Date("2026-01-15T18:00:00.000Z"),
   });
 
@@ -131,6 +136,7 @@ describe("publicStudentSelect whitelist", () => {
       xp: true,
       currentStreak: true,
       longestStreak: true,
+      lastActiveOn: true,
       createdAt: true,
     });
     expect("email" in publicStudentSelect).toBe(false);
@@ -141,6 +147,7 @@ describe("publicStudentSelect whitelist", () => {
 
 describe("buildPublicStudentProfile", () => {
   it("computes level, path progress, badges and strips unexpected private fields at runtime", () => {
+    const now = new Date("2026-04-12T10:00:00+07:00");
     const pollutedRecord = {
       user: {
         id: "student-1",
@@ -148,6 +155,7 @@ describe("buildPublicStudentProfile", () => {
         xp: 1250,
         currentStreak: 7,
         longestStreak: 12,
+        lastActiveOn: new Date("2026-04-11T00:00:00.000Z"),
         createdAt: new Date("2026-01-15T18:00:00.000Z"),
         email: "secret-leak@local.test",
         passwordHash: "$2b$12$secret",
@@ -184,8 +192,10 @@ describe("buildPublicStudentProfile", () => {
       pollutedRecord as unknown as Parameters<
         typeof buildPublicStudentProfile
       >[0],
+      now,
     );
 
+    expect(dto.streak).toEqual({ current: 7, longest: 12 });
     expect(dto.level).toEqual({
       level: 3,
       title: "Lập trình viên",
@@ -207,10 +217,33 @@ describe("buildPublicStudentProfile", () => {
     });
     expect("email" in dto).toBe(false);
     expect("passwordHash" in dto).toBe(false);
+    expect("lastActiveOn" in dto).toBe(false);
     expect("submissions" in dto).toBe(false);
     expect(JSON.stringify(dto)).not.toContain("secret-leak@local.test");
     expect(JSON.stringify(dto)).not.toContain("$2b$12$secret");
     expect(JSON.stringify(dto)).not.toContain("sub-secret");
+  });
+
+  it("displays current streak as 0 when a full Vietnam day was missed while preserving longestStreak", () => {
+    const dto = buildPublicStudentProfile(
+      {
+        user: {
+          id: "student-expired",
+          name: "Học viên cũ",
+          xp: 500,
+          currentStreak: 9,
+          longestStreak: 15,
+          lastActiveOn: new Date("2026-04-10T00:00:00.000Z"),
+          createdAt: new Date("2026-01-15T18:00:00.000Z"),
+        },
+        enrollments: [],
+        completedRoomIds: [],
+        userBadges: [],
+      },
+      new Date("2026-04-12T00:00:00+07:00"),
+    );
+
+    expect(dto.streak).toEqual({ current: 0, longest: 15 });
   });
 
   it("handles completely empty student progress safely", () => {
@@ -221,12 +254,15 @@ describe("buildPublicStudentProfile", () => {
         xp: 0,
         currentStreak: 0,
         longestStreak: 0,
+        lastActiveOn: null,
         createdAt: new Date("2026-05-01T00:00:00.000Z"),
       },
       enrollments: [],
       completedRoomIds: [],
       userBadges: [],
     });
+
+    expect(dto.streak).toEqual({ current: 0, longest: 0 });
 
     expect(dto.level).toEqual({
       level: 1,
