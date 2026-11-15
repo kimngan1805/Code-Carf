@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/hv/paths", label: "Học tập" },
-  { href: "/contests", label: "Thi đấu" },
+  { href: "/thi-dau", label: "Thi đấu" },
   { href: "/leaderboard", label: "Bảng xếp hạng" },
   { href: "/hv/profile", label: "Hồ sơ" },
 ];

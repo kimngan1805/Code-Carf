@@ -27,7 +27,7 @@ export function Hero() {
               variant="outline"
               className="rounded-full bg-background px-8"
             >
-              <Link href="/contests">Tham gia thi đấu</Link>
+              <Link href="/thi-dau">Khám phá thi đấu</Link>
             </Button>
           </div>
         </div>
