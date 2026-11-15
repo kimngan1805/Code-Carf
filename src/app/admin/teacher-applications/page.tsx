@@ -34,9 +34,12 @@ export default async function TeacherApplicationsPage({
   );
 
   return (
-    <main className="mx-auto w-full max-w-4xl space-y-6 p-4 sm:p-8">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       <div>
-        <Link href="/admin" className="text-sm text-muted-foreground">
+        <Link
+          href="/admin"
+          className="text-sm text-muted-foreground hover:text-primary"
+        >
           ← Admin
         </Link>
         <h1 className="mt-1 text-2xl font-bold text-primary">
@@ -97,6 +100,6 @@ export default async function TeacherApplicationsPage({
           ))}
         </ul>
       )}
-    </main>
+    </div>
   );
 }

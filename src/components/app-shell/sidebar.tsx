@@ -32,14 +32,17 @@ export function Sidebar({
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const teacherMode = isTeacherRole(role);
   const canViewProfile = allowedRole("/hv/profile", role);
-  const homeHref = teacherMode ? "/gv" : "/hv/dashboard";
-  const accountHref = teacherMode
-    ? "/gv"
-    : canViewProfile
-      ? "/hv/profile"
-      : role === RoleName.GUEST
-        ? "/onboarding/teacher/submitted"
-        : "/grading";
+  const adminMode = role === RoleName.ADMIN;
+  const homeHref = adminMode ? "/admin" : teacherMode ? "/gv" : "/hv/dashboard";
+  const accountHref = adminMode
+    ? "/admin"
+    : teacherMode
+      ? "/gv"
+      : canViewProfile
+        ? "/hv/profile"
+        : role === RoleName.GUEST
+          ? "/onboarding/teacher/submitted"
+          : "/grading";
   const roleLabel =
     role === RoleName.ADMIN
       ? "Quản trị viên"

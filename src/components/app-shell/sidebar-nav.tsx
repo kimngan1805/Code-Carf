@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Award,
+  BadgeCheck,
   BookOpen,
   House,
   LayoutDashboard,
@@ -94,10 +95,42 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
   },
 ];
 
+export const adminNavGroups: { title: string; items: NavItem[] }[] = [
+  {
+    title: "Quản trị",
+    items: [
+      {
+        href: "/admin",
+        label: "Tổng quan",
+        short: "Tổng quan",
+        icon: LayoutDashboard,
+      },
+      {
+        href: "/admin/teacher-applications",
+        label: "Duyệt giảng viên",
+        short: "Giảng viên",
+        icon: BadgeCheck,
+      },
+    ],
+  },
+  {
+    title: "Nội dung",
+    items: [
+      {
+        href: "/gv/paths",
+        label: "Lộ trình học",
+        short: "Lộ trình",
+        icon: BookOpen,
+      },
+      { href: "/contests", label: "Cuộc thi", short: "Cuộc thi", icon: Trophy },
+    ],
+  },
+];
+
 function useIsActive() {
   const pathname = usePathname();
   return (href: string) =>
-    href === "/gv"
+    href === "/gv" || href === "/admin"
       ? pathname === href
       : pathname === href ||
         pathname.startsWith(`${href}/`) ||
@@ -105,7 +138,12 @@ function useIsActive() {
 }
 
 function getVisibleNavGroups(role: RoleName) {
-  const base = isTeacherRole(role) ? teacherNavGroups : navGroups;
+  const base =
+    role === RoleName.ADMIN
+      ? adminNavGroups
+      : isTeacherRole(role)
+        ? teacherNavGroups
+        : navGroups;
   return base
     .map((group) => ({
       ...group,
