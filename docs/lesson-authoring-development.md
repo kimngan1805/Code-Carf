@@ -12,7 +12,8 @@ lesson ID and position. Failed saves retain the form contents.
 
 No schema migration is needed. This implements creation and content editing from
 #7; reordering and deletion remain separate work. Path publication is still part
-of #6, so adding content does not publish a draft.
+of #6. Use **Xuất bản** on the managed path detail page when all lessons have
+content; adding or editing lessons does not automatically publish a draft.
 
 ## Checks
 
