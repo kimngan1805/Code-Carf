@@ -22,6 +22,12 @@ enum ExerciseKind {
 }
 
 /// PENDING: chờ chấm. RUNNING: đang chạy test case. NEEDS_REVIEW: bài viết tay AI đã chấm sơ bộ, chờ grader duyệt.
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
 enum SubmissionStatus {
   PENDING
   RUNNING
@@ -257,6 +263,7 @@ model Exercise {
   title         String
   prompt        String
   kind          ExerciseKind      @default(CODE)
+  difficulty    Difficulty        @default(EASY)
   points        Int               @default(100)
   timeLimitMs   Int               @default(2000)
   memoryLimitKb Int               @default(262144)

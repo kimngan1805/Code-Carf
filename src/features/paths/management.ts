@@ -90,6 +90,16 @@ export async function getManagedRoom(slug: string, roomId: string) {
       description: true,
       content: true,
       path: { select: { title: true, slug: true } },
+      exercises: {
+        orderBy: { id: "asc" },
+        select: {
+          id: true,
+          title: true,
+          difficulty: true,
+          points: true,
+          _count: { select: { testCases: true } },
+        },
+      },
     },
   });
   if (!room)
@@ -99,4 +109,47 @@ export async function getManagedRoom(slug: string, roomId: string) {
       "Không tìm thấy bài học bạn được quản lý.",
     );
   return room;
+}
+
+export async function getManagedExercise(
+  slug: string,
+  roomId: string,
+  exerciseId: string,
+) {
+  const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
+  const exercise = await db.exercise.findFirst({
+    where: {
+      id: exerciseId,
+      roomId,
+      room: {
+        path: {
+          slug,
+          ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
+        },
+      },
+    },
+    select: {
+      id: true,
+      title: true,
+      prompt: true,
+      difficulty: true,
+      points: true,
+      timeLimitMs: true,
+      memoryLimitKb: true,
+      testCases: {
+        orderBy: { id: "asc" },
+        select: { input: true, expected: true, isHidden: true, weight: true },
+      },
+      room: {
+        select: { id: true, title: true, path: { select: { slug: true } } },
+      },
+    },
+  });
+  if (!exercise?.room)
+    throw new AppError(
+      404,
+      "EXERCISE_NOT_FOUND",
+      "Không tìm thấy bài tập bạn được quản lý.",
+    );
+  return { ...exercise, room: exercise.room };
 }

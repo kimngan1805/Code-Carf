@@ -4,6 +4,14 @@ import { getManagedRoom } from "@/features/paths/management";
 import { AppError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
+import { DeleteExerciseButton } from "@/features/exercises/components/delete-exercise-button";
+import { Plus } from "lucide-react";
+
+const difficultyLabel = {
+  EASY: "Dễ",
+  MEDIUM: "Trung bình",
+  HARD: "Khó",
+} as const;
 
 export default async function ManagedRoomPage({
   params,
@@ -47,6 +55,53 @@ export default async function ManagedRoomPage({
       <p className="text-muted-foreground break-words">{room.description}</p>
       <section className="rounded-2xl border bg-background p-4 sm:p-6">
         <RoomMarkdown content={room.content} />
+      </section>
+      <section className="space-y-4" aria-label="Bài tập">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Bài tập</h2>
+          <Button asChild>
+            <Link
+              href={`/gv/paths/${room.path.slug}/rooms/${room.id}/exercises/new`}
+            >
+              <Plus className="size-4" aria-hidden />
+              Thêm bài tập
+            </Link>
+          </Button>
+        </div>
+        {!room.exercises.length && (
+          <p className="text-muted-foreground">Bài học chưa có bài tập.</p>
+        )}
+        <ul className="space-y-3">
+          {room.exercises.map((exercise) => (
+            <li
+              key={exercise.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-background p-4"
+            >
+              <div className="min-w-0">
+                <p className="font-semibold break-words">{exercise.title}</p>
+                <p className="text-sm text-muted-foreground">
+                  {difficultyLabel[exercise.difficulty]} · {exercise.points} XP
+                  · {exercise._count.testCases} test
+                </p>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button asChild variant="outline" size="sm">
+                  <Link
+                    href={`/gv/paths/${room.path.slug}/rooms/${room.id}/exercises/${exercise.id}/edit`}
+                  >
+                    Sửa
+                  </Link>
+                </Button>
+                <DeleteExerciseButton
+                  pathSlug={room.path.slug}
+                  roomId={room.id}
+                  exerciseId={exercise.id}
+                  title={exercise.title}
+                />
+              </div>
+            </li>
+          ))}
+        </ul>
       </section>
     </div>
   );
