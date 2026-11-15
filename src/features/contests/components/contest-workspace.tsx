@@ -23,6 +23,7 @@ import { ContestSubmissionDialog } from "./contest-submission-dialog";
 import { useContestEvents } from "@/features/proctoring/components/use-contest-events";
 import { ProctoringNotice } from "@/features/proctoring/components/proctoring-notice";
 import { exitExamFullscreen } from "../fullscreen";
+import { ContestLeaderboardPanel } from "@/features/leaderboard/components/contest-leaderboard-view";
 
 const CodeEditor = dynamic(
   () =>
@@ -259,6 +260,7 @@ function SolutionPanel({
 export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const router = useRouter();
   const [completionOpen, setCompletionOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const detailUrl = `/contests/${encodeURIComponent(data.contest.slug)}`;
   useEffect(() => {
     if (!completionOpen) return;
@@ -318,25 +320,38 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
             {data.contest.title}
           </h1>
         </div>
-        <div
-          className={cn(
-            "rounded-xl px-5 py-3 text-center",
-            completed
-              ? "bg-secondary/50 text-primary"
-              : closed
-                ? "bg-destructive/10 text-destructive"
-                : remaining < 300000
-                  ? "bg-warning/10 text-warning"
-                  : "bg-secondary/50 text-primary",
-          )}
-        >
-          <p className="mb-1 flex items-center justify-center gap-2 text-xs font-semibold">
-            <Clock3 className="size-3.5" aria-hidden />
-            {completed ? "ĐÃ HOÀN THÀNH" : "THỜI GIAN LÀM BÀI CỦA BẠN"}
-          </p>
-          <p role="timer" className="font-mono text-2xl font-bold tabular-nums">
-            {completed ? "Đã nộp bài" : formatDuration(remaining)}
-          </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setLeaderboardOpen(true)}
+          >
+            <Trophy className="size-4" aria-hidden />
+            <span>Bảng xếp hạng</span>
+          </Button>
+          <div
+            className={cn(
+              "rounded-xl px-5 py-3 text-center",
+              completed
+                ? "bg-secondary/50 text-primary"
+                : closed
+                  ? "bg-destructive/10 text-destructive"
+                  : remaining < 300000
+                    ? "bg-warning/10 text-warning"
+                    : "bg-secondary/50 text-primary",
+            )}
+          >
+            <p className="mb-1 flex items-center justify-center gap-2 text-xs font-semibold">
+              <Clock3 className="size-3.5" aria-hidden />
+              {completed ? "ĐÃ HOÀN THÀNH" : "THỜI GIAN LÀM BÀI CỦA BẠN"}
+            </p>
+            <p
+              role="timer"
+              className="font-mono text-2xl font-bold tabular-nums"
+            >
+              {completed ? "Đã nộp bài" : formatDuration(remaining)}
+            </p>
+          </div>
         </div>
       </header>
       {!closed && <ProctoringNotice state={proctoring} />}
@@ -486,6 +501,11 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           </div>
         </>
       )}
+      <ContestLeaderboardPanel
+        slug={data.contest.slug}
+        open={leaderboardOpen}
+        onClose={() => setLeaderboardOpen(false)}
+      />
     </div>
   );
 }
