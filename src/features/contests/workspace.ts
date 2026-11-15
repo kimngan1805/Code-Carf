@@ -7,7 +7,8 @@ import {
   listUserContestSubmissions,
 } from "./repository";
 import { contestSubmissionSchema } from "./submission-schema";
-import { assertContestOpen } from "./access";
+import { assertParticipantCanEnter, getAttemptDeadline } from "./access";
+import { createTimedContestSubmission } from "./deadline-repository";
 
 export async function getContestWorkspace(slug: string) {
   const entry = await getContestEntry(slug);
@@ -16,14 +17,18 @@ export async function getContestWorkspace(slug: string) {
     listUserContestSubmissions(entry.contest.id, entry.userId),
   ]);
   const serverNow = Date.now();
-  assertContestOpen(entry.contest, serverNow);
+  assertParticipantCanEnter(entry.contest, entry.participant, serverNow);
   return {
     userId: entry.userId,
     contest: {
       id: entry.contest.id,
       slug: entry.contest.slug,
       title: entry.contest.title,
-      endsAt: entry.contest.endsAt!.toISOString(),
+      deadlineAt: getAttemptDeadline(
+        entry.contest,
+        entry.participant,
+      )!.toISOString(),
+      examEndsAt: entry.contest.examEndsAt!.toISOString(),
     },
     serverNow,
     maxSourceLength: MAX_SOURCE_LENGTH,
@@ -52,11 +57,14 @@ export async function submitContestSolution(slug: string, body: unknown) {
       "Chọn bài, ngôn ngữ hợp lệ và nhập code (tối đa 64 KB).",
     );
   const entry = await getContestEntry(slug);
-  const result = await submitSolution({
-    ...parsed.data,
-    userId: entry.userId,
-    contestId: entry.contest.id,
-  });
+  const result = await submitSolution(
+    {
+      ...parsed.data,
+      userId: entry.userId,
+      contestId: entry.contest.id,
+    },
+    { createSubmission: createTimedContestSubmission },
+  );
   const saved = await findUserContestSubmission(
     result.submissionId,
     entry.contest.id,

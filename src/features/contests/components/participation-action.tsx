@@ -10,17 +10,25 @@ import type { ContestPhase } from "../time";
 export function ParticipationAction({
   slug,
   phase,
+  examPhase,
   registered,
   finished,
   canParticipate,
   needsFaceCheck,
+  attemptStarted,
+  attemptExpired,
+  durationMinutes,
 }: {
   slug: string;
   phase: ContestPhase;
+  examPhase: ContestPhase;
   registered: boolean;
   finished: boolean;
   canParticipate: boolean;
   needsFaceCheck: boolean;
+  attemptStarted: boolean;
+  attemptExpired: boolean;
+  durationMinutes: number;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -47,22 +55,43 @@ export function ParticipationAction({
       setPending(false);
     }
   }
+  async function startAttempt() {
+    setPending(true);
+    setError("");
+    try {
+      const response = await fetch(
+        `/api/contests/${encodeURIComponent(slug)}/start`,
+        { method: "POST" },
+      );
+      const result = await response.json();
+      if (!response.ok)
+        throw new Error(result.error?.message ?? "Chưa thể bắt đầu làm bài.");
+      router.push(`/contests/${slug}/play`);
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Mất kết nối. Vui lòng thử lại.",
+      );
+      setPending(false);
+    }
+  }
   if (!canParticipate)
     return (
       <p className="rounded-xl bg-muted p-3 text-sm text-muted-foreground">
         Chỉ tài khoản học viên được đăng ký và vào thi.
       </p>
     );
-  if (finished || phase === "ended")
+  if (finished || attemptExpired)
     return (
-      <Button disabled className="w-full">
-        {finished ? "Bạn đã kết thúc lượt thi" : "Cuộc thi đã kết thúc"}
+      <Button asChild className="w-full">
+        <Link href={`/contests/${slug}/play`}>Xem kết quả lượt làm bài</Link>
       </Button>
     );
-  if (phase === "unscheduled")
+  if (!registered && phase !== "live")
     return (
       <Button disabled className="w-full">
-        Chưa mở đăng ký
+        {phase === "ended" ? "Đã đóng đăng ký" : "Chưa mở đăng ký"}
       </Button>
     );
   return (
@@ -76,23 +105,40 @@ export function ParticipationAction({
             <CheckCircle2 className="size-4" aria-hidden />
             Bạn đã đăng ký
           </p>
-          {phase === "live" ? (
-            needsFaceCheck ? (
-              <p className="rounded-xl bg-warning/10 p-3 text-sm text-warning">
-                Bạn cần hoàn tất xác minh khuôn mặt để vào cuộc thi này.
-              </p>
-            ) : (
-              <Button asChild className="w-full">
-                <Link href={`/contests/${slug}/play`}>
-                  <LogIn className="size-4" aria-hidden />
-                  Vào thi ngay
-                </Link>
-              </Button>
-            )
-          ) : (
+          {examPhase !== "live" ? (
             <Button disabled className="w-full">
-              Chờ đến giờ bắt đầu
+              {examPhase === "upcoming"
+                ? "Chờ đến giờ thi"
+                : examPhase === "ended"
+                  ? "Đã đóng làm bài"
+                  : "Chưa có lịch thi"}
             </Button>
+          ) : needsFaceCheck ? (
+            <p className="rounded-xl bg-warning/10 p-3 text-sm text-warning">
+              Bạn cần hoàn tất xác minh khuôn mặt để vào cuộc thi này.
+            </p>
+          ) : attemptStarted ? (
+            <Button asChild className="w-full">
+              <Link href={`/contests/${slug}/play`}>
+                <LogIn className="size-4" aria-hidden />
+                Tiếp tục làm bài
+              </Link>
+            </Button>
+          ) : (
+            <>
+              <Button
+                onClick={startAttempt}
+                disabled={pending}
+                className="w-full"
+              >
+                {pending ? "Đang bắt đầu..." : "Bắt đầu làm bài"}
+              </Button>
+              <p className="text-xs leading-5 text-muted-foreground">
+                Bạn có tối đa {durationMinutes} phút từ khi bắt đầu và phải kết
+                thúc trước giờ đóng làm bài chung. Tải lại trang không đặt lại
+                thời gian.
+              </p>
+            </>
           )}
         </>
       ) : (

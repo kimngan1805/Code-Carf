@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
   Check,
@@ -22,6 +22,10 @@ import { draftKey } from "../clock";
 import { formatDuration } from "../time";
 import { useServerClock } from "./use-server-clock";
 import { useContestDraft } from "./use-contest-draft";
+import { useServerDraft } from "./use-server-draft";
+import { useContestFinalization } from "./use-contest-finalization";
+import { FinalizationNotice } from "./expired-contest";
+import type { ContestDraftInput } from "../draft-schema";
 
 const CodeEditor = dynamic(
   () =>
@@ -46,11 +50,13 @@ function SolutionPanel({
   data,
   closed,
   onSubmitted,
+  onSnapshot,
 }: {
   exercise: Exercise;
   data: ContestWorkspaceData;
   closed: boolean;
   onSubmitted: (result: ContestSubmissionResult, language: string) => void;
+  onSnapshot: (snapshot: ContestDraftInput) => void;
 }) {
   const [language, setLanguage] = useState<SolutionLanguage>("python");
   const selected = languages.find((item) => item.id === language)!;
@@ -64,6 +70,22 @@ function SolutionPanel({
   const [feedback, setFeedback] = useState("");
   const [storageFailed, setStorageFailed] = useState(false);
   const [simpleEditor, setSimpleEditor] = useState(false);
+  useEffect(() => {
+    if (!closed && source.length <= data.maxSourceLength)
+      onSnapshot({
+        exerciseId: exercise.kind === "CODE" ? exercise.id : null,
+        source: exercise.kind === "CODE" ? source : "",
+        language,
+      });
+  }, [
+    closed,
+    source,
+    language,
+    exercise.id,
+    exercise.kind,
+    onSnapshot,
+    data.maxSourceLength,
+  ]);
   async function submit() {
     if (inFlight.current || closed) return;
     inFlight.current = true;
@@ -119,7 +141,7 @@ function SolutionPanel({
           Ngôn ngữ
           <select
             value={language}
-            disabled={pending}
+            disabled={pending || closed}
             onChange={(event) => {
               setLanguage(event.target.value as SolutionLanguage);
               setFeedback("");
@@ -147,6 +169,7 @@ function SolutionPanel({
           aria-label="Mã nguồn"
           spellCheck={false}
           value={source}
+          readOnly={closed}
           onChange={(event) => updateSource(event.target.value)}
           className="block min-h-96 w-full resize-y bg-background p-4 font-mono text-sm focus-visible:outline-2"
         />
@@ -155,6 +178,7 @@ function SolutionPanel({
           value={source}
           onChange={updateSource}
           language={language}
+          readOnly={closed}
         />
       )}
       <div className="space-y-3 border-t p-4">
@@ -223,10 +247,23 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const clock = useServerClock(
     data.contest.slug,
     data.serverNow,
-    Date.parse(data.contest.endsAt),
+    Date.parse(data.contest.deadlineAt),
   );
-  const remaining = clock.endsAt - clock.now;
+  const remaining = clock.deadlineAt - clock.now;
   const closed = clock.blocked || remaining <= 0;
+  const serverDraft = useServerDraft(data.contest.slug, closed);
+  const finalization = useContestFinalization(
+    data.contest.slug,
+    remaining <= 0,
+  );
+  const visibleHistory = finalization.result?.submission
+    ? [
+        finalization.result.submission,
+        ...history.filter(
+          (item) => item.id !== finalization.result?.submission?.id,
+        ),
+      ].slice(0, 20)
+    : history;
   const exercise = data.exercises.find((item) => item.id === selectedId);
   function recordResult(result: ContestSubmissionResult, language: string) {
     setHistory((previous) =>
@@ -237,6 +274,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           language,
           status: result.status,
           score: result.score,
+          autoSubmitted: false,
           feedback: result.feedback,
           createdAt: result.createdAt,
         },
@@ -271,13 +309,31 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
         >
           <p className="mb-1 flex items-center justify-center gap-2 text-xs font-semibold">
             <Clock3 className="size-3.5" aria-hidden />
-            THỜI GIAN CÒN LẠI
+            THỜI GIAN LÀM BÀI CỦA BẠN
           </p>
           <p role="timer" className="font-mono text-2xl font-bold tabular-nums">
             {formatDuration(remaining)}
           </p>
         </div>
       </header>
+      {remaining <= 0 && <FinalizationNotice finalization={finalization} />}
+      {!closed && (
+        <p
+          role="status"
+          className={cn(
+            "text-xs",
+            serverDraft.state === "error"
+              ? "text-warning"
+              : "text-muted-foreground",
+          )}
+        >
+          {serverDraft.state === "saved"
+            ? "Đã đồng bộ bài đang mở. Khi hết giờ, bản đã đồng bộ sẽ được tự nộp."
+            : serverDraft.state === "error"
+              ? "Chưa đồng bộ được bài đang mở. Hãy kiểm tra kết nối; tự nộp sẽ dùng bản đã đồng bộ gần nhất."
+              : "Đang đồng bộ bài đang mở..."}
+        </p>
+      )}
       {closed && (
         <p
           role="alert"
@@ -389,6 +445,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
               data={data}
               closed={closed}
               onSubmitted={recordResult}
+              onSnapshot={serverDraft.update}
             />
           </div>
         </>
@@ -397,7 +454,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
         <h2 className="border-b px-5 py-4 font-bold">
           Bài nộp gần đây của bạn
         </h2>
-        {history.length === 0 ? (
+        {visibleHistory.length === 0 ? (
           <p className="p-5 text-sm text-muted-foreground">
             Bạn chưa nộp bài nào trong cuộc thi này.
           </p>
@@ -424,12 +481,17 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {history.map((item) => (
+                {visibleHistory.map((item) => (
                   <tr key={item.id}>
                     <td className="px-5 py-3">
                       {data.exercises.find(
                         (entry) => entry.id === item.exerciseId,
                       )?.title ?? "Bài thi"}
+                      {item.autoSubmitted && (
+                        <span className="ml-2 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">
+                          Tự nộp
+                        </span>
+                      )}
                     </td>
                     <td className="px-5 py-3">
                       {languages.find((entry) => entry.id === item.language)

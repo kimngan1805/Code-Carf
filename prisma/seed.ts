@@ -76,8 +76,11 @@ async function main() {
   const hour = 60 * 60 * 1000;
   const sampleSchedule = {
     status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() + 72 * hour),
-    endsAt: new Date(Date.now() + 74 * hour),
+    startsAt: new Date(Date.now() - hour),
+    endsAt: new Date(Date.now() + 48 * hour),
+    examStartsAt: new Date(Date.now() + 72 * hour),
+    examEndsAt: new Date(Date.now() + 74 * hour),
+    durationMinutes: 120,
   };
   const contest = await prisma.contest.upsert({
     where: { slug: "sample-contest" },
@@ -123,8 +126,11 @@ async function main() {
   });
   const weeklySchedule = {
     status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() + 26 * hour),
-    endsAt: new Date(Date.now() + 27.5 * hour),
+    startsAt: new Date(Date.now() - hour),
+    endsAt: new Date(Date.now() + 24 * hour),
+    examStartsAt: new Date(Date.now() + 26 * hour),
+    examEndsAt: new Date(Date.now() + 27.5 * hour),
+    durationMinutes: 90,
   };
   await prisma.contest.upsert({
     where: { slug: "weekly-warmup" },

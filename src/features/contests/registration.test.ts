@@ -21,6 +21,8 @@ const contest = {
   id: "contest",
   startsAt: start,
   endsAt: new Date(+start + 3600000),
+  examStartsAt: new Date(+start + 3600000),
+  examEndsAt: new Date(+start + 7200000),
   requireFaceCheck: false,
 };
 
@@ -62,7 +64,13 @@ describe("contest registration service", () => {
       where: { contestId_userId: { contestId: "contest", userId: "student" } },
       create: { contestId: "contest", userId: "student" },
       update: {},
-      select: { joinedAt: true, finishedAt: true, faceVerifiedAt: true },
+      select: {
+        joinedAt: true,
+        startedAt: true,
+        deadlineAt: true,
+        finishedAt: true,
+        faceVerifiedAt: true,
+      },
     });
   });
   it("does not register a student in an ended contest", async () => {
@@ -73,22 +81,42 @@ describe("contest registration service", () => {
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
   it("checks entry on the server even for direct page visits", async () => {
+    mocks.findFirst.mockResolvedValue({
+      ...contest,
+      endsAt: new Date(+start - 1),
+      examStartsAt: start,
+      examEndsAt: new Date(+start + 7200000),
+    });
     mocks.findUnique.mockResolvedValue(null);
     await expect(getContestEntry("sample")).rejects.toMatchObject({
       code: "NOT_REGISTERED",
     });
     mocks.findUnique.mockResolvedValue({
+      startedAt: start,
+      deadlineAt: new Date(+start + 3600000),
       finishedAt: null,
       faceVerifiedAt: null,
     });
     vi.setSystemTime(+start - 1);
     await expect(getContestEntry("sample")).rejects.toMatchObject({
-      code: "CONTEST_NOT_OPEN",
+      code: "EXAM_NOT_STARTED",
     });
     vi.setSystemTime(start);
     await expect(getContestEntry("sample")).resolves.toMatchObject({
       userId: "student",
       serverNow: +start,
+    });
+  });
+  it("registration does not write a start time", async () => {
+    mocks.upsert.mockResolvedValue({
+      joinedAt: start,
+      startedAt: null,
+      deadlineAt: null,
+    });
+    await registerForContest("sample");
+    expect(mocks.upsert.mock.calls[0][0].create).toEqual({
+      contestId: "contest",
+      userId: "student",
     });
   });
 });

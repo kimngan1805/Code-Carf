@@ -31,10 +31,18 @@ beforeEach(() => {
   });
   mocks.entry.mockResolvedValue({
     userId: "signed-in",
+    participant: {
+      startedAt: new Date(0),
+      deadlineAt: new Date("2099-01-01"),
+      finishedAt: null,
+      faceVerifiedAt: null,
+    },
     contest: {
       id: "contest",
       slug: "sample",
       title: "Contest",
+      examStartsAt: new Date(0),
+      examEndsAt: new Date("2099-01-01"),
       startsAt: new Date(0),
       endsAt: new Date("2099-01-01"),
     },
@@ -49,13 +57,16 @@ describe("contest workspace", () => {
       language: "python",
       source: "print(1)",
     });
-    expect(mocks.submit).toHaveBeenCalledWith({
-      userId: "signed-in",
-      contestId: "contest",
-      exerciseId: "exercise",
-      language: "python",
-      source: "print(1)",
-    });
+    expect(mocks.submit).toHaveBeenCalledWith(
+      {
+        userId: "signed-in",
+        contestId: "contest",
+        exerciseId: "exercise",
+        language: "python",
+        source: "print(1)",
+      },
+      { createSubmission: expect.any(Function) },
+    );
   });
   it("maps the grading result to the contest history without losing status or score", async () => {
     const result = await submitContestSolution("sample", {

@@ -8,6 +8,9 @@ const summary = {
   description: true,
   startsAt: true,
   endsAt: true,
+  durationMinutes: true,
+  examStartsAt: true,
+  examEndsAt: true,
   penaltyMinutes: true,
   requireFaceCheck: true,
   _count: { select: { exercises: true, participants: true } },
@@ -33,7 +36,13 @@ export type ContestSummary = Awaited<ReturnType<typeof listContests>>[number];
 export function findContestParticipant(contestId: string, userId: string) {
   return db.contestParticipant.findUnique({
     where: { contestId_userId: { contestId, userId } },
-    select: { joinedAt: true, finishedAt: true, faceVerifiedAt: true },
+    select: {
+      joinedAt: true,
+      startedAt: true,
+      deadlineAt: true,
+      finishedAt: true,
+      faceVerifiedAt: true,
+    },
   });
 }
 
@@ -46,7 +55,13 @@ export async function registerContestParticipant(
       where: { contestId_userId: { contestId, userId } },
       create: { contestId, userId },
       update: {},
-      select: { joinedAt: true, finishedAt: true, faceVerifiedAt: true },
+      select: {
+        joinedAt: true,
+        startedAt: true,
+        deadlineAt: true,
+        finishedAt: true,
+        faceVerifiedAt: true,
+      },
     });
   } catch (error) {
     // Prisma may emulate an empty-update upsert. A concurrent request can win
@@ -102,6 +117,7 @@ export function listUserContestSubmissions(contestId: string, userId: string) {
       score: true,
       feedback: true,
       createdAt: true,
+      autoSubmitted: true,
     },
   });
 }
