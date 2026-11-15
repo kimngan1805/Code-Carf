@@ -3,6 +3,7 @@ import {
   ExerciseKind,
   PrismaClient,
   RoleName,
+  SubmissionStatus,
   XpSource,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
@@ -284,6 +285,8 @@ async function seedStudentDemo(
         update: {},
         create: { userId: studentId, roomId: room.id },
       });
+    if (demo.slug === "nhap-mon-lap-trinh" && path.rooms[5])
+      await seedRoomPageDemo(studentId, path.rooms[5].id);
   }
 
   const badges = [
@@ -415,6 +418,66 @@ async function seedSchools() {
         update: { level: group.level },
         create: { province: group.province, name, level: group.level },
       });
+}
+
+/** Reproducible examples for the three learner exercise states in the open sixth room. */
+async function seedRoomPageDemo(userId: string, roomId: string) {
+  await prisma.room.update({
+    where: { id: roomId },
+    data: {
+      title: "Hàm và tham số",
+      description: "Viết hàm, truyền tham số và đọc giá trị trả về.",
+      content:
+        "## Hàm trong TypeScript\n\nHàm gom một tác vụ thành một khối có thể tái sử dụng.\n\n```ts\nfunction add(a: number, b: number): number {\n  return a + b;\n}\n```\n\n### Ghi nhớ\n\n- Đặt tên hàm rõ nghĩa.\n- Khai báo kiểu của tham số.\n- Dùng `return` để trả kết quả.\n\n| Thành phần | Ý nghĩa |\n| --- | --- |\n| Tham số | Dữ liệu đầu vào |\n| Giá trị trả về | Kết quả của hàm |",
+    },
+  });
+  const examples = [
+    {
+      key: "new",
+      title: "Tổng hai số",
+      prompt:
+        "Viết hàm `add(a, b)` trả về tổng hai số.\n\nVí dụ: `add(2, 3)` trả về `5`.",
+    },
+    {
+      key: "submitted",
+      title: "Kiểm tra số chẵn",
+      prompt:
+        "Viết hàm `isEven(n)` trả về `true` nếu `n` chẵn, ngược lại trả về `false`.",
+    },
+    {
+      key: "passed",
+      title: "Tìm số lớn nhất",
+      prompt: "Viết hàm `max(a, b)` trả về số lớn hơn trong hai số.",
+    },
+  ];
+  for (const example of examples) {
+    const id = `room-demo-${roomId}-${example.key}`;
+    await prisma.exercise.upsert({
+      where: { id },
+      update: {},
+      create: { id, roomId, title: example.title, prompt: example.prompt },
+    });
+    if (example.key === "new") continue;
+    const status =
+      example.key === "passed"
+        ? SubmissionStatus.ACCEPTED
+        : SubmissionStatus.REJECTED;
+    await prisma.submission.upsert({
+      where: { id: `room-demo-${userId}-${id}` },
+      update: {},
+      create: {
+        id: `room-demo-${userId}-${id}`,
+        userId,
+        exerciseId: id,
+        contestId: null,
+        source: "// Seed demo submission",
+        language: "typescript",
+        status,
+        score: status === SubmissionStatus.ACCEPTED ? 100 : 0,
+        feedback: "Bài nộp mẫu để kiểm tra trạng thái trang Room.",
+      },
+    });
+  }
 }
 
 main().finally(() => prisma.$disconnect());
