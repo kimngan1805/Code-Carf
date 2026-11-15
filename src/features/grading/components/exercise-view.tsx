@@ -4,6 +4,7 @@ import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
 import type { ExercisePage } from "../exercise-page";
 import { MAX_SOURCE_LENGTH } from "../submit";
 import { ExerciseWorkspace } from "./exercise-workspace";
+import { ExerciseReportForm } from "@/features/exercise-reports/components/report-form";
 
 /**
  * On large screens the page fits the viewport (app header 4rem, main padding
@@ -33,6 +34,7 @@ export function ExerciseView({ exercise }: { exercise: ExercisePage }) {
               giây · {Math.round(exercise.memoryLimitKb / 1024)} MB bộ nhớ
             </p>
           </header>
+          <ExerciseReportForm key={exercise.id} exerciseId={exercise.id} />
           <section
             className="rounded-2xl border bg-background p-5"
             aria-labelledby="prompt-title"
