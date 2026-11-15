@@ -9,9 +9,9 @@ export async function enrollAction(slug: string): Promise<{ error?: string }> {
     return { error: "Lộ trình không hợp lệ." };
   try {
     await registerForPath(slug);
-    revalidatePath("/paths");
-    revalidatePath(`/paths/${slug}`);
-    revalidatePath("/dashboard");
+    revalidatePath("/hv/paths");
+    revalidatePath(`/hv/paths/${slug}`);
+    revalidatePath("/hv/dashboard");
     return {};
   } catch (error) {
     if (error instanceof AppError) return { error: error.message };

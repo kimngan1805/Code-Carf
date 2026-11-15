@@ -17,7 +17,7 @@ export default async function ManagedPathPage({
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <Link
-        href="/creator/paths"
+        href="/gv/paths"
         className="text-sm font-semibold text-primary hover:underline"
       >
         ← Quản lý lộ trình
@@ -49,7 +49,7 @@ export default async function ManagedPathPage({
             >
               <h3 className="font-semibold break-words">
                 <Link
-                  href={`/creator/paths/${path.slug}/rooms/${room.id}`}
+                  href={`/gv/paths/${path.slug}/rooms/${room.id}`}
                   className="text-primary hover:underline"
                 >
                   {room.position}. {room.title}

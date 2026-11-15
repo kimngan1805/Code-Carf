@@ -133,7 +133,7 @@ function presentSubmissionItem(
     contextHref = `/contests/${row.contest.slug}`;
   } else if (row.exercise.room?.path) {
     contextLabel = `${row.exercise.room.path.title} · ${row.exercise.room.title}`;
-    contextHref = `/paths/${row.exercise.room.path.slug}`;
+    contextHref = `/hv/paths/${row.exercise.room.path.slug}`;
   } else if (row.exercise.room) {
     contextLabel = row.exercise.room.title;
   }

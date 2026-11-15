@@ -17,7 +17,7 @@ import { isTeacherRole } from "@/features/auth/permissions";
 
 export default async function DashboardPage() {
   const user = await getCurrentUser();
-  if (user && isTeacherRole(user.role.name)) redirect("/creator");
+  if (user && isTeacherRole(user.role.name)) redirect("/gv");
   if (user?.role.name === RoleName.GUEST)
     redirect("/onboarding/teacher/submitted");
   // Layout and page render in parallel, so the page also handles a missing account.

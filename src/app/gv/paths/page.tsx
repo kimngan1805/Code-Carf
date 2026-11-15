@@ -7,7 +7,7 @@ import { AppError } from "@/lib/errors";
 export default async function ManagedPathsPage() {
   const paths = await getManagedPaths().catch((error) => {
     if (error instanceof AppError) {
-      if (error.status === 401) redirect("/login?callbackUrl=/creator/paths");
+      if (error.status === 401) redirect("/login?callbackUrl=/gv/paths");
       if (error.status === 403) redirect("/forbidden");
     }
     throw error;
@@ -43,7 +43,7 @@ export default async function ManagedPathsPage() {
               initialEnabled={path.sequentialUnlock}
             />
             <Link
-              href={`/creator/paths/${path.slug}`}
+              href={`/gv/paths/${path.slug}`}
               className="inline-block text-sm font-semibold text-primary hover:underline"
             >
               Xem lộ trình

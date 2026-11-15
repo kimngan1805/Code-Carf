@@ -31,12 +31,12 @@ export function Sidebar({
 }) {
   const [collapsed, setCollapsed] = useState(initialCollapsed);
   const teacherMode = isTeacherRole(role);
-  const canViewProfile = allowedRole("/profile", role);
-  const homeHref = teacherMode ? "/creator" : "/dashboard";
+  const canViewProfile = allowedRole("/hv/profile", role);
+  const homeHref = teacherMode ? "/gv" : "/hv/dashboard";
   const accountHref = teacherMode
-    ? "/creator"
+    ? "/gv"
     : canViewProfile
-      ? "/profile"
+      ? "/hv/profile"
       : role === RoleName.GUEST
         ? "/onboarding/teacher/submitted"
         : "/grading";
@@ -157,7 +157,7 @@ export function Sidebar({
               <p className="truncate text-sm font-semibold">{userName}</p>
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 {canViewProfile ? (
-                  <Link href="/profile" className="hover:text-primary">
+                  <Link href="/hv/profile" className="hover:text-primary">
                     Xem hồ sơ
                   </Link>
                 ) : (

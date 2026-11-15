@@ -12,10 +12,10 @@ export default async function ProfileLayout({
   children: React.ReactNode;
 }) {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login?callbackUrl=/profile");
+  if (!session?.user?.id) redirect("/login?callbackUrl=/hv/profile");
   const user = await findUserWithRole(session.user.id);
-  if (!user) redirect("/login?callbackUrl=/profile");
-  if (!allowedRole("/profile", user.role.name)) redirect("/forbidden");
+  if (!user) redirect("/login?callbackUrl=/hv/profile");
+  if (!allowedRole("/hv/profile", user.role.name)) redirect("/forbidden");
   if (!user.onboardedAt) redirect("/onboarding");
 
   const sidebarCollapsed = (await cookies()).get(SIDEBAR_COOKIE)?.value === "1";

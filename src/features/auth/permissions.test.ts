@@ -8,15 +8,15 @@ describe("role routing", () => {
   it("blocks students from grader routes", () =>
     expect(allowedRole("/grading", RoleName.STUDENT)).toBe(false));
   it("allows only students into achievements", () => {
-    expect(allowedRole("/achievements", RoleName.STUDENT)).toBe(true);
-    expect(allowedRole("/achievements", RoleName.TEACHER)).toBe(false);
-    expect(allowedRole("/achievements", RoleName.GRADER)).toBe(false);
-    expect(allowedRole("/achievements", RoleName.ADMIN)).toBe(false);
+    expect(allowedRole("/hv/achievements", RoleName.STUDENT)).toBe(true);
+    expect(allowedRole("/hv/achievements", RoleName.TEACHER)).toBe(false);
+    expect(allowedRole("/hv/achievements", RoleName.GRADER)).toBe(false);
+    expect(allowedRole("/hv/achievements", RoleName.ADMIN)).toBe(false);
   });
   it("keeps teacher applicants (guests) out of learning and teaching areas", () => {
-    for (const path of ["/paths", "/rooms", "/contests", "/creator", "/admin"])
+    for (const path of ["/hv/paths", "/hv/rooms", "/contests", "/gv", "/admin"])
       expect(allowedRole(path, RoleName.GUEST)).toBe(false);
-    for (const path of ["/onboarding", "/settings", "/dashboard"])
+    for (const path of ["/onboarding", "/settings", "/hv/dashboard"])
       expect(allowedRole(path, RoleName.GUEST)).toBe(true);
   });
   it("allows all authenticated roles into settings", () => {
@@ -26,11 +26,11 @@ describe("role routing", () => {
     expect(allowedRole("/settings", undefined)).toBe(false);
   });
   it("allows only students into profile", () => {
-    expect(allowedRole("/profile", RoleName.STUDENT)).toBe(true);
-    expect(allowedRole("/profile", RoleName.TEACHER)).toBe(false);
-    expect(allowedRole("/profile", RoleName.GRADER)).toBe(false);
-    expect(allowedRole("/profile", RoleName.ADMIN)).toBe(false);
-    expect(allowedRole("/profile", undefined)).toBe(false);
+    expect(allowedRole("/hv/profile", RoleName.STUDENT)).toBe(true);
+    expect(allowedRole("/hv/profile", RoleName.TEACHER)).toBe(false);
+    expect(allowedRole("/hv/profile", RoleName.GRADER)).toBe(false);
+    expect(allowedRole("/hv/profile", RoleName.ADMIN)).toBe(false);
+    expect(allowedRole("/hv/profile", undefined)).toBe(false);
   });
   it("allows all authenticated roles to view public student profiles", () => {
     for (const role of Object.values(RoleName)) {
