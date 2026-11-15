@@ -1,4 +1,4 @@
-import { XpSource, type XpEvent } from "@prisma/client";
+import { XpSource, type Prisma, type XpEvent } from "@prisma/client";
 import { z } from "zod";
 import { db } from "../../lib/db";
 import { AppError } from "../../lib/errors";
@@ -27,17 +27,7 @@ export interface RecordLearningActivityResult {
   xp: number;
 }
 
-/**
- * Records an XP ledger event, increments the user's cached XP total, and
- * evaluates/awards eligible activity milestone badges atomically inside a
- * single Prisma transaction.
- *
- * Streak updates (#22) will be wired inside this transaction before badge
- * evaluation in a follow-up task.
- */
-export async function recordLearningActivity(
-  input: RecordLearningActivityInput,
-): Promise<RecordLearningActivityResult> {
+function parseActivityInput(input: RecordLearningActivityInput) {
   const parsed = activityInputSchema.safeParse(input);
   if (!parsed.success) {
     const message =
@@ -45,29 +35,56 @@ export async function recordLearningActivity(
       "Dữ liệu hoạt động học tập không hợp lệ";
     throw new AppError(400, "INVALID_LEARNING_ACTIVITY", message);
   }
+  return parsed.data;
+}
 
-  const { userId, xp, source, pathId, roomId, contestId } = parsed.data;
+/**
+ * Records an XP ledger event, increments the user's cached XP total, and
+ * evaluates/awards eligible activity milestone badges atomically inside the
+ * caller's transaction. Use it when the XP must commit or roll back together
+ * with other writes (for example completing a room); everyone else should call
+ * `recordLearningActivity`.
+ *
+ * Streak updates (#22) will be wired inside this transaction before badge
+ * evaluation in a follow-up task.
+ */
+export async function recordLearningActivityInTx(
+  tx: Prisma.TransactionClient,
+  input: RecordLearningActivityInput,
+): Promise<RecordLearningActivityResult> {
+  const { userId, xp, source, pathId, roomId, contestId } =
+    parseActivityInput(input);
 
-  return db.$transaction(async (tx) => {
-    const xpEvent = await tx.xpEvent.create({
-      data: {
-        userId,
-        amount: xp,
-        source,
-        pathId: pathId ?? null,
-        roomId: roomId ?? null,
-        contestId: contestId ?? null,
-      },
-    });
-
-    const user = await tx.user.update({
-      where: { id: userId },
-      data: { xp: { increment: xp } },
-      select: { xp: true },
-    });
-
-    await awardActivityBadgesInTx(tx, userId);
-
-    return { xpEvent, xp: user.xp };
+  const xpEvent = await tx.xpEvent.create({
+    data: {
+      userId,
+      amount: xp,
+      source,
+      pathId: pathId ?? null,
+      roomId: roomId ?? null,
+      contestId: contestId ?? null,
+    },
   });
+
+  const user = await tx.user.update({
+    where: { id: userId },
+    data: { xp: { increment: xp } },
+    select: { xp: true },
+  });
+
+  await awardActivityBadgesInTx(tx, userId);
+
+  return { xpEvent, xp: user.xp };
+}
+
+/**
+ * Records an XP ledger event, increments the user's cached XP total, and
+ * awards eligible badges atomically inside a single Prisma transaction.
+ */
+export async function recordLearningActivity(
+  input: RecordLearningActivityInput,
+): Promise<RecordLearningActivityResult> {
+  // Validate first so bad input never opens a transaction.
+  parseActivityInput(input);
+  return db.$transaction((tx) => recordLearningActivityInTx(tx, input));
 }
