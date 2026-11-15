@@ -333,7 +333,7 @@ export function NextBadgeGoalSection({
       </div>
 
       <Button asChild className="mt-4 w-full rounded-full">
-        <Link href="/paths">
+        <Link href="/hv/paths">
           Tiếp tục học
           <ArrowRight className="size-4" aria-hidden />
         </Link>
@@ -385,7 +385,7 @@ export function EarnedBadgesSection({ badges }: { badges: EarnedBadgeItem[] }) {
             size="sm"
             className="shrink-0 self-start rounded-full px-4 sm:self-auto"
           >
-            <Link href="/paths">
+            <Link href="/hv/paths">
               Tiếp tục học
               <ArrowRight className="size-4" aria-hidden />
             </Link>

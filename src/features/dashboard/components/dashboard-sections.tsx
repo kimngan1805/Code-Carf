@@ -110,7 +110,7 @@ export function DashboardTitle({ paths }: { paths: Dashboard["paths"] }) {
           return (
             <li key={path.id}>
               <Link
-                href={`/paths/${path.slug}`}
+                href={`/hv/paths/${path.slug}`}
                 className={cn(
                   "inline-flex h-10 items-center gap-2 rounded-full border bg-background px-4 text-sm font-semibold transition-colors hover:bg-muted",
                   tone.chip,
@@ -165,7 +165,7 @@ export function LearningProgress({
         </span>
         <h2 className="mr-auto text-sm font-semibold">Tiến độ học tập</h2>
         <IconButton
-          href="/paths"
+          href="/hv/paths"
           label="Xem tất cả lộ trình"
           icon={ChevronRight}
         />
@@ -183,7 +183,7 @@ export function LearningProgress({
             return (
               <li key={path.id}>
                 <Link
-                  href={`/paths/${path.slug}`}
+                  href={`/hv/paths/${path.slug}`}
                   className={cn(
                     "block h-full rounded-3xl p-4 transition-transform hover:-translate-y-0.5",
                     tone.soft,
@@ -277,7 +277,7 @@ function GettingStarted({
         </div>
       )}
       <Link
-        href={recommended ? `/paths/${recommended.slug}` : "/paths"}
+        href={recommended ? `/hv/paths/${recommended.slug}` : "/hv/paths"}
         className="mt-4 inline-flex h-10 items-center gap-2 rounded-full bg-primary px-5 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
       >
         Khám phá ngay <ArrowRight className="size-4" aria-hidden />
@@ -301,7 +301,7 @@ export function SuggestedPaths({
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">Gợi ý cho bạn</h2>
         <Link
-          href="/paths"
+          href="/hv/paths"
           className="inline-flex items-center gap-1 text-sm font-semibold text-primary hover:underline"
         >
           Xem tất cả <ArrowRight className="size-4" aria-hidden />
@@ -347,7 +347,7 @@ export function SuggestedPaths({
                   </div>
                 </div>
                 <Link
-                  href={`/paths/${path.slug}`}
+                  href={`/hv/paths/${path.slug}`}
                   className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-full border border-primary/20 px-4 text-sm font-semibold text-primary transition-colors hover:bg-secondary/50"
                 >
                   Bắt đầu <ArrowRight className="size-4" aria-hidden />
@@ -384,7 +384,7 @@ export function AchievementStrip({
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold">Thành tích</h2>
         <Link
-          href="/achievements"
+          href="/hv/achievements"
           className="text-xs font-semibold text-primary hover:underline"
         >
           Xem tất cả
@@ -634,7 +634,11 @@ export function JourneyCard({
     <section className="relative flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-border/60 bg-gradient-to-b from-secondary/50 via-background to-accent/10 p-5">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Hành trình</h2>
-        <IconButton href="/achievements" label="Xem thành tích" icon={Award} />
+        <IconButton
+          href="/hv/achievements"
+          label="Xem thành tích"
+          icon={Award}
+        />
       </div>
 
       {/* Illustration built from icons and tokens */}
@@ -732,7 +736,7 @@ export function TopLearners({
       </div>
       <ol className="mt-3 space-y-1">
         {learners.map((learner) => {
-          const href = learner.isMe ? "/profile" : `/u/${learner.id}`;
+          const href = learner.isMe ? "/hv/profile" : `/u/${learner.id}`;
           return (
             <li key={learner.id}>
               <Link
@@ -772,7 +776,7 @@ export function TopLearners({
         {!meInTop && (
           <li className="mt-2">
             <Link
-              href="/profile"
+              href="/hv/profile"
               className="flex items-center gap-3 rounded-2xl border border-dashed border-primary/25 bg-secondary/20 px-2 py-2 transition-colors hover:bg-secondary/35 focus-visible:outline-2 focus-visible:outline-offset-2"
             >
               <span className="grid size-7 shrink-0 place-items-center rounded-full bg-background text-xs font-bold text-primary">

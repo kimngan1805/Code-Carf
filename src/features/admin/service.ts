@@ -1,7 +1,12 @@
 import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
-import { countUsers } from "./repository";
+import { countPendingTeacherApplications, countUsers } from "./repository";
+
 export async function getAdminSummary() {
   await requireRole([RoleName.ADMIN]);
-  return { users: await countUsers() };
+  const [users, pendingTeacherApplications] = await Promise.all([
+    countUsers(),
+    countPendingTeacherApplications(),
+  ]);
+  return { users, pendingTeacherApplications };
 }

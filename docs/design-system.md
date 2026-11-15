@@ -57,7 +57,7 @@ import { Button } from "@/components/ui/button";
 <Button variant="outline">Hủy</Button>
 <Button variant="ghost" size="sm">Chi tiết</Button>
 <Button variant="destructive">Xóa</Button>
-<Button asChild><Link href="/paths">Bắt đầu học</Link></Button>
+<Button asChild><Link href="/hv/paths">Bắt đầu học</Link></Button>
 ```
 
 ## Rules for the team

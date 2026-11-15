@@ -177,7 +177,7 @@ export function ProfileHeaderCard({
   isOwnPublicView = false,
 }: {
   profile: PublicStudentProfile;
-  /** Provided only on `/profile` for the authenticated owner. */
+  /** Provided only on `/hv/profile` for the authenticated owner. */
   email?: string;
   mode: "own" | "public";
   isOwnPublicView?: boolean;
@@ -319,7 +319,7 @@ export function ProfileHeaderCard({
                 size="sm"
                 className="w-full rounded-full bg-background/90 px-4 sm:w-auto"
               >
-                <Link href="/profile">
+                <Link href="/hv/profile">
                   Quay lại hồ sơ cá nhân
                   <ArrowRight className="size-4" aria-hidden />
                 </Link>
@@ -555,7 +555,7 @@ export function ProfilePathsSection({
               size="sm"
               className="shrink-0 self-start rounded-full px-5 sm:self-auto"
             >
-              <Link href="/paths">
+              <Link href="/hv/paths">
                 Khám phá lộ trình
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
@@ -572,7 +572,7 @@ export function ProfilePathsSection({
             return (
               <li key={path.id} className="min-w-0">
                 <Link
-                  href={`/paths/${path.slug}`}
+                  href={`/hv/paths/${path.slug}`}
                   className={cn(
                     "group flex h-full flex-col justify-between rounded-3xl p-4 transition-transform hover:-translate-y-0.5",
                     tone.soft,
@@ -673,7 +673,7 @@ export function ProfileBadgesSection({
         </div>
         {isOwner ? (
           <Link
-            href="/achievements"
+            href="/hv/achievements"
             className="inline-flex items-center gap-1 rounded-full bg-secondary/50 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-secondary"
           >
             Xem tất cả ({badges.length})
@@ -711,7 +711,7 @@ export function ProfileBadgesSection({
               size="sm"
               className="shrink-0 self-start rounded-full px-5 sm:self-auto"
             >
-              <Link href="/achievements">
+              <Link href="/hv/achievements">
                 Khám phá thành tích
                 <ArrowRight className="size-4" aria-hidden />
               </Link>
@@ -781,7 +781,7 @@ export function ProfileBadgesSection({
   );
 }
 
-/** Private-only section: rendered strictly on `/profile`, never on `/u/[id]`. */
+/** Private-only section: rendered strictly on `/hv/profile`, never on `/u/[id]`. */
 export function ProfileSubmissionsSection({
   submissions,
 }: {
@@ -848,7 +848,7 @@ export function ProfileSubmissionsSection({
               <Link href="/contests">Xem cuộc thi</Link>
             </Button>
             <Button asChild size="sm" className="rounded-full px-4">
-              <Link href="/paths">
+              <Link href="/hv/paths">
                 Học lộ trình
                 <ArrowRight className="size-4" aria-hidden />
               </Link>

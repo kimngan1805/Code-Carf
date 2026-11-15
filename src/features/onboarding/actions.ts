@@ -15,7 +15,7 @@ export async function completeStudentOnboarding(
   formData: FormData,
 ): Promise<OnboardingState> {
   const user = await requireRole(Object.values(RoleName));
-  if (user.onboardedAt) redirect("/dashboard");
+  if (user.onboardedAt) redirect("/hv/dashboard");
 
   const parsed = studentOnboardingSchema.safeParse({
     level: formData.get("level"),
@@ -32,5 +32,5 @@ export async function completeStudentOnboarding(
     console.error(error);
     return { error: "Không lưu được câu trả lời, vui lòng thử lại." };
   }
-  redirect("/dashboard");
+  redirect("/hv/dashboard");
 }

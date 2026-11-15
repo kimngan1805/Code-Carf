@@ -7,6 +7,7 @@ import {
 } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { MILESTONE_BADGES } from "../src/features/progress/badges";
+import { SAMPLE_SCHOOLS } from "./schools";
 
 const prisma = new PrismaClient();
 
@@ -166,6 +167,7 @@ async function main() {
   await seedStudentDemo(student.id, teacher.id, path.id, "Minh Thư");
   await seedDemoLearners(student.passwordHash);
   await seedPersonalDemo(teacher.id, path.id);
+  await seedSchools();
 }
 
 /**
@@ -385,6 +387,17 @@ async function seedDemoLearners(passwordHash: string) {
       },
     });
   }
+}
+
+/** Sample school directory for the teacher application form. */
+async function seedSchools() {
+  for (const group of SAMPLE_SCHOOLS)
+    for (const name of group.names)
+      await prisma.school.upsert({
+        where: { province_name: { province: group.province, name } },
+        update: { level: group.level },
+        create: { province: group.province, name, level: group.level },
+      });
 }
 
 main().finally(() => prisma.$disconnect());

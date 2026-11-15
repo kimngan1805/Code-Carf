@@ -11,7 +11,7 @@ import {
   Presentation,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { logoutAction } from "@/features/auth/actions";
+import { TeacherApplicationForm } from "@/features/teacher-application/components/teacher-application-form";
 import { cn } from "@/lib/utils";
 import { completeStudentOnboarding, type OnboardingState } from "../actions";
 import {
@@ -116,6 +116,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     {},
   );
   const [role, setRole] = useState<Role | null>(null);
+  const [teacherMode, setTeacherMode] = useState(false);
   const [step, setStep] = useState(0); // 0 = role, 1..4 = questions
   const [answers, setAnswers] = useState<Answers>({ languages: [] });
 
@@ -151,7 +152,15 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
     return answers[question.key] === option.value;
   }
 
-  const canContinue = step === 0 ? role === "student" : isAnswered(step - 1);
+  const canContinue = step === 0 ? role !== null : isAnswered(step - 1);
+
+  function goNext() {
+    if (step === 0 && role === "teacher") setTeacherMode(true);
+    else setStep(step + 1);
+  }
+
+  if (teacherMode)
+    return <TeacherApplicationForm onBack={() => setTeacherMode(false)} />;
 
   return (
     <form
@@ -159,7 +168,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
       onKeyDown={(event) => {
         if (event.key === "Enter" && !isLast) {
           event.preventDefault();
-          if (canContinue) setStep(step + 1);
+          if (canContinue) goNext();
         }
       }}
       className="flex min-h-dvh flex-col bg-gradient-to-b from-secondary/40 via-background to-background"
@@ -250,11 +259,6 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
                         : "border-border hover:border-primary/40",
                     )}
                   >
-                    {item.value === "teacher" && (
-                      <span className="absolute top-4 right-4 rounded-full bg-accent/10 px-2.5 py-0.5 text-xs font-semibold text-accent-strong">
-                        Sắp ra mắt
-                      </span>
-                    )}
                     <span
                       className={cn(
                         "grid size-12 place-items-center rounded-2xl",
@@ -275,38 +279,6 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
                 );
               })}
             </div>
-
-            {role === "teacher" && (
-              <div
-                role="status"
-                className="mt-5 rounded-2xl border border-accent/20 bg-accent/5 p-4 text-sm"
-              >
-                <p className="font-semibold">
-                  Không gian giảng viên đang được phát triển
-                </p>
-                <p className="mt-1 text-muted-foreground">
-                  Quyền giảng viên sẽ do quản trị viên cấp khi tính năng mở.
-                  Trong lúc chờ, bạn có thể dùng Code Carf với vai trò học viên.
-                </p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => setRole("student")}
-                  >
-                    Tiếp tục với vai trò học viên
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    variant="ghost"
-                    formAction={logoutAction}
-                  >
-                    Đăng xuất
-                  </Button>
-                </div>
-              </div>
-            )}
           </>
         ) : (
           question && (
@@ -378,7 +350,7 @@ export function OnboardingWizard({ firstName }: { firstName: string }) {
               type="button"
               size="lg"
               disabled={!canContinue}
-              onClick={() => setStep(step + 1)}
+              onClick={goNext}
               className="rounded-xl px-6"
             >
               Tiếp tục
