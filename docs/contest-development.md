@@ -21,7 +21,9 @@ This creates a contest with two code exercises and no camera requirement: one mi
 
 Start the database, apply migrations, seed the sample accounts, and start the app as described in the README. Open `/contests` after signing in as a student.
 
-The default seed creates only Sample Contest, with two code exercises: sum two integers, then square one integer (`2` → `4`). Seeding also converts the older handwritten second exercise to code with test cases. Extra deadline demos are created only when explicitly running `demo:contest`.
+The default seed creates only Sample Contest, with two code exercises: sum two integers, then square one integer (`2` → `4`). Seeding also converts the older handwritten second exercise to code with test cases. The sample student `student@local.test` is registered in advance and can start immediately: registration has closed, the shared exam is open for 24 hours after seeding, and the personal duration is 120 minutes from Start. Seeding again preserves that student's existing attempt and submissions. Extra deadline demos are created only when explicitly running `demo:contest`.
+
+Run `node scripts/check-contest-seed.mjs` to verify a fresh install and repeated seeding. It applies migrations and seeds twice in a temporary local PostgreSQL schema, checks that the sample is playable and progress is preserved, then removes that schema. Existing application data is unchanged.
 
 - `/contests`: published contests filtered by the shared exam status (upcoming, ongoing, ended), with a separate registration badge. An upcoming contest can already accept registration. Times use `Asia/Ho_Chi_Minh`.
 - `/contests/[slug]`: registration opening/closing, exam opening/closing, duration, and start/continue actions. The countdown progresses through registration closing, waiting for exam opening, and exam closing. Missing or unpublished slugs return HTTP 404.

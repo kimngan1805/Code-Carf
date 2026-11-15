@@ -20,6 +20,23 @@ Local development uses Webpack, matching the production build. This avoids the r
 
 The seed creates `student@local.test`, `teacher@local.test`, `admin@local.test`, and `grader@local.test`. Their local password is `SEED_PASSWORD` from `.env`, or `LocalDev123!` if unset. Change it before sharing a database. The seed also creates a path, room, exercise, contest, grader assignment, enrollment, and badge.
 
+### Test the contest
+
+All sample contest data is in the seed; no database export is needed. After pulling this branch, run:
+
+```powershell
+npm.cmd ci
+docker compose up -d db
+npm.cmd run db:deploy
+npx.cmd prisma generate
+npm.cmd run db:seed
+npm.cmd run dev
+```
+
+Sign in as `student@local.test` with `SEED_PASSWORD` (default `LocalDev123!`), then open `http://localhost:3000/contests/sample-contest`. This student is registered in advance. The shared exam window is open for 24 hours after seeding; clicking **Bắt đầu làm bài** starts a personal 120-minute timer. No camera is required.
+
+Sample Contest has two code exercises with public and hidden test cases: sum two integers, then square one integer. Submit the first answer to move to the second. The last answer opens a confirmation popup, then a completion notice and returns to the contest details. `GRADER_ADAPTER=mock` tests this flow without executing code; use Judge0 to test actual correctness. Seeding again refreshes the shared schedule but preserves existing attempts and submissions.
+
 Paths are drafts by default (`Path.published = false`). The seed explicitly publishes its sample paths. After applying the path-publication migration, existing non-seed paths stay hidden until published. Learners can browse `/paths`, open `/paths/<slug>`, and enroll once; progress is the rounded percentage of rooms with a `RoomProgress` record for that learner (zero for an empty path).
 
 Sequential room unlock is enabled by default (`Path.sequentialUnlock = true`). Enrolled learners can open the first room of a published path; later rooms require a `RoomProgress` record for the immediately preceding room in position order. Gaps in positions are supported. Set `sequentialUnlock = false` to open all rooms of that path for enrolled learners. Progress is read on every request, so completing the preceding room unlocks the next immediately. Room pages, the room API, and practice submissions enforce the same rule; contest submissions retain their separate contest authorization. The richer Room learning UI is tracked in #13.
