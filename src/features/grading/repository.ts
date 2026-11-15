@@ -123,3 +123,60 @@ export function findExerciseForPractice(exerciseId: string) {
     },
   });
 }
+
+/** Practice submissions only: contest submissions have their own history in the contest flow. */
+const practiceOf = (userId: string) => ({ userId, contestId: null });
+
+export function countPracticeSubmissions(userId: string) {
+  return db.submission.count({ where: practiceOf(userId) });
+}
+
+export function findPracticeSubmissions(
+  userId: string,
+  skip: number,
+  take: number,
+) {
+  return db.submission.findMany({
+    where: practiceOf(userId),
+    // id breaks ties so a page never repeats or skips rows with equal timestamps
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    skip,
+    take,
+    select: {
+      id: true,
+      status: true,
+      score: true,
+      language: true,
+      createdAt: true,
+      exercise: { select: { id: true, title: true, points: true } },
+    },
+  });
+}
+
+/** Includes `userId` and `contestId` so the service can check ownership; it never returns them. */
+export function findSubmissionForHistory(id: string) {
+  return db.submission.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      userId: true,
+      contestId: true,
+      status: true,
+      score: true,
+      feedback: true,
+      runtimeMs: true,
+      memoryKb: true,
+      language: true,
+      source: true,
+      createdAt: true,
+      exercise: {
+        select: {
+          id: true,
+          title: true,
+          points: true,
+          room: { select: { id: true, title: true } },
+        },
+      },
+    },
+  });
+}
