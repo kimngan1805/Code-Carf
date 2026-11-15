@@ -21,7 +21,7 @@ vi.mock("../../lib/db", () => ({
   db: { $transaction: mockTransaction },
 }));
 
-import { recordLearningActivity } from "./activity";
+import { recordLearningActivity, recordLearningActivityInTx } from "./activity";
 import { awardCompletedWeekTopBadge } from "./badge-awarding";
 
 function setupDefaultBadgeSnapshot() {
@@ -419,5 +419,40 @@ describe("awardCompletedWeekTopBadge", () => {
     expect(mockTx.userBadge.createMany).not.toHaveBeenCalled();
     expect(result.winnerUserIds).toEqual([]);
     expect(result.awardedUserIds).toEqual([]);
+  });
+});
+
+describe("recordLearningActivityInTx", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    setupDefaultBadgeSnapshot();
+  });
+
+  it("writes through the caller's transaction and never opens its own", async () => {
+    const event = { id: "xp-evt-3" };
+    mockTx.xpEvent.create.mockResolvedValue(event);
+    mockTx.user.update.mockResolvedValue({ xp: 250 });
+
+    const result = await recordLearningActivityInTx(mockTx as never, {
+      userId: "user-1",
+      xp: 50,
+      source: XpSource.ROOM_COMPLETED,
+      roomId: "room-1",
+    });
+
+    expect(mockTransaction).not.toHaveBeenCalled();
+    expect(mockTx.xpEvent.create).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ xpEvent: event, xp: 250 });
+  });
+
+  it("rejects invalid input before writing anything", async () => {
+    await expect(
+      recordLearningActivityInTx(mockTx as never, {
+        userId: "user-1",
+        xp: 0,
+        source: XpSource.ROOM_COMPLETED,
+      }),
+    ).rejects.toBeInstanceOf(AppError);
+    expect(mockTx.xpEvent.create).not.toHaveBeenCalled();
   });
 });
