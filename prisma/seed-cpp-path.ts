@@ -616,15 +616,28 @@ async function main() {
 
   const description =
     "Từ dòng code đầu tiên đến giải được các bài thuật toán nhập môn: biến, điều kiện, vòng lặp, hàm, mảng và chuỗi. Dành cho người chưa từng lập trình, khoảng 12 giờ học.";
+  const metadata = {
+    difficulty: Difficulty.EASY,
+    tags: ["C++", "nhập môn", "thuật toán"],
+    estimatedMinutes: 12 * 60,
+    coverTheme: "sky",
+  };
   const path = await prisma.path.upsert({
     where: { slug: PATH_SLUG },
-    update: { title: "Lập trình C++ cơ bản", description, published: true },
+    update: {
+      title: "Lập trình C++ cơ bản",
+      description,
+      published: true,
+      ...metadata,
+    },
     create: {
       slug: PATH_SLUG,
       title: "Lập trình C++ cơ bản",
       description,
       published: true,
+      publishedAt: new Date(),
       sequentialUnlock: true,
+      ...metadata,
       creatorId: teacher.id,
     },
   });
