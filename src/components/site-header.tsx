@@ -39,13 +39,10 @@ export function SiteHeader() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Tìm kiếm"
-            className="hidden sm:inline-flex"
-          >
-            <Search className="size-5" aria-hidden />
+          <Button variant="ghost" size="icon" aria-label="Tìm kiếm" asChild>
+            <Link href="/hv/search">
+              <Search className="size-5" aria-hidden />
+            </Link>
           </Button>
           <Button variant="ghost" asChild className="hidden sm:inline-flex">
             <Link href="/login">Đăng nhập</Link>
