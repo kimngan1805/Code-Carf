@@ -52,6 +52,18 @@ The module names are `auth`, `paths`, `rooms`, `contests`, `grading`, `leaderboa
 
 Contests begin in `DRAFT`; publishing rules will be implemented with the contest workflow, including requiring a grader assignment.
 
+## Contest scoring and ranking
+
+Pure contest scoring and ranking functions live in `src/features/leaderboard/ranking.ts` (`aggregateContestScores`, `rankContestParticipants`, and `computeContestLeaderboard`) and operate on submissions scoped to a single contest:
+
+- **Eligible submissions:** Only `ACCEPTED` and `REJECTED` submissions with a non-null `score` are counted; `PENDING`, `RUNNING`, `NEEDS_REVIEW`, `ERROR`, and `null` scores are ignored.
+- **Per-exercise best score:** Each `(userId, exerciseId)` pair keeps its highest `score`. If the same highest score is achieved multiple times, the earliest `createdAt` timestamp is kept.
+- **Total contest score:** `totalScore` is the sum of best scores across all exercises attempted by the participant (optionally including registered `participantIds` without valid submissions at `0` points). Penalty minutes are not applied in this rule set.
+- **Achievement timestamp (`achievedAt`):** For participants with `totalScore > 0`, `achievedAt` is the latest `achievedAt` among exercises where their best score is `> 0`. Participants with `totalScore === 0` have `achievedAt = null`.
+- **Sorting and ties:** Participants are ranked by `totalScore` descending, then `achievedAt` ascending (`null` last), with `userId` ascending as a deterministic display order. Participants tied on both `totalScore` and `achievedAt` share the same competition rank (`1, 1, 3`).
+
+> **Integration notes:** `submitSolution` currently scores against `Exercise.points` rather than `ContestExercise.points` overrides, and `ContestParticipant.score` is not yet synchronized from submissions.
+
 ## Team workflow
 
 - Branch from `main`: `feat/<issue-number>-short-name`, `fix/<issue-number>-short-name`, or `chore/<issue-number>-short-name`.
