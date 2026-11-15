@@ -14,6 +14,7 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:seed:cpp": "tsx prisma/seed-cpp-path.ts",
     "demo:contest": "node scripts/create-contest-demo.mjs",
     "prepare": "husky"
   },
