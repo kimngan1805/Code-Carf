@@ -53,7 +53,10 @@ export default async function TeacherApplicationSubmittedPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login?callbackUrl=/onboarding");
   const application = await findLatestApplication(user.id);
-  if (!application) redirect("/onboarding");
+  if (!application)
+    redirect(
+      user.role.name === "GUEST" ? "/onboarding/teacher/apply" : "/onboarding",
+    );
 
   const status = statusInfo[application.status];
   const level = teachingLevelOptions.find(
