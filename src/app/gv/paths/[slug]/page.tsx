@@ -3,13 +3,19 @@ import { notFound } from "next/navigation";
 import { getManagedPath } from "@/features/paths/management";
 import { PathUnlockSetting } from "@/features/paths/components/path-unlock-setting";
 import { AppError } from "@/lib/errors";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { PathPublication } from "@/features/paths/components/path-publication";
 
 export default async function ManagedPathPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ created?: string }>;
 }) {
   const { slug } = await params;
+  const created = (await searchParams).created === "1";
   const path = await getManagedPath(slug).catch((error) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;
@@ -22,6 +28,14 @@ export default async function ManagedPathPage({
       >
         ← Quản lý lộ trình
       </Link>
+      {created && (
+        <p
+          role="status"
+          className="rounded-xl bg-success/10 p-4 text-sm font-medium text-success"
+        >
+          Đã tạo lộ trình thành công.
+        </p>
+      )}
       <section className="space-y-4 rounded-2xl border bg-background p-4 sm:p-6">
         <h1 className="text-2xl font-bold text-primary break-words">
           {path.title}
@@ -35,9 +49,18 @@ export default async function ManagedPathPage({
           pathId={path.id}
           initialEnabled={path.sequentialUnlock}
         />
+        <PathPublication pathId={path.id} published={path.published} />
       </section>
       <section className="space-y-4">
-        <h2 className="text-xl font-semibold">Nội dung lộ trình</h2>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-xl font-semibold">Nội dung lộ trình</h2>
+          <Button asChild>
+            <Link href={`/gv/paths/${path.slug}/rooms/new`}>
+              <Plus className="size-4" aria-hidden />
+              Thêm bài học
+            </Link>
+          </Button>
+        </div>
         {!path.rooms.length && (
           <p className="text-muted-foreground">Lộ trình chưa có bài học.</p>
         )}

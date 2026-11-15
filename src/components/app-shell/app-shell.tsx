@@ -1,14 +1,6 @@
 import { RoleName } from "@prisma/client";
 import Link from "next/link";
-import {
-  BadgeCheck,
-  Bell,
-  BookOpen,
-  CodeXml,
-  LogOut,
-  Plus,
-  Search,
-} from "lucide-react";
+import { BadgeCheck, Bell, CodeXml, LogOut, Search } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
 import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
@@ -105,33 +97,15 @@ export function AppShell({
                 <Bell className="size-5" aria-hidden />
                 <span className="absolute top-2 right-2.5 size-2 rounded-full bg-accent ring-2 ring-background" />
               </button>
-              <Link
-                href={
-                  adminMode
-                    ? "/admin/teacher-applications"
-                    : teacherMode
-                      ? "/gv/paths"
-                      : "/hv/paths"
-                }
-                className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
-              >
-                {adminMode ? (
-                  <>
-                    <BadgeCheck className="size-4" aria-hidden />
-                    <span className="hidden sm:inline">Duyệt hồ sơ</span>
-                  </>
-                ) : teacherMode ? (
-                  <>
-                    <BookOpen className="size-4" aria-hidden />
-                    <span className="hidden sm:inline">Lộ trình học</span>
-                  </>
-                ) : (
-                  <>
-                    <Plus className="size-4" aria-hidden />
-                    <span className="hidden sm:inline">Lộ trình mới</span>
-                  </>
-                )}
-              </Link>
+              {adminMode && (
+                <Link
+                  href="/admin/teacher-applications"
+                  className="inline-flex h-10 items-center gap-1.5 rounded-full bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-hover"
+                >
+                  <BadgeCheck className="size-4" aria-hidden />
+                  <span className="hidden sm:inline">Duyệt hồ sơ</span>
+                </Link>
+              )}
 
               {/* Account menu on small screens; desktop uses the sidebar footer */}
               <details className="relative lg:hidden">
