@@ -10,10 +10,12 @@ const {
   adapter,
   canAccessRoom,
   completeRoomIfDone,
+  recordStreakActivity,
   emitContestLeaderboardUpdated,
 } = vi.hoisted(() => ({
   canAccessRoom: vi.fn(),
   completeRoomIfDone: vi.fn(),
+  recordStreakActivity: vi.fn(),
   emitContestLeaderboardUpdated: vi.fn(),
   repo: {
     findCodeExerciseWithTests: vi.fn(),
@@ -34,6 +36,7 @@ const {
 vi.mock("./repository", () => repo);
 vi.mock("../rooms/access", () => ({ canAccessRoom }));
 vi.mock("./room-completion", () => ({ completeRoomIfDone }));
+vi.mock("../progress/activity", () => ({ recordStreakActivity }));
 vi.mock("./service", () => ({ getGradingAdapter: () => adapter }));
 vi.mock("../leaderboard/contest-events", () => ({
   emitContestLeaderboardUpdated,
@@ -544,14 +547,21 @@ describe("room completion after grading", () => {
       mockGradingAdapter.grade(request),
     );
     completeRoomIfDone.mockResolvedValue(completion);
+    recordStreakActivity.mockResolvedValue({
+      currentStreak: 1,
+      longestStreak: 1,
+      lastActiveOn: new Date("2026-11-15T00:00:00.000Z"),
+      updated: true,
+    });
   });
 
-  it("completes the room after an accepted practice submission is saved", async () => {
+  it("completes the room after an accepted practice submission is saved without double-recording streak", async () => {
     const result = await submitSolution(validInput);
 
     expect(result.status).toBe("ACCEPTED");
     expect(completeRoomIfDone).toHaveBeenCalledTimes(1);
     expect(completeRoomIfDone).toHaveBeenCalledWith("user-1", "room-1");
+    expect(recordStreakActivity).not.toHaveBeenCalled();
     // the submission is stored as graded before progress is touched
     expect(repo.finishSubmission.mock.invocationCallOrder[0]).toBeLessThan(
       completeRoomIfDone.mock.invocationCallOrder[0],
@@ -559,15 +569,17 @@ describe("room completion after grading", () => {
     expect(result.roomCompletion).toEqual(completion);
   });
 
-  it("leaves roomCompletion out when the room is not finished or already done", async () => {
+  it("updates streak without XP when an accepted practice submission does not newly complete the room", async () => {
     completeRoomIfDone.mockResolvedValue(null);
     const result = await submitSolution(validInput);
 
     expect(result.status).toBe("ACCEPTED");
     expect(result).not.toHaveProperty("roomCompletion");
+    expect(recordStreakActivity).toHaveBeenCalledTimes(1);
+    expect(recordStreakActivity).toHaveBeenCalledWith({ userId: "user-1" });
   });
 
-  it("does not complete a room for a rejected submission", async () => {
+  it("does not complete a room or update streak for a rejected submission", async () => {
     adapter.grade.mockResolvedValue({
       status: "WRONG_ANSWER",
       feedback: "wrong",
@@ -576,9 +588,10 @@ describe("room completion after grading", () => {
 
     expect(result.status).toBe("REJECTED");
     expect(completeRoomIfDone).not.toHaveBeenCalled();
+    expect(recordStreakActivity).not.toHaveBeenCalled();
   });
 
-  it("does not complete a room for a contest submission", async () => {
+  it("does not complete a room or update streak for a contest submission", async () => {
     const result = await submitSolution({
       ...validInput,
       contestId: "contest-1",
@@ -586,9 +599,10 @@ describe("room completion after grading", () => {
 
     expect(result.status).toBe("ACCEPTED");
     expect(completeRoomIfDone).not.toHaveBeenCalled();
+    expect(recordStreakActivity).not.toHaveBeenCalled();
   });
 
-  it("does not complete anything for an exercise that is not in a room", async () => {
+  it("updates streak for an accepted standalone practice exercise not in a room", async () => {
     repo.findCodeExerciseWithTests.mockResolvedValue({
       ...exercise,
       roomId: null,
@@ -596,6 +610,8 @@ describe("room completion after grading", () => {
     await submitSolution(validInput);
 
     expect(completeRoomIfDone).not.toHaveBeenCalled();
+    expect(recordStreakActivity).toHaveBeenCalledTimes(1);
+    expect(recordStreakActivity).toHaveBeenCalledWith({ userId: "user-1" });
   });
 
   it("keeps the graded result when completing the room fails", async () => {
@@ -605,13 +621,14 @@ describe("room completion after grading", () => {
     expect(result.status).toBe("ACCEPTED");
     expect(result).not.toHaveProperty("roomCompletion");
     expect(repo.finishSubmission).toHaveBeenCalledTimes(1);
+    expect(recordStreakActivity).not.toHaveBeenCalled();
     expect(logger.error).toHaveBeenCalledWith(
       "submission.room_completion_failed",
       expect.objectContaining({ roomId: "room-1", message: "db down" }),
     );
   });
 
-  it("never completes rooms from the contest deadline grader", async () => {
+  it("never completes rooms or updates streak from the contest deadline grader", async () => {
     repo.findStoredSubmission.mockResolvedValue({
       ...validInput,
       id: "auto-1",
@@ -623,5 +640,6 @@ describe("room completion after grading", () => {
 
     expect(repo.finishSubmission).toHaveBeenCalledTimes(1);
     expect(completeRoomIfDone).not.toHaveBeenCalled();
+    expect(recordStreakActivity).not.toHaveBeenCalled();
   });
 });
