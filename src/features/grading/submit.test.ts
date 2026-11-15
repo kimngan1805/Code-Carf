@@ -13,6 +13,8 @@ const { repo, adapter, canAccessRoom } = vi.hoisted(() => ({
     markSubmissionRunning: vi.fn(),
     finishSubmission: vi.fn(),
     countRecentSubmissions: vi.fn(),
+    findStoredSubmission: vi.fn(),
+    claimPendingSubmission: vi.fn(),
   },
   adapter: {
     grade: vi.fn<(request: GradeRequest) => Promise<GradeResult>>(),
@@ -30,6 +32,7 @@ import {
   MAX_SOURCE_LENGTH,
   SUBMISSION_RATE_LIMIT,
   submitSolution,
+  gradePendingSubmission,
 } from "./submit";
 
 const exercise = {
@@ -64,6 +67,51 @@ describe("submitSolution", () => {
     adapter.grade.mockImplementation((request) =>
       mockGradingAdapter.grade(request),
     );
+  });
+
+  it("lets the contest caller enforce the deadline at the persistence boundary", async () => {
+    const createSubmission = vi
+      .fn()
+      .mockRejectedValue(
+        new AppError(403, "CONTEST_NOT_OPEN", "Deadline passed"),
+      );
+    await expect(
+      submitSolution(validInput, { createSubmission }),
+    ).rejects.toMatchObject({ code: "CONTEST_NOT_OPEN" });
+    expect(repo.createPendingSubmission).not.toHaveBeenCalled();
+    expect(adapter.grade).not.toHaveBeenCalled();
+  });
+
+  it("grades a saved deadline submission once across simultaneous retry calls", async () => {
+    repo.findStoredSubmission.mockResolvedValue({
+      ...validInput,
+      id: "auto-1",
+      status: "PENDING",
+      contestId: "contest",
+    });
+    repo.claimPendingSubmission
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    await Promise.all([
+      gradePendingSubmission("auto-1"),
+      gradePendingSubmission("auto-1"),
+    ]);
+    expect(adapter.grade).toHaveBeenCalledTimes(exercise.testCases.length);
+    expect(repo.createPendingSubmission).not.toHaveBeenCalled();
+    expect(repo.finishSubmission).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not regrade completed or running deadline submissions", async () => {
+    for (const status of ["RUNNING", "ACCEPTED", "ERROR"]) {
+      repo.findStoredSubmission.mockResolvedValue({
+        ...validInput,
+        id: "auto-1",
+        status,
+      });
+      await gradePendingSubmission("auto-1");
+    }
+    expect(repo.claimPendingSubmission).not.toHaveBeenCalled();
+    expect(adapter.grade).not.toHaveBeenCalled();
   });
 
   it("stores PENDING, then RUNNING, then ACCEPTED with the mock adapter", async () => {

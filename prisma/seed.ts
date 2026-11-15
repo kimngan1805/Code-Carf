@@ -72,12 +72,16 @@ async function main() {
       },
     },
   });
-  // Demo schedule relative to the seed time, so the dashboard always shows upcoming contests.
+  // A fresh local seed is immediately playable with the registered sample student.
   const hour = 60 * 60 * 1000;
+  const sampleNow = Date.now();
   const sampleSchedule = {
     status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() + 72 * hour),
-    endsAt: new Date(Date.now() + 74 * hour),
+    startsAt: new Date(sampleNow - hour),
+    endsAt: new Date(sampleNow - 60000),
+    examStartsAt: new Date(sampleNow - 30000),
+    examEndsAt: new Date(sampleNow + 24 * hour),
+    durationMinutes: 120,
   };
   const contest = await prisma.contest.upsert({
     where: { slug: "sample-contest" },
@@ -86,6 +90,8 @@ async function main() {
       ...sampleSchedule,
       slug: "sample-contest",
       title: "Sample Contest",
+      description:
+        "Hai bài code đơn giản: tính tổng hai số và bình phương một số. Mỗi bài chỉ được nộp một lần. Tài khoản student@local.test đã được đăng ký sẵn để bắt đầu ngay sau khi seed.",
       creatorId: teacher.id,
       exercises: {
         create: [
@@ -104,36 +110,38 @@ async function main() {
               },
             },
           },
-          {
-            position: 2,
-            exercise: {
-              create: {
-                title: "Binary search flowchart",
-                prompt:
-                  "Draw a flowchart for binary search and upload a photo.",
-                kind: ExerciseKind.HANDWRITTEN,
-                rubric:
-                  "Has start/end, low/high/mid, comparison branch, loop until low > high.",
-              },
-            },
-          },
         ],
       },
     },
   });
-  const weeklySchedule = {
-    status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() + 26 * hour),
-    endsAt: new Date(Date.now() + 27.5 * hour),
+  // Keep older local seeds consistent with the code-only sample contest.
+  const squareExercise = {
+    title: "Square a number",
+    prompt: "Read one integer n and print n * n.",
+    kind: ExerciseKind.CODE,
+    rubric: null,
+    testCases: {
+      create: [
+        { input: "2", expected: "4", isHidden: false },
+        { input: "-3", expected: "9" },
+        { input: "0", expected: "0" },
+      ],
+    },
   };
-  await prisma.contest.upsert({
-    where: { slug: "weekly-warmup" },
-    update: weeklySchedule,
+  await prisma.contestExercise.upsert({
+    where: { contestId_position: { contestId: contest.id, position: 2 } },
+    update: {
+      exercise: {
+        update: {
+          ...squareExercise,
+          testCases: { deleteMany: {}, ...squareExercise.testCases },
+        },
+      },
+    },
     create: {
-      ...weeklySchedule,
-      slug: "weekly-warmup",
-      title: "Khởi động cuối tuần",
-      creatorId: teacher.id,
+      position: 2,
+      contest: { connect: { id: contest.id } },
+      exercise: { create: squareExercise },
     },
   });
   await prisma.contestGrader.upsert({
@@ -143,6 +151,22 @@ async function main() {
     update: {},
     create: { contestId: contest.id, graderId: grader.id },
   });
+  const sampleStudent =
+    users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
+  await prisma.contestParticipant.upsert({
+    where: {
+      contestId_userId: { contestId: contest.id, userId: sampleStudent.id },
+    },
+    update: {},
+    create: {
+      contestId: contest.id,
+      userId: sampleStudent.id,
+      joinedAt: new Date(sampleNow - 120000),
+    },
+  });
+  console.log(
+    "Sample Contest is ready: sign in as student@local.test and open /contests/sample-contest. The exam stays open for 24 hours; click Start for your own 120-minute timer. Existing attempts are kept.",
+  );
   await prisma.badge.upsert({
     where: { slug: "first-step" },
     update: {

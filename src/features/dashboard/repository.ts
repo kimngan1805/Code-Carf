@@ -65,11 +65,11 @@ export async function getDashboardRecords(
     db.contest.findMany({
       where: {
         status: ContestStatus.PUBLISHED,
-        OR: [{ endsAt: null }, { endsAt: { gte: new Date() } }],
+        OR: [{ examEndsAt: null }, { examEndsAt: { gte: new Date() } }],
       },
-      orderBy: { startsAt: "asc" },
+      orderBy: { examStartsAt: "asc" },
       take: 3,
-      select: { id: true, slug: true, title: true, startsAt: true },
+      select: { id: true, slug: true, title: true, examStartsAt: true },
     }),
     db.user.count({ where: { xp: { gt: xp } } }),
     db.badge.findMany({

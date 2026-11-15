@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   submissions: vi.fn(),
   saved: vi.fn(),
   submit: vi.fn(),
+  progress: vi.fn(),
 }));
 vi.mock("./service", () => ({ getContestEntry: mocks.entry }));
 vi.mock("./repository", () => ({
@@ -17,9 +18,18 @@ vi.mock("@/features/grading/submit", () => ({
   MAX_SOURCE_LENGTH: 64 * 1024,
 }));
 import { getContestWorkspace, submitContestSolution } from "./workspace";
+vi.mock("./deadline-repository", () => ({
+  createTimedContestSubmission: vi.fn(),
+  getContestSubmissionProgress: mocks.progress,
+}));
 
 beforeEach(() => {
   vi.resetAllMocks();
+  mocks.progress.mockResolvedValue({
+    submittedExerciseIds: [],
+    nextExerciseId: "exercise",
+    finished: false,
+  });
   mocks.submit.mockResolvedValue({
     submissionId: "new-submission",
     status: "ACCEPTED",
@@ -31,10 +41,18 @@ beforeEach(() => {
   });
   mocks.entry.mockResolvedValue({
     userId: "signed-in",
+    participant: {
+      startedAt: new Date(0),
+      deadlineAt: new Date("2099-01-01"),
+      finishedAt: null,
+      faceVerifiedAt: null,
+    },
     contest: {
       id: "contest",
       slug: "sample",
       title: "Contest",
+      examStartsAt: new Date(0),
+      examEndsAt: new Date("2099-01-01"),
       startsAt: new Date(0),
       endsAt: new Date("2099-01-01"),
     },
@@ -49,13 +67,16 @@ describe("contest workspace", () => {
       language: "python",
       source: "print(1)",
     });
-    expect(mocks.submit).toHaveBeenCalledWith({
-      userId: "signed-in",
-      contestId: "contest",
-      exerciseId: "exercise",
-      language: "python",
-      source: "print(1)",
-    });
+    expect(mocks.submit).toHaveBeenCalledWith(
+      {
+        userId: "signed-in",
+        contestId: "contest",
+        exerciseId: "exercise",
+        language: "python",
+        source: "print(1)",
+      },
+      { createSubmission: expect.any(Function) },
+    );
   });
   it("maps the grading result to the contest history without losing status or score", async () => {
     const result = await submitContestSolution("sample", {
@@ -75,6 +96,23 @@ describe("contest workspace", () => {
       "contest",
       "signed-in",
     );
+  });
+  it("returns the next exercise and completion state with the result", async () => {
+    mocks.progress.mockResolvedValue({
+      submittedExerciseIds: ["exercise"],
+      nextExerciseId: "second",
+      finished: false,
+    });
+    const result = await submitContestSolution("sample", {
+      exerciseId: "exercise",
+      source: "print(1)",
+      language: "python",
+    });
+    expect(result.progress).toEqual({
+      submittedExerciseIds: ["exercise"],
+      nextExerciseId: "second",
+      finished: false,
+    });
   });
   it.each([
     { source: "   ", language: "python" },

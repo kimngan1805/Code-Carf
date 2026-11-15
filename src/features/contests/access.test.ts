@@ -1,30 +1,43 @@
 import { describe, expect, it } from "vitest";
-import {
-  assertContestOpen,
-  assertParticipantCanEnter,
-  assertRegistrationOpen,
-} from "./access";
+import { assertParticipantCanEnter, assertRegistrationOpen } from "./access";
 
 const start = Date.parse("2026-11-15T02:00:00Z");
 const end = start + 3600000;
 const contest = {
-  startsAt: new Date(start),
-  endsAt: new Date(end),
+  startsAt: new Date(start - 3600000),
+  endsAt: new Date(start),
+  examStartsAt: new Date(start),
+  examEndsAt: new Date(end + 3600000),
   requireFaceCheck: false,
 };
-const participant = { finishedAt: null, faceVerifiedAt: null };
+const participant = {
+  startedAt: new Date(start),
+  deadlineAt: new Date(end),
+  finishedAt: null,
+  faceVerifiedAt: null,
+};
 
 describe("contest access", () => {
-  it("allows registration before and during the contest, but not at the deadline", () => {
-    expect(() => assertRegistrationOpen(contest, start - 1)).not.toThrow();
-    expect(() => assertRegistrationOpen(contest, start)).not.toThrow();
-    expect(() => assertRegistrationOpen(contest, end)).toThrow();
+  it("allows registration only within its own window", () => {
+    expect(() => assertRegistrationOpen(contest, start - 3600001)).toThrow();
+    expect(() =>
+      assertRegistrationOpen(contest, start - 3600000),
+    ).not.toThrow();
+    expect(() => assertRegistrationOpen(contest, start)).toThrow();
   });
   it("guards both time boundaries using the server time", () => {
-    expect(() => assertContestOpen(contest, start - 1)).toThrow();
-    expect(() => assertContestOpen(contest, start)).not.toThrow();
-    expect(() => assertContestOpen(contest, end - 1)).not.toThrow();
-    expect(() => assertContestOpen(contest, end)).toThrow();
+    expect(() =>
+      assertParticipantCanEnter(contest, participant, start - 1),
+    ).toThrow();
+    expect(() =>
+      assertParticipantCanEnter(contest, participant, start),
+    ).not.toThrow();
+    expect(() =>
+      assertParticipantCanEnter(contest, participant, end - 1),
+    ).not.toThrow();
+    expect(() =>
+      assertParticipantCanEnter(contest, participant, end),
+    ).toThrow();
   });
   it("requires registration and an unfinished attempt", () => {
     expect(() => assertParticipantCanEnter(contest, null, start)).toThrow(
@@ -59,7 +72,22 @@ describe("contest access", () => {
       assertRegistrationOpen({ ...contest, startsAt: null }, start),
     ).toThrow();
     expect(() =>
-      assertContestOpen({ ...contest, endsAt: null }, start),
+      assertRegistrationOpen({ ...contest, endsAt: null }, start),
     ).toThrow();
+  });
+  it("closing registration does not expire a student's active attempt", () => {
+    const closedRegistration = { ...contest, endsAt: new Date(start - 1) };
+    expect(() =>
+      assertParticipantCanEnter(closedRegistration, participant, start),
+    ).not.toThrow();
+  });
+  it("registration alone does not start the clock or unlock statements", () => {
+    expect(() =>
+      assertParticipantCanEnter(
+        contest,
+        { ...participant, startedAt: null, deadlineAt: null },
+        start,
+      ),
+    ).toThrow("Bắt đầu làm bài");
   });
 });

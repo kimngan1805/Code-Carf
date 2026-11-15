@@ -15,6 +15,8 @@ import {
   finishSubmission,
   isExerciseInContest,
   markSubmissionRunning,
+  findStoredSubmission,
+  claimPendingSubmission,
 } from "./repository";
 import { isPassing, summarizeTests } from "./scoring";
 import { getGradingAdapter } from "./service";
@@ -93,6 +95,11 @@ const STATUS_LABELS: Record<GradeStatus, string> = {
  */
 export async function submitSolution(
   input: SubmitSolutionInput,
+  options: {
+    createSubmission?: (
+      data: Parameters<typeof createPendingSubmission>[0],
+    ) => Promise<{ id: string }>;
+  } = {},
 ): Promise<SubmissionResult> {
   const parsed = submitInputSchema.safeParse(input);
   if (!parsed.success) {
@@ -144,7 +151,9 @@ export async function submitSolution(
     );
   }
 
-  const { id: submissionId } = await createPendingSubmission({
+  const { id: submissionId } = await (
+    options.createSubmission ?? createPendingSubmission
+  )({
     userId,
     exerciseId,
     contestId,
@@ -152,6 +161,51 @@ export async function submitSolution(
     language,
   });
   await markSubmissionRunning(submissionId);
+
+  return gradeStoredSolution(
+    submissionId,
+    exercise,
+    source,
+    language,
+    contestId,
+  );
+}
+
+/** Resume a server-created deadline submission. An atomic claim prevents duplicate grading. */
+export async function gradePendingSubmission(submissionId: string) {
+  const saved = await findStoredSubmission(submissionId);
+  if (saved.status !== "PENDING") return;
+  const parsed = submitInputSchema.safeParse(saved);
+  const exercise = await findCodeExerciseWithTests(saved.exerciseId);
+  if (!parsed.success || !exercise || exercise.kind !== ExerciseKind.CODE) {
+    if (await claimPendingSubmission(submissionId))
+      await finishSubmission(submissionId, {
+        status: "ERROR",
+        score: 0,
+        feedback: "Không thể chấm bản nháp đã lưu.",
+        runtimeMs: null,
+        memoryKb: null,
+      });
+    return;
+  }
+  if (!(await claimPendingSubmission(submissionId))) return;
+  await gradeStoredSolution(
+    submissionId,
+    exercise,
+    parsed.data.source,
+    parsed.data.language,
+    saved.contestId,
+  );
+}
+
+async function gradeStoredSolution(
+  submissionId: string,
+  exercise: NonNullable<Awaited<ReturnType<typeof findCodeExerciseWithTests>>>,
+  source: string,
+  language: SubmissionLanguage,
+  contestId: string | null,
+): Promise<SubmissionResult> {
+  const exerciseId = exercise.id;
 
   const maxScore = exercise.points;
   let outcome: Omit<SubmissionResult, "submissionId" | "maxScore">;

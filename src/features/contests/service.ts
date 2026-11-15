@@ -7,7 +7,11 @@ import {
   findContestParticipant,
   registerContestParticipant,
 } from "./repository";
-import { assertParticipantCanEnter, assertRegistrationOpen } from "./access";
+import {
+  assertParticipantCanEnter,
+  assertRegistrationOpen,
+  getAttemptDeadline,
+} from "./access";
 export async function getContests() {
   await requireRole(Object.values(RoleName));
   const contests = await listContests();
@@ -22,7 +26,9 @@ export async function getContest(slug: string) {
   const participant = await findContestParticipant(contest.id, user.id);
   return {
     ...contest,
-    participant,
+    participant: participant
+      ? { ...participant, deadlineAt: getAttemptDeadline(contest, participant) }
+      : null,
     canParticipate: user.role.name === RoleName.STUDENT,
     serverNow: Date.now(),
   };
@@ -45,5 +51,11 @@ export async function getContestEntry(slug: string) {
   const participant = await findContestParticipant(contest.id, user.id);
   const serverNow = Date.now();
   assertParticipantCanEnter(contest, participant, serverNow);
-  return { contest, userId: user.id, serverNow };
+  return {
+    contest,
+    participant,
+    deadlineAt: getAttemptDeadline(contest, participant)!,
+    userId: user.id,
+    serverNow,
+  };
 }
