@@ -28,6 +28,7 @@ import { useContestFinalization } from "./use-contest-finalization";
 import { FinalizationNotice } from "./expired-contest";
 import type { ContestDraftInput } from "../draft-schema";
 import { ContestSubmissionDialog } from "./contest-submission-dialog";
+import { useContestEvents } from "@/features/proctoring/components/use-contest-events";
 
 const CodeEditor = dynamic(
   () =>
@@ -301,6 +302,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   );
   const remaining = clock.deadlineAt - clock.now;
   const closed = completed || clock.blocked || remaining <= 0;
+  useContestEvents(data.contest.slug, !closed);
   const serverDraft = useServerDraft(data.contest.slug, closed);
   const finalization = useContestFinalization(
     data.contest.slug,
