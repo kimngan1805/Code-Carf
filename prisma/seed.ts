@@ -8,6 +8,7 @@ import {
 } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { MILESTONE_BADGES } from "../src/features/progress/badges";
+import { computeContestParticipantStanding } from "../src/features/leaderboard/contest-ranking";
 import { SAMPLE_SCHOOLS } from "./schools";
 
 const prisma = new PrismaClient();
@@ -202,6 +203,7 @@ async function main() {
     "Minh Thư",
   );
   await seedDemoLearners(student.passwordHash, demoPathIds);
+  await seedSampleContestLeaderboard(contest.id, contest.penaltyMinutes);
   await seedPersonalDemo(teacher.id, path.id);
   await seedSchools();
 }
@@ -479,6 +481,174 @@ async function seedDemoLearners(
             ]
           : []),
       ],
+    });
+  }
+}
+
+/**
+ * Idempotently seeds demo leaderboard entries in `sample-contest` (including a
+ * competition tie) while keeping `student@local.test`'s existing attempt intact.
+ */
+async function seedSampleContestLeaderboard(
+  contestId: string,
+  contestPenaltyMinutes: number,
+) {
+  const contestExercises = await prisma.contestExercise.findMany({
+    where: { contestId },
+    orderBy: { position: "asc" },
+    select: { exerciseId: true },
+  });
+  if (contestExercises.length < 2) {
+    return;
+  }
+
+  const [firstExercise, secondExercise] = contestExercises;
+  const now = Date.now();
+  const demoEntries = [
+    {
+      email: "demo-minhanh@local.test",
+      key: "minhanh",
+      finished: true,
+      submissions: [
+        {
+          exerciseId: firstExercise.exerciseId,
+          status: SubmissionStatus.ACCEPTED,
+          score: 100,
+        },
+        {
+          exerciseId: secondExercise.exerciseId,
+          status: SubmissionStatus.ACCEPTED,
+          score: 100,
+        },
+      ],
+    },
+    {
+      email: "demo-quocbao@local.test",
+      key: "quocbao",
+      finished: true,
+      submissions: [
+        {
+          exerciseId: firstExercise.exerciseId,
+          status: SubmissionStatus.ACCEPTED,
+          score: 100,
+        },
+        {
+          exerciseId: secondExercise.exerciseId,
+          status: SubmissionStatus.REJECTED,
+          score: 50,
+        },
+      ],
+    },
+    {
+      email: "demo-thuha@local.test",
+      key: "thuha",
+      finished: true,
+      submissions: [
+        {
+          exerciseId: firstExercise.exerciseId,
+          status: SubmissionStatus.ACCEPTED,
+          score: 100,
+        },
+        {
+          exerciseId: secondExercise.exerciseId,
+          status: SubmissionStatus.REJECTED,
+          score: 50,
+        },
+      ],
+    },
+    {
+      email: "demo-giahuy@local.test",
+      key: "giahuy",
+      finished: false,
+      submissions: [
+        {
+          exerciseId: firstExercise.exerciseId,
+          status: SubmissionStatus.ACCEPTED,
+          score: 100,
+        },
+        {
+          exerciseId: secondExercise.exerciseId,
+          status: SubmissionStatus.REJECTED,
+          score: 0,
+        },
+      ],
+    },
+  ];
+
+  for (let index = 0; index < demoEntries.length; index++) {
+    const entry = demoEntries[index];
+    const user = await prisma.user.findUnique({
+      where: { email: entry.email },
+      select: { id: true },
+    });
+    if (!user) continue;
+
+    for (let subIdx = 0; subIdx < entry.submissions.length; subIdx++) {
+      const sub = entry.submissions[subIdx];
+      await prisma.submission.upsert({
+        where: {
+          id: `contest-demo-${contestId}-${entry.key}-${subIdx + 1}`,
+        },
+        update: {
+          status: sub.status,
+          score: sub.score,
+        },
+        create: {
+          id: `contest-demo-${contestId}-${entry.key}-${subIdx + 1}`,
+          userId: user.id,
+          exerciseId: sub.exerciseId,
+          contestId,
+          source: "// Seed demo contest submission",
+          language: "typescript",
+          status: sub.status,
+          score: sub.score,
+          feedback:
+            sub.status === SubmissionStatus.ACCEPTED
+              ? "Đạt tất cả test case."
+              : "Chưa vượt qua toàn bộ test case.",
+        },
+      });
+    }
+
+    const standing = computeContestParticipantStanding(
+      entry.submissions.map((sub, subIdx) => ({
+        userId: user.id,
+        exerciseId: sub.exerciseId,
+        contestId,
+        status: sub.status,
+        score: sub.score,
+        createdAt: new Date(now - (10 - subIdx) * 60000),
+      })),
+      contestPenaltyMinutes,
+      contestId,
+    );
+
+    const joinedAt = new Date(now - (30 + index * 5) * 60000);
+    const startedAt = new Date(now - (25 + index * 5) * 60000);
+    const deadlineAt = new Date(startedAt.getTime() + 120 * 60000);
+    const finishedAt = entry.finished ? new Date(now - index * 60000) : null;
+
+    await prisma.contestParticipant.upsert({
+      where: {
+        contestId_userId: { contestId, userId: user.id },
+      },
+      update: {
+        score: standing.score,
+        penaltyMinutes: standing.penaltyMinutes,
+        startedAt,
+        deadlineAt,
+        finishedAt,
+      },
+      create: {
+        contestId,
+        userId: user.id,
+        joinedAt,
+        startedAt,
+        deadlineAt,
+        finishedAt,
+        score: standing.score,
+        penaltyMinutes: standing.penaltyMinutes,
+      },
     });
   }
 }
