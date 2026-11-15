@@ -13,6 +13,12 @@ describe("role routing", () => {
     expect(allowedRole("/achievements", RoleName.GRADER)).toBe(false);
     expect(allowedRole("/achievements", RoleName.ADMIN)).toBe(false);
   });
+  it("keeps teacher applicants (guests) out of learning and teaching areas", () => {
+    for (const path of ["/paths", "/rooms", "/contests", "/creator", "/admin"])
+      expect(allowedRole(path, RoleName.GUEST)).toBe(false);
+    for (const path of ["/onboarding", "/settings", "/dashboard"])
+      expect(allowedRole(path, RoleName.GUEST)).toBe(true);
+  });
   it("allows all authenticated roles into settings", () => {
     for (const role of Object.values(RoleName)) {
       expect(allowedRole("/settings", role)).toBe(true);

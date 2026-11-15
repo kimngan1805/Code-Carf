@@ -37,13 +37,17 @@ export function Sidebar({
     ? "/creator"
     : canViewProfile
       ? "/profile"
-      : "/grading";
+      : role === RoleName.GUEST
+        ? "/onboarding/teacher/submitted"
+        : "/grading";
   const roleLabel =
     role === RoleName.ADMIN
       ? "Quản trị viên"
       : role === RoleName.GRADER
         ? "Giám khảo"
-        : "Không gian giảng viên";
+        : role === RoleName.GUEST
+          ? "Khách"
+          : "Không gian giảng viên";
 
   function toggle() {
     const next = !collapsed;

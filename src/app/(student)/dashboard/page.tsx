@@ -9,6 +9,7 @@ import {
   WeekPlan,
 } from "@/features/dashboard/components/dashboard-sections";
 import { redirect } from "next/navigation";
+import { RoleName } from "@prisma/client";
 import { getDashboard } from "@/features/dashboard/service";
 import { AppError } from "@/lib/errors";
 import { getCurrentUser } from "@/features/auth/service";
@@ -17,6 +18,8 @@ import { isTeacherRole } from "@/features/auth/permissions";
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   if (user && isTeacherRole(user.role.name)) redirect("/creator");
+  if (user?.role.name === RoleName.GUEST)
+    redirect("/onboarding/teacher/submitted");
   // Layout and page render in parallel, so the page also handles a missing account.
   const dashboard = await getDashboard().catch((error) => {
     if (error instanceof AppError && [401, 403].includes(error.status))

@@ -60,6 +60,7 @@ export default async function TeacherApplicationSubmittedPage() {
     (option) => option.value === application.teachingLevel,
   )?.label;
   const pending = application.status === ApplicationStatus.PENDING;
+  const rejected = application.status === ApplicationStatus.REJECTED;
   const timeline = [
     {
       title: "Đã nộp hồ sơ",
@@ -185,13 +186,17 @@ export default async function TeacherApplicationSubmittedPage() {
 
           <div className="mt-8 flex flex-col gap-3 border-t border-border/70 pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm text-muted-foreground">
-              Trong lúc chờ, bạn có thể học và luyện tập với vai trò học viên.
+              {rejected
+                ? "Bạn có thể bổ sung minh chứng và nộp lại hồ sơ."
+                : "Bạn sẽ nhận email khi hồ sơ được xử lý. Muốn học với vai trò học viên, hãy đăng ký một tài khoản riêng."}
             </p>
-            <Button asChild className="shrink-0 rounded-xl">
-              <Link href="/dashboard">
-                Vào trang chủ <ArrowRight className="size-4" aria-hidden />
-              </Link>
-            </Button>
+            {rejected && (
+              <Button asChild className="shrink-0 rounded-xl">
+                <Link href="/onboarding/teacher/apply">
+                  Nộp lại hồ sơ <ArrowRight className="size-4" aria-hidden />
+                </Link>
+              </Button>
+            )}
           </div>
         </main>
       </div>
