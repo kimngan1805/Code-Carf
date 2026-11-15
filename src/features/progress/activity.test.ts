@@ -4,6 +4,7 @@ import { AppError } from "../../lib/errors";
 
 const { mockTx, mockTransaction } = vi.hoisted(() => {
   const tx = {
+    $queryRaw: vi.fn(),
     xpEvent: { create: vi.fn(), groupBy: vi.fn() },
     user: { update: vi.fn(), findUnique: vi.fn() },
     userBadge: { findMany: vi.fn(), createMany: vi.fn() },
@@ -21,13 +22,19 @@ vi.mock("../../lib/db", () => ({
   db: { $transaction: mockTransaction },
 }));
 
-import { recordLearningActivity, recordLearningActivityInTx } from "./activity";
+import {
+  recordLearningActivity,
+  recordLearningActivityInTx,
+  recordStreakActivity,
+} from "./activity";
 import { awardCompletedWeekTopBadge } from "./badge-awarding";
 
 function setupDefaultBadgeSnapshot() {
+  mockTx.$queryRaw.mockResolvedValue([{ id: "user-1" }]);
   mockTx.user.findUnique.mockResolvedValue({
     currentStreak: 0,
     longestStreak: 0,
+    lastActiveOn: null,
   });
   mockTx.userBadge.findMany.mockResolvedValue([]);
   mockTx.submission.findMany.mockResolvedValue([]);
@@ -44,7 +51,7 @@ describe("recordLearningActivity", () => {
     setupDefaultBadgeSnapshot();
   });
 
-  it("creates an XpEvent and increments User.xp in a single transaction", async () => {
+  it("creates an XpEvent, updates streak, and increments User.xp in a single transaction", async () => {
     const createdEvent = {
       id: "xp-evt-1",
       userId: "user-1",
@@ -64,9 +71,11 @@ describe("recordLearningActivity", () => {
       source: XpSource.ROOM_COMPLETED,
       pathId: "path-1",
       roomId: "room-1",
+      occurredAt: new Date("2026-11-13T23:59:59+07:00"),
     });
 
     expect(mockTransaction).toHaveBeenCalledTimes(1);
+    expect(mockTx.$queryRaw).toHaveBeenCalledTimes(1);
     expect(mockTx.xpEvent.create).toHaveBeenCalledTimes(1);
     expect(mockTx.xpEvent.create).toHaveBeenCalledWith({
       data: {
@@ -80,7 +89,12 @@ describe("recordLearningActivity", () => {
     });
     expect(mockTx.user.update).toHaveBeenCalledWith({
       where: { id: "user-1" },
-      data: { xp: { increment: 50 } },
+      data: {
+        xp: { increment: 50 },
+        currentStreak: 1,
+        longestStreak: 1,
+        lastActiveOn: new Date("2026-11-13T00:00:00.000Z"),
+      },
       select: { xp: true },
     });
     expect(mockTx.userBadge.createMany).not.toHaveBeenCalled();
@@ -454,5 +468,85 @@ describe("recordLearningActivityInTx", () => {
       }),
     ).rejects.toBeInstanceOf(AppError);
     expect(mockTx.xpEvent.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("recordStreakActivity", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockTransaction.mockImplementation(async (callback) => callback(mockTx));
+    setupDefaultBadgeSnapshot();
+  });
+
+  it("updates streak from 6 to 7 before evaluating badges without creating any XpEvent", async () => {
+    mockTx.user.findUnique
+      .mockResolvedValueOnce({
+        currentStreak: 6,
+        longestStreak: 6,
+        lastActiveOn: new Date("2026-11-11T00:00:00.000Z"),
+      })
+      .mockResolvedValueOnce({
+        currentStreak: 7,
+        longestStreak: 7,
+      });
+    mockTx.badge.findMany.mockResolvedValue([{ id: "b-s7", slug: "streak-7" }]);
+    mockTx.userBadge.createMany.mockResolvedValue({ count: 1 });
+
+    const result = await recordStreakActivity({
+      userId: "user-1",
+      occurredAt: new Date("2026-11-12T00:00:00+07:00"),
+    });
+
+    expect(mockTx.xpEvent.create).not.toHaveBeenCalled();
+    expect(mockTx.user.update).toHaveBeenCalledWith({
+      where: { id: "user-1" },
+      data: {
+        currentStreak: 7,
+        longestStreak: 7,
+        lastActiveOn: new Date("2026-11-12T00:00:00.000Z"),
+      },
+    });
+    expect(mockTx.userBadge.createMany).toHaveBeenCalledWith({
+      data: [{ userId: "user-1", badgeId: "b-s7" }],
+      skipDuplicates: true,
+    });
+    expect(result).toEqual({
+      currentStreak: 7,
+      longestStreak: 7,
+      lastActiveOn: new Date("2026-11-12T00:00:00.000Z"),
+      updated: true,
+    });
+  });
+
+  it("skips user.update when already active on the same Vietnam calendar day", async () => {
+    mockTx.user.findUnique.mockResolvedValue({
+      currentStreak: 3,
+      longestStreak: 5,
+      lastActiveOn: new Date("2026-11-12T00:00:00.000Z"),
+    });
+
+    const result = await recordStreakActivity({
+      userId: "user-1",
+      occurredAt: new Date("2026-11-12T23:59:59+07:00"),
+    });
+
+    expect(mockTx.xpEvent.create).not.toHaveBeenCalled();
+    expect(mockTx.user.update).not.toHaveBeenCalled();
+    expect(result).toEqual({
+      currentStreak: 3,
+      longestStreak: 5,
+      lastActiveOn: new Date("2026-11-12T00:00:00.000Z"),
+      updated: false,
+    });
+  });
+
+  it("rejects blank userId without starting a transaction", async () => {
+    await expect(recordStreakActivity({ userId: "   " })).rejects.toMatchObject(
+      {
+        status: 400,
+        code: "INVALID_LEARNING_ACTIVITY",
+      },
+    );
+    expect(mockTransaction).not.toHaveBeenCalled();
   });
 });
