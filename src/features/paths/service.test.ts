@@ -22,6 +22,18 @@ function pathRecord(completed = 1, total = 3) {
     title: "Basics",
     description: "Learn",
     sequentialUnlock: true,
+    difficulty: "EASY",
+    tags: ["C++"],
+    estimatedMinutes: 90,
+    coverTheme: "blue",
+    publishedAt: new Date("2026-11-10T00:00:00Z"),
+    creator: {
+      name: "Cô Lan",
+      teacherApplications: [
+        { schoolName: "THPT Chuyên A", province: "Đà Nẵng" },
+      ],
+    },
+    _count: { enrollments: 7 },
     enrollments: [{ userId: "student-1" }],
     rooms: Array.from({ length: total }, (_, index) => ({
       id: `room-${index}`,
@@ -96,6 +108,64 @@ describe("learner path catalog", () => {
       false,
     ]);
     expect(path).not.toHaveProperty("enrollments");
+  });
+  it("returns the community card fields: author, school, counts and metadata", async () => {
+    mocks.findMany.mockResolvedValue([pathRecord(1, 3)]);
+    const [card] = await getPaths();
+    expect(card).toMatchObject({
+      difficulty: "EASY",
+      tags: ["C++"],
+      estimatedMinutes: 90,
+      coverTheme: "blue",
+      learners: 7,
+      exercises: 6,
+      author: {
+        name: "Cô Lan",
+        school: { name: "THPT Chuyên A", province: "Đà Nẵng" },
+      },
+    });
+    expect(card.publishedAt).toEqual(new Date("2026-11-10T00:00:00Z"));
+  });
+  it("leaves the school empty when the author has no approved application", async () => {
+    mocks.findMany.mockResolvedValue([
+      {
+        ...pathRecord(),
+        creator: { name: "Admin", teacherApplications: [] },
+      },
+    ]);
+    expect((await getPaths())[0].author).toEqual({
+      name: "Admin",
+      school: null,
+    });
+  });
+  it("never selects the author's email and only reads approved applications", async () => {
+    mocks.findMany.mockResolvedValue([]);
+    await getPaths();
+    const { creator } = mocks.findMany.mock.calls[0][0].select;
+    expect(Object.keys(creator.select)).toEqual([
+      "name",
+      "teacherApplications",
+    ]);
+    expect(creator.select.teacherApplications.where).toEqual({
+      status: "APPROVED",
+    });
+  });
+  it("applies search, difficulty, tag and popularity sorting in the query", async () => {
+    mocks.findMany.mockResolvedValue([]);
+    await getPaths({
+      q: "cpp",
+      difficulty: "HARD",
+      tag: "C++",
+      sort: "popular",
+    });
+    const query = mocks.findMany.mock.calls[0][0];
+    expect(query.where).toMatchObject({
+      published: true,
+      difficulty: "HARD",
+      tags: { has: "C++" },
+    });
+    expect(query.where.OR).toHaveLength(4);
+    expect(query.orderBy[0]).toEqual({ enrollments: { _count: "desc" } });
   });
   it("returns 404 for missing or unpublished detail pages", async () => {
     mocks.findFirst.mockResolvedValue(null);

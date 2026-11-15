@@ -1,7 +1,13 @@
 import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { AppError } from "@/lib/errors";
-import { enrollInPath, findPublishedPath, listPaths } from "./repository";
+import {
+  enrollInPath,
+  findPublishedPath,
+  listPaths,
+  listPopularTags,
+  type CatalogFilters,
+} from "./repository";
 
 type PathRecord = Awaited<ReturnType<typeof listPaths>>[number];
 
@@ -10,11 +16,25 @@ function presentPath(path: PathRecord) {
     (room) => room.progress.length > 0,
   ).length;
   const total = path.rooms.length;
+  const school = path.creator.teacherApplications[0];
   return {
     id: path.id,
     slug: path.slug,
     title: path.title,
     description: path.description,
+    difficulty: path.difficulty,
+    tags: path.tags,
+    estimatedMinutes: path.estimatedMinutes,
+    coverTheme: path.coverTheme,
+    publishedAt: path.publishedAt,
+    learners: path._count.enrollments,
+    exercises: path.rooms.reduce((sum, room) => sum + room._count.exercises, 0),
+    author: {
+      name: path.creator.name,
+      school: school
+        ? { name: school.schoolName, province: school.province }
+        : null,
+    },
     enrolled: path.enrollments.length > 0,
     completed,
     total,
@@ -35,13 +55,18 @@ function presentPath(path: PathRecord) {
   };
 }
 
-export async function getPaths() {
+export async function getPaths(filters?: CatalogFilters) {
   const user = await requireRole([
     RoleName.STUDENT,
     RoleName.TEACHER,
     RoleName.ADMIN,
   ]);
-  return (await listPaths(user.id)).map(presentPath);
+  return (await listPaths(user.id, filters)).map(presentPath);
+}
+
+export async function getCatalogTags() {
+  await requireRole([RoleName.STUDENT, RoleName.TEACHER, RoleName.ADMIN]);
+  return listPopularTags();
 }
 
 export async function getPath(slug: string) {
