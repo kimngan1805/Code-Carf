@@ -695,6 +695,8 @@ try {
       assert.equal((await restarted.json()).data.deadlineAt, firstDeadline);
       const html = await (await request(`/contests/${live.slug}/play`)).text();
       assert.ok(html.includes(prompt) && !html.includes(hidden));
+      assert.ok(!html.includes("Bài nộp gần đây của bạn"));
+      assert.ok(!html.includes("Màn hình làm bài · Thống kê thao tác"));
       assert.ok(html.includes('aria-label="Màn hình làm bài riêng"'));
       assert.ok(!html.includes('placeholder="Tìm bài học, cuộc thi..."'));
       assert.equal(
@@ -854,6 +856,8 @@ try {
       const resultHtml = await page.text();
       assert.ok(resultHtml.includes("Bạn đã nộp tất cả bài"));
       assert.ok(resultHtml.includes("Thống kê trong lúc thi"));
+      assert.ok(resultHtml.includes("Bài nộp gần đây của bạn"));
+      assert.ok(resultHtml.includes(foreignSubmissionId));
       assert.ok(resultHtml.includes('aria-label="Dán code: 0"'));
       assert.ok(resultHtml.includes('aria-label="Chuyển tab: 4"'));
       assert.ok(resultHtml.includes('aria-label="Thoát toàn màn hình: 1"'));
@@ -971,6 +975,9 @@ try {
       assert.equal(page.status, 200);
       assert.ok(!html.includes(prompt));
       assert.ok(html.includes("Lượt làm bài của bạn đã hết giờ"));
+      assert.ok(html.includes("Bài nộp gần đây của bạn"));
+      assert.ok(html.includes(finalId));
+      assert.ok(!html.includes(foreignSubmissionId));
       assert.ok(html.includes('aria-label="Dán code: 1"'));
       assert.ok(html.includes('aria-label="Chuyển tab: 29"'));
       assert.ok(html.includes('aria-label="Thoát toàn màn hình: 0"'));

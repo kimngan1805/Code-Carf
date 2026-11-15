@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     contest: { findUnique: vi.fn() },
     contestParticipant: { findUnique: vi.fn() },
     proctoringEvent: { groupBy: vi.fn() },
+    submission: { findMany: vi.fn() },
   },
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.auth }));
@@ -35,10 +36,12 @@ beforeEach(() => {
     { type: "TAB_SWITCH", _count: { _all: 1 } },
     { type: "FULLSCREEN_EXIT", _count: { _all: 1 } },
   ]);
+  mocks.tx.submission.findMany.mockResolvedValue([]);
 });
 describe("attempt review statistics", () => {
   it("returns separate counts scoped to the signed-in student's completed attempt", async () => {
     expect(await getAttemptReview("sample")).toEqual({
+      submissions: [],
       pasteCount: 2,
       tabSwitchCount: 1,
       fullscreenExitCount: 1,
@@ -50,6 +53,11 @@ describe("attempt review statistics", () => {
       where: { contestId: "contest", userId: "viewer" },
       _count: { _all: true },
     });
+    expect(mocks.tx.submission.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { contestId: "contest", userId: "viewer" },
+      }),
+    );
   });
   it("does not expose review data during an active attempt", async () => {
     mocks.tx.contestParticipant.findUnique.mockResolvedValue({
@@ -61,6 +69,7 @@ describe("attempt review statistics", () => {
       code: "RESULTS_NOT_AVAILABLE",
     });
     expect(mocks.tx.proctoringEvent.groupBy).not.toHaveBeenCalled();
+    expect(mocks.tx.submission.findMany).not.toHaveBeenCalled();
   });
   it("does not expose another student's data to an unregistered viewer", async () => {
     mocks.tx.contestParticipant.findUnique.mockResolvedValue(null);

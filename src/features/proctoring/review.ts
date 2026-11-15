@@ -32,7 +32,27 @@ export async function getAttemptReview(slug: string) {
     });
     const count = (type: string) =>
       groups.find((group) => group.type === type)?._count._all ?? 0;
+    const submissions = await tx.submission.findMany({
+      where: { contestId: contest.id, userId: user.id },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 20,
+      select: {
+        id: true,
+        exerciseId: true,
+        exercise: { select: { title: true } },
+        language: true,
+        status: true,
+        score: true,
+        feedback: true,
+        createdAt: true,
+        autoSubmitted: true,
+      },
+    });
     return {
+      submissions: submissions.map((submission) => ({
+        ...submission,
+        createdAt: submission.createdAt.toISOString(),
+      })),
       pasteCount: count("PASTE"),
       tabSwitchCount: count("TAB_SWITCH"),
       fullscreenExitCount: count("FULLSCREEN_EXIT"),

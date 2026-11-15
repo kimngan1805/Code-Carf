@@ -5,6 +5,7 @@ import { useContestFinalization } from "./use-contest-finalization";
 import { useEffect } from "react";
 import { exitExamFullscreen } from "../fullscreen";
 import type { AttemptReview } from "@/features/proctoring/review";
+import { SubmissionHistory } from "./submission-history";
 
 export function FinalizationNotice({
   finalization,
@@ -53,11 +54,19 @@ export function ExpiredContest({
   review: AttemptReview;
 }) {
   const finalization = useContestFinalization(slug, true);
+  // Finalization may create an automatic answer after the server rendered this page.
+  const finalSubmission = finalization.result?.submission;
+  const submissions = finalSubmission
+    ? [
+        finalSubmission,
+        ...review.submissions.filter((item) => item.id !== finalSubmission.id),
+      ].slice(0, 20)
+    : review.submissions;
   useEffect(() => {
     void exitExamFullscreen();
   }, []);
   return (
-    <section className="mx-auto max-w-2xl space-y-5 rounded-2xl border bg-background p-6">
+    <section className="mx-auto max-w-4xl space-y-5 rounded-2xl border bg-background p-6">
       <h1 className="text-2xl font-bold">{title}</h1>
       <p className="text-sm text-muted-foreground">
         {completed
@@ -65,6 +74,7 @@ export function ExpiredContest({
           : "Lượt làm bài của bạn đã hết giờ. Bạn không thể sửa hoặc nộp thêm bài mới."}
       </p>
       <FinalizationNotice finalization={finalization} />
+      <SubmissionHistory submissions={submissions} />
       <section
         className="space-y-3 border-t pt-5"
         aria-labelledby="attempt-review-title"
