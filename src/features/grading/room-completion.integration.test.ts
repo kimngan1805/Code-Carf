@@ -18,8 +18,16 @@ vi.mock("../progress/badge-awarding", async (importOriginal) => {
   };
 });
 
+// Grade every test as correct, whatever GRADER_ADAPTER is set to locally.
+vi.mock("./service", () => ({
+  getGradingAdapter: () => ({
+    grade: async () => ({ status: "ACCEPTED", feedback: "ok" }),
+  }),
+}));
+
 import { awardActivityBadgesInTx } from "../progress/badge-awarding";
 import { completeRoomIfDone } from "./room-completion";
+import { submitSolution } from "./submit";
 
 async function canConnectToDatabase(): Promise<boolean> {
   if (!process.env.DATABASE_URL) return false;
@@ -296,6 +304,45 @@ describe.skipIf(!hasDatabase)(
       const { user, second } = await setup();
       expect(await completeRoomIfDone(user.id, "no-such-room")).toBeNull();
       expect(await completeRoomIfDone(user.id, second.id)).toBeNull();
+    });
+
+    it("submitSolution completes the room on the last accepted exercise and pays XP once", async () => {
+      const { user, first, second, exercises } = await setup({ xpReward: 80 });
+      for (const exercise of exercises)
+        await db.testCase.create({
+          data: { exerciseId: exercise.id, input: "1 2", expected: "3" },
+        });
+      const solve = (exerciseId: string) =>
+        submitSolution({
+          userId: user.id,
+          exerciseId,
+          source: "print(3)",
+          language: "python",
+        });
+
+      const one = await solve(exercises[0].id);
+      expect(one.status).toBe("ACCEPTED");
+      expect(one).not.toHaveProperty("roomCompletion");
+      expect(await userXp(user.id)).toBe(0);
+      expect(await canAccessRoom(user.id, second.id)).toBe(false);
+
+      const two = await solve(exercises[1].id);
+      expect(two.status).toBe("ACCEPTED");
+      expect(two.roomCompletion).toMatchObject({
+        roomId: first.id,
+        xpAwarded: 80,
+        totalXp: 80,
+        nextRoom: { id: second.id },
+      });
+      expect(await userXp(user.id)).toBe(80);
+      expect(await canAccessRoom(user.id, second.id)).toBe(true);
+
+      // a second accepted submission of the same exercise pays nothing
+      const again = await solve(exercises[1].id);
+      expect(again.status).toBe("ACCEPTED");
+      expect(again).not.toHaveProperty("roomCompletion");
+      expect(await userXp(user.id)).toBe(80);
+      expect(await xpEvents(user.id)).toHaveLength(1);
     });
   },
 );
