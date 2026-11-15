@@ -19,6 +19,12 @@ describe("role routing", () => {
     for (const path of ["/onboarding", "/settings", "/hv/dashboard"])
       expect(allowedRole(path, RoleName.GUEST)).toBe(true);
   });
+  it("allows only students into the exercise editor", () => {
+    expect(allowedRole("/hv/exercises/ex-1", RoleName.STUDENT)).toBe(true);
+    for (const role of [RoleName.TEACHER, RoleName.GRADER, RoleName.ADMIN])
+      expect(allowedRole("/hv/exercises/ex-1", role)).toBe(false);
+    expect(allowedRole("/hv/exercises/ex-1", undefined)).toBe(false);
+  });
   it("allows all authenticated roles into settings", () => {
     for (const role of Object.values(RoleName)) {
       expect(allowedRole("/settings", role)).toBe(true);
