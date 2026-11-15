@@ -6,6 +6,20 @@ on:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U ci -d ci"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=10
     env:
       DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
       AUTH_SECRET: ci-only-placeholder-secret-at-least-32-characters
@@ -19,5 +33,6 @@ jobs:
       - run: npx prisma generate
       - run: npm run lint
       - run: npm run typecheck
+      - run: npx prisma migrate deploy
       - run: npm test
       - run: npm run build
