@@ -6,15 +6,17 @@ export function CodeEditor({
   onChange,
   language = "typescript",
   readOnly = false,
+  height = "320px",
 }: {
   value: string;
   onChange: (value: string) => void;
   language?: string;
   readOnly?: boolean;
+  height?: string;
 }) {
   return (
     <Editor
-      height="320px"
+      height={height}
       language={language}
       value={value}
       onChange={(next) => onChange(next ?? "")}
