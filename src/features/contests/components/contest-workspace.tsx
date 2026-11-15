@@ -1,17 +1,9 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import {
-  ArrowLeft,
-  Check,
-  Clock3,
-  FileCode2,
-  Send,
-  Trophy,
-} from "lucide-react";
+import { Check, Clock3, FileCode2, Send, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { languages, type SolutionLanguage } from "../languages";
 import { cn } from "@/lib/utils";
@@ -29,6 +21,8 @@ import { FinalizationNotice } from "./expired-contest";
 import type { ContestDraftInput } from "../draft-schema";
 import { ContestSubmissionDialog } from "./contest-submission-dialog";
 import { useContestEvents } from "@/features/proctoring/components/use-contest-events";
+import { ProctoringNotice } from "@/features/proctoring/components/proctoring-notice";
+import { exitExamFullscreen } from "../fullscreen";
 
 const CodeEditor = dynamic(
   () =>
@@ -46,7 +40,6 @@ const CodeEditor = dynamic(
 );
 
 type Exercise = ContestWorkspaceData["exercises"][number];
-type HistoryEntry = ContestWorkspaceData["submissions"][number];
 
 function SolutionPanel({
   exercise,
@@ -62,7 +55,7 @@ function SolutionPanel({
   closed: boolean;
   submitted: boolean;
   isLast: boolean;
-  onSubmitted: (result: ContestSubmissionResult, language: string) => void;
+  onSubmitted: (result: ContestSubmissionResult) => void;
   onSnapshot: (snapshot: ContestDraftInput) => void;
 }) {
   const [language, setLanguage] = useState<SolutionLanguage>("python");
@@ -118,7 +111,7 @@ function SolutionPanel({
       }
       if (!response.ok)
         throw new Error(result.error?.message ?? "Không thể nộp bài.");
-      onSubmitted(result.data, language);
+      onSubmitted(result.data);
       setFeedback(result.data.feedback);
     } catch (error) {
       setError(
@@ -263,16 +256,6 @@ function SolutionPanel({
   );
 }
 
-const resultLabels: Record<string, string> = {
-  MOCKED: "Đã chấm · mô phỏng",
-  PENDING: "Chờ chấm",
-  RUNNING: "Đang chấm",
-  ACCEPTED: "Đúng",
-  REJECTED: "Chưa đúng",
-  ERROR: "Lỗi chấm",
-  NEEDS_REVIEW: "Chờ duyệt",
-};
-
 export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const router = useRouter();
   const [completionOpen, setCompletionOpen] = useState(false);
@@ -294,7 +277,6 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
     ]),
   ];
   const completed = progress.finished || data.progress.finished;
-  const [history, setHistory] = useState<HistoryEntry[]>(data.submissions);
   const clock = useServerClock(
     data.contest.slug,
     data.serverNow,
@@ -302,41 +284,25 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   );
   const remaining = clock.deadlineAt - clock.now;
   const closed = completed || clock.blocked || remaining <= 0;
-  useContestEvents(data.contest.slug, !closed);
+  const proctoring = useContestEvents(
+    data.contest.slug,
+    !closed,
+    data.proctoring,
+  );
+  useEffect(() => {
+    if (closed) void exitExamFullscreen();
+  }, [closed]);
   const serverDraft = useServerDraft(data.contest.slug, closed);
   const finalization = useContestFinalization(
     data.contest.slug,
     remaining <= 0 || completed,
   );
-  const visibleHistory = finalization.result?.submission
-    ? [
-        finalization.result.submission,
-        ...history.filter(
-          (item) => item.id !== finalization.result?.submission?.id,
-        ),
-      ].slice(0, 20)
-    : history;
   const exercise = data.exercises.find((item) => item.id === selectedId);
-  function recordResult(result: ContestSubmissionResult, language: string) {
+  function recordResult(result: ContestSubmissionResult) {
     setProgress(result.progress);
     if (result.progress.finished) setCompletionOpen(true);
     if (result.progress.nextExerciseId)
       setSelectedId(result.progress.nextExerciseId);
-    setHistory((previous) =>
-      [
-        {
-          id: result.id,
-          exerciseId: result.exerciseId,
-          language,
-          status: result.status,
-          score: result.score,
-          autoSubmitted: false,
-          feedback: result.feedback,
-          createdAt: result.createdAt,
-        },
-        ...previous.filter((item) => item.id !== result.id),
-      ].slice(0, 20),
-    );
   }
   return (
     <div className="mx-auto max-w-screen-2xl space-y-5">
@@ -348,14 +314,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
       />
       <header className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border bg-background p-5">
         <div className="min-w-0">
-          <Link
-            href={`/contests/${data.contest.slug}`}
-            className="inline-flex items-center gap-1 text-xs font-semibold text-primary focus-visible:outline-2"
-          >
-            <ArrowLeft className="size-3.5" aria-hidden />
-            Chi tiết cuộc thi
-          </Link>
-          <h1 className="mt-2 break-words text-xl font-bold">
+          <h1 className="break-words text-xl font-bold">
             {data.contest.title}
           </h1>
         </div>
@@ -380,6 +339,12 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           </p>
         </div>
       </header>
+      {!closed && <ProctoringNotice state={proctoring} />}
+      {!closed && serverDraft.state === "error" && (
+        <p role="alert" className="text-sm text-warning">
+          Chưa lưu được bài. Hãy kiểm tra kết nối.
+        </p>
+      )}
       {completed && (
         <p
           role="status"
@@ -389,30 +354,12 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
         </p>
       )}
       {remaining <= 0 && !completed && (
-        <FinalizationNotice finalization={finalization} />
-      )}
-      {!closed && (
-        <p className="text-sm text-muted-foreground">
-          Mỗi bài chỉ được nộp một lần. Nộp xong sẽ tự chuyển sang bài chưa nộp
-          tiếp theo; nộp tất cả bài sẽ kết thúc lượt thi.
-        </p>
-      )}
-      {!closed && (
-        <p
-          role="status"
-          className={cn(
-            "text-xs",
-            serverDraft.state === "error"
-              ? "text-warning"
-              : "text-muted-foreground",
+        <div className="space-y-3">
+          <FinalizationNotice finalization={finalization} />
+          {finalization.result && (
+            <Button onClick={() => router.refresh()}>Xem kết quả</Button>
           )}
-        >
-          {serverDraft.state === "saved"
-            ? "Đã đồng bộ bài đang mở. Khi hết giờ, bản đã đồng bộ sẽ được tự nộp."
-            : serverDraft.state === "error"
-              ? "Chưa đồng bộ được bài đang mở. Hãy kiểm tra kết nối; tự nộp sẽ dùng bản đã đồng bộ gần nhất."
-              : "Đang đồng bộ bài đang mở..."}
-        </p>
+        </div>
       )}
       {closed && !completed && (
         <p
@@ -539,85 +486,6 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           </div>
         </>
       )}
-      <section className="overflow-hidden rounded-2xl border bg-background">
-        <h2 className="border-b px-5 py-4 font-bold">
-          Bài nộp gần đây của bạn
-        </h2>
-        {visibleHistory.length === 0 ? (
-          <p className="p-5 text-sm text-muted-foreground">
-            Bạn chưa nộp bài nào trong cuộc thi này.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted text-xs text-muted-foreground">
-                <tr>
-                  <th scope="col" className="px-5 py-3">
-                    Bài
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Ngôn ngữ
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Trạng thái
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Điểm
-                  </th>
-                  <th scope="col" className="px-5 py-3">
-                    Thời gian
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {visibleHistory.map((item) => (
-                  <tr key={item.id}>
-                    <td className="px-5 py-3">
-                      {data.exercises.find(
-                        (entry) => entry.id === item.exerciseId,
-                      )?.title ?? "Bài thi"}
-                      {item.autoSubmitted && (
-                        <span className="ml-2 rounded-full bg-secondary px-2 py-1 text-xs font-semibold text-secondary-foreground">
-                          Tự nộp
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-5 py-3">
-                      {languages.find((entry) => entry.id === item.language)
-                        ?.label ?? item.language}
-                    </td>
-                    <td className="px-5 py-3">
-                      <span
-                        title={item.feedback ?? undefined}
-                        className={cn(
-                          "font-semibold",
-                          item.status === "ACCEPTED"
-                            ? "text-success"
-                            : "text-primary",
-                        )}
-                      >
-                        {item.feedback?.toLowerCase().includes("mock") ||
-                        item.feedback?.includes("mô phỏng")
-                          ? resultLabels.MOCKED
-                          : (resultLabels[item.status] ?? item.status)}
-                      </span>
-                    </td>
-                    <td className="px-5 py-3">{item.score ?? "—"}</td>
-                    <td className="whitespace-nowrap px-5 py-3">
-                      {new Intl.DateTimeFormat("vi-VN", {
-                        timeZone: "Asia/Ho_Chi_Minh",
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit",
-                      }).format(new Date(item.createdAt))}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
     </div>
   );
 }

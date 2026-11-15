@@ -2,10 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { CheckCircle2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ContestPhase } from "../time";
+import { ContestEntryDialog } from "./contest-entry-dialog";
+import {
+  enterExamFullscreen,
+  exitExamFullscreen,
+  prepareExamEntry,
+} from "../fullscreen";
 
 export function ParticipationAction({
   slug,
@@ -33,6 +39,8 @@ export function ParticipationAction({
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [entryOpen, setEntryOpen] = useState(false);
+  const entering = useRef(false);
   async function register() {
     setPending(true);
     setError("");
@@ -56,23 +64,43 @@ export function ParticipationAction({
     }
   }
   async function startAttempt() {
+    if (entering.current) return;
+    entering.current = true;
     setPending(true);
     setError("");
+    let enteredFullscreen = false;
     try {
-      const response = await fetch(
-        `/api/contests/${encodeURIComponent(slug)}/start`,
-        { method: "POST" },
-      );
-      const result = await response.json();
-      if (!response.ok)
-        throw new Error(result.error?.message ?? "Chưa thể bắt đầu làm bài.");
-      router.push(`/contests/${slug}/play`);
+      await prepareExamEntry(attemptStarted, {
+        fullscreen: async () => {
+          const wasFullscreen = !!document.fullscreenElement;
+          await enterExamFullscreen();
+          enteredFullscreen = !wasFullscreen;
+        },
+        start: async () => {
+          const response = await fetch(
+            `/api/contests/${encodeURIComponent(slug)}/start`,
+            { method: "POST" },
+          );
+          const result = await response.json();
+          if (!response.ok)
+            throw new Error(
+              result.error?.message ?? "Chưa thể bắt đầu làm bài.",
+            );
+        },
+        navigate: () => {
+          setEntryOpen(false);
+          router.push(`/contests/${encodeURIComponent(slug)}/play`);
+        },
+      });
     } catch (failure) {
+      if (enteredFullscreen) await exitExamFullscreen();
       setError(
         failure instanceof Error
           ? failure.message
           : "Mất kết nối. Vui lòng thử lại.",
       );
+    } finally {
+      entering.current = false;
       setPending(false);
     }
   }
@@ -118,16 +146,23 @@ export function ParticipationAction({
               Bạn cần hoàn tất xác minh khuôn mặt để vào cuộc thi này.
             </p>
           ) : attemptStarted ? (
-            <Button asChild className="w-full">
-              <Link href={`/contests/${slug}/play`}>
-                <LogIn className="size-4" aria-hidden />
-                Tiếp tục làm bài
-              </Link>
+            <Button
+              onClick={() => {
+                setError("");
+                setEntryOpen(true);
+              }}
+              className="w-full"
+            >
+              <LogIn className="size-4" aria-hidden />
+              Tiếp tục làm bài
             </Button>
           ) : (
             <>
               <Button
-                onClick={startAttempt}
+                onClick={() => {
+                  setError("");
+                  setEntryOpen(true);
+                }}
                 disabled={pending}
                 className="w-full"
               >
@@ -146,7 +181,15 @@ export function ParticipationAction({
           {pending ? "Đang đăng ký..." : "Đăng ký tham gia"}
         </Button>
       )}
-      {error && (
+      <ContestEntryDialog
+        open={entryOpen}
+        started={attemptStarted}
+        pending={pending}
+        error={error}
+        onEnter={() => void startAttempt()}
+        onCancel={() => setEntryOpen(false)}
+      />
+      {error && !entryOpen && (
         <p role="alert" className="text-sm text-destructive">
           {error}
         </p>
