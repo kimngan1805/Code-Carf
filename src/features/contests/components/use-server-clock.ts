@@ -5,10 +5,10 @@ import { estimateServerTime } from "../clock";
 export function useServerClock(
   slug: string,
   initialNow: number,
-  initialEndsAt: number,
+  initialDeadlineAt: number,
 ) {
   const [now, setNow] = useState(initialNow);
-  const [endsAt, setEndsAt] = useState(initialEndsAt);
+  const [deadlineAt, setDeadlineAt] = useState(initialDeadlineAt);
   const [blocked, setBlocked] = useState(false);
   const [connectionLost, setConnectionLost] = useState(false);
 
@@ -35,13 +35,13 @@ export function useServerClock(
         }
         if (!response.ok || !Number.isFinite(result.data?.serverNow))
           throw new Error("Clock unavailable");
-        const deadline = Date.parse(result.data.endsAt);
+        const deadline = Date.parse(result.data.deadlineAt);
         if (!Number.isFinite(deadline)) throw new Error("Invalid deadline");
         sampledAt = performance.now();
         // Approximate one-way transit time from the round trip.
         anchor = result.data.serverNow + (sampledAt - sentAt) / 2;
         setNow(anchor);
-        setEndsAt(deadline);
+        setDeadlineAt(deadline);
         setBlocked(false);
         setConnectionLost(false);
       } catch {
@@ -72,5 +72,5 @@ export function useServerClock(
       window.removeEventListener("online", sync);
     };
   }, [slug, initialNow]);
-  return { now, endsAt, blocked, connectionLost };
+  return { now, deadlineAt, blocked, connectionLost };
 }

@@ -1,9 +1,10 @@
 import { cn } from "@/lib/utils";
-import { phaseLabels, type ContestPhase } from "../time";
+import { examPhaseLabels, type ContestPhase } from "../time";
 
 export function PhaseBadge({ phase }: { phase: ContestPhase }) {
   return (
     <span
+      aria-label={`Trạng thái cuộc thi: ${examPhaseLabels[phase]}`}
       className={cn(
         "inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold",
         phase === "live"
@@ -14,7 +15,7 @@ export function PhaseBadge({ phase }: { phase: ContestPhase }) {
       )}
     >
       <span className="size-1.5 rounded-full bg-current" aria-hidden />
-      {phaseLabels[phase]}
+      {examPhaseLabels[phase]}
     </span>
   );
 }

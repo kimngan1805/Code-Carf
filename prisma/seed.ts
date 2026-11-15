@@ -3,6 +3,7 @@ import {
   ExerciseKind,
   PrismaClient,
   RoleName,
+  SubmissionStatus,
   XpSource,
 } from "@prisma/client";
 import { hash } from "bcryptjs";
@@ -73,12 +74,16 @@ async function main() {
       },
     },
   });
-  // Demo schedule relative to the seed time, so the dashboard always shows upcoming contests.
+  // A fresh local seed is immediately playable with the registered sample student.
   const hour = 60 * 60 * 1000;
+  const sampleNow = Date.now();
   const sampleSchedule = {
     status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() + 72 * hour),
-    endsAt: new Date(Date.now() + 74 * hour),
+    startsAt: new Date(sampleNow - hour),
+    endsAt: new Date(sampleNow - 60000),
+    examStartsAt: new Date(sampleNow - 30000),
+    examEndsAt: new Date(sampleNow + 24 * hour),
+    durationMinutes: 120,
   };
   const contest = await prisma.contest.upsert({
     where: { slug: "sample-contest" },
@@ -87,6 +92,8 @@ async function main() {
       ...sampleSchedule,
       slug: "sample-contest",
       title: "Sample Contest",
+      description:
+        "Hai bài code đơn giản: tính tổng hai số và bình phương một số. Mỗi bài chỉ được nộp một lần. Tài khoản student@local.test đã được đăng ký sẵn để bắt đầu ngay sau khi seed.",
       creatorId: teacher.id,
       exercises: {
         create: [
@@ -105,36 +112,38 @@ async function main() {
               },
             },
           },
-          {
-            position: 2,
-            exercise: {
-              create: {
-                title: "Binary search flowchart",
-                prompt:
-                  "Draw a flowchart for binary search and upload a photo.",
-                kind: ExerciseKind.HANDWRITTEN,
-                rubric:
-                  "Has start/end, low/high/mid, comparison branch, loop until low > high.",
-              },
-            },
-          },
         ],
       },
     },
   });
-  const weeklySchedule = {
-    status: ContestStatus.PUBLISHED,
-    startsAt: new Date(Date.now() + 26 * hour),
-    endsAt: new Date(Date.now() + 27.5 * hour),
+  // Keep older local seeds consistent with the code-only sample contest.
+  const squareExercise = {
+    title: "Square a number",
+    prompt: "Read one integer n and print n * n.",
+    kind: ExerciseKind.CODE,
+    rubric: null,
+    testCases: {
+      create: [
+        { input: "2", expected: "4", isHidden: false },
+        { input: "-3", expected: "9" },
+        { input: "0", expected: "0" },
+      ],
+    },
   };
-  await prisma.contest.upsert({
-    where: { slug: "weekly-warmup" },
-    update: weeklySchedule,
+  await prisma.contestExercise.upsert({
+    where: { contestId_position: { contestId: contest.id, position: 2 } },
+    update: {
+      exercise: {
+        update: {
+          ...squareExercise,
+          testCases: { deleteMany: {}, ...squareExercise.testCases },
+        },
+      },
+    },
     create: {
-      ...weeklySchedule,
-      slug: "weekly-warmup",
-      title: "Khởi động cuối tuần",
-      creatorId: teacher.id,
+      position: 2,
+      contest: { connect: { id: contest.id } },
+      exercise: { create: squareExercise },
     },
   });
   await prisma.contestGrader.upsert({
@@ -144,6 +153,28 @@ async function main() {
     update: {},
     create: { contestId: contest.id, graderId: grader.id },
   });
+  const sampleStudent =
+    users[roles.findIndex((role) => role.name === RoleName.STUDENT)];
+
+  await prisma.contestParticipant.upsert({
+    where: {
+      contestId_userId: {
+        contestId: contest.id,
+        userId: sampleStudent.id,
+      },
+    },
+    update: {},
+    create: {
+      contestId: contest.id,
+      userId: sampleStudent.id,
+      joinedAt: new Date(sampleNow - 120000),
+    },
+  });
+
+  console.log(
+    "Sample Contest is ready: sign in as student@local.test and open /contests/sample-contest. The exam stays open for 24 hours; click Start for your own 120-minute timer. Existing attempts are kept.",
+  );
+
   const badgeCatalog = [
     {
       slug: "first-step",
@@ -267,6 +298,8 @@ async function seedStudentDemo(
         update: {},
         create: { userId: studentId, roomId: room.id },
       });
+    if (demo.slug === "nhap-mon-lap-trinh" && path.rooms[5])
+      await seedRoomPageDemo(studentId, path.rooms[5].id);
   }
 
   const badges = [
@@ -398,6 +431,66 @@ async function seedSchools() {
         update: { level: group.level },
         create: { province: group.province, name, level: group.level },
       });
+}
+
+/** Reproducible examples for the three learner exercise states in the open sixth room. */
+async function seedRoomPageDemo(userId: string, roomId: string) {
+  await prisma.room.update({
+    where: { id: roomId },
+    data: {
+      title: "Hàm và tham số",
+      description: "Viết hàm, truyền tham số và đọc giá trị trả về.",
+      content:
+        "## Hàm trong TypeScript\n\nHàm gom một tác vụ thành một khối có thể tái sử dụng.\n\n```ts\nfunction add(a: number, b: number): number {\n  return a + b;\n}\n```\n\n### Ghi nhớ\n\n- Đặt tên hàm rõ nghĩa.\n- Khai báo kiểu của tham số.\n- Dùng `return` để trả kết quả.\n\n| Thành phần | Ý nghĩa |\n| --- | --- |\n| Tham số | Dữ liệu đầu vào |\n| Giá trị trả về | Kết quả của hàm |",
+    },
+  });
+  const examples = [
+    {
+      key: "new",
+      title: "Tổng hai số",
+      prompt:
+        "Viết hàm `add(a, b)` trả về tổng hai số.\n\nVí dụ: `add(2, 3)` trả về `5`.",
+    },
+    {
+      key: "submitted",
+      title: "Kiểm tra số chẵn",
+      prompt:
+        "Viết hàm `isEven(n)` trả về `true` nếu `n` chẵn, ngược lại trả về `false`.",
+    },
+    {
+      key: "passed",
+      title: "Tìm số lớn nhất",
+      prompt: "Viết hàm `max(a, b)` trả về số lớn hơn trong hai số.",
+    },
+  ];
+  for (const example of examples) {
+    const id = `room-demo-${roomId}-${example.key}`;
+    await prisma.exercise.upsert({
+      where: { id },
+      update: {},
+      create: { id, roomId, title: example.title, prompt: example.prompt },
+    });
+    if (example.key === "new") continue;
+    const status =
+      example.key === "passed"
+        ? SubmissionStatus.ACCEPTED
+        : SubmissionStatus.REJECTED;
+    await prisma.submission.upsert({
+      where: { id: `room-demo-${userId}-${id}` },
+      update: {},
+      create: {
+        id: `room-demo-${userId}-${id}`,
+        userId,
+        exerciseId: id,
+        contestId: null,
+        source: "// Seed demo submission",
+        language: "typescript",
+        status,
+        score: status === SubmissionStatus.ACCEPTED ? 100 : 0,
+        feedback: "Bài nộp mẫu để kiểm tra trạng thái trang Room.",
+      },
+    });
+  }
 }
 
 main().finally(() => prisma.$disconnect());

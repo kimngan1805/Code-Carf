@@ -16,7 +16,26 @@ Scaffold for a learning and coding contest platform. The repository contains arc
 5. Run `npm run db:migrate` and `npm run db:seed`.
 6. Run `npm run dev`, then open `http://localhost:3000`.
 
+Local development uses Webpack, matching the production build. This avoids the repeated Fast Refresh observed with Turbopack in the Windows workspace. After switching bundlers, hard-refresh an existing browser tab once to load the new development client.
+
 The seed creates `student@local.test`, `teacher@local.test`, `admin@local.test`, and `grader@local.test`. Their local password is `SEED_PASSWORD` from `.env`, or `LocalDev123!` if unset. Change it before sharing a database. The seed also creates a path, room, exercise, contest, grader assignment, enrollment, and badge.
+
+### Test the contest
+
+All sample contest data is in the seed; no database export is needed. After pulling this branch, run:
+
+```powershell
+npm.cmd ci
+docker compose up -d db
+npm.cmd run db:deploy
+npx.cmd prisma generate
+npm.cmd run db:seed
+npm.cmd run dev
+```
+
+Sign in as `student@local.test` with `SEED_PASSWORD` (default `LocalDev123!`), then open `http://localhost:3000/contests/sample-contest`. This student is registered in advance. The shared exam window is open for 24 hours after seeding; clicking **Bắt đầu làm bài** starts a personal 120-minute timer. No camera is required.
+
+Sample Contest has two code exercises with public and hidden test cases: sum two integers, then square one integer. Submit the first answer to move to the second. The last answer opens a confirmation popup, then a completion notice and returns to the contest details. `GRADER_ADAPTER=mock` tests this flow without executing code; use Judge0 to test actual correctness. Seeding again refreshes the shared schedule but preserves existing attempts and submissions.
 
 Paths are drafts by default (`Path.published = false`). The seed explicitly publishes its sample paths. After applying the path-publication migration, existing non-seed paths stay hidden until published. Learners can browse `/hv/paths`, open `/hv/paths/<slug>`, and enroll once; progress is the rounded percentage of rooms with a `RoomProgress` record for that learner (zero for an empty path).
 
