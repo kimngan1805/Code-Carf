@@ -10,7 +10,7 @@ export default async function OnboardingPage() {
   if (!session?.user?.id) redirect("/login?callbackUrl=/onboarding");
   const user = await findUserWithRole(session.user.id);
   if (!user) redirect("/login?callbackUrl=/onboarding");
-  if (user.onboardedAt) redirect("/dashboard");
+  if (user.onboardedAt) redirect("/hv/dashboard");
   const firstName = user.name.trim().split(/\s+/).at(-1) ?? user.name;
   return <OnboardingWizard firstName={firstName} />;
 }

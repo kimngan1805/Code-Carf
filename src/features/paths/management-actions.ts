@@ -18,10 +18,10 @@ export async function changePathUnlock(input: {
   if (!parsed.success) return { error: "Cấu hình không hợp lệ." };
   try {
     await setPathSequentialUnlock(parsed.data.pathId, parsed.data.enabled);
-    revalidatePath("/creator/paths");
-    revalidatePath("/creator/paths", "layout");
-    revalidatePath("/paths", "layout");
-    revalidatePath("/rooms", "layout");
+    revalidatePath("/gv/paths");
+    revalidatePath("/gv/paths", "layout");
+    revalidatePath("/hv/paths", "layout");
+    revalidatePath("/hv/rooms", "layout");
     return { error: null };
   } catch (error) {
     return {

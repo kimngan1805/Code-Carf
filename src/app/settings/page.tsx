@@ -17,6 +17,7 @@ const roleLabels: Record<RoleName, string> = {
   [RoleName.TEACHER]: "Giảng viên",
   [RoleName.GRADER]: "Giám khảo",
   [RoleName.ADMIN]: "Quản trị viên",
+  [RoleName.GUEST]: "Khách (chờ duyệt giảng viên)",
 };
 
 function initials(name: string) {
