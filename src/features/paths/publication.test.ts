@@ -34,7 +34,7 @@ it("publishes only owned paths containing lesson content", async () => {
       creatorId: "teacher-1",
       rooms: { some: {}, none: { content: "" } },
     },
-    data: { published: true },
+    data: { published: true, publishedAt: expect.any(Date) },
   });
 });
 it.each([

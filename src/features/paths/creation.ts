@@ -14,6 +14,10 @@ const selection = {
   creatorId: true,
   published: true,
   sequentialUnlock: true,
+  difficulty: true,
+  tags: true,
+  estimatedMinutes: true,
+  coverTheme: true,
 } as const;
 
 export async function createManagedPath(body: unknown) {
@@ -25,7 +29,16 @@ export async function createManagedPath(body: unknown) {
       "INVALID_PATH",
       parsed.error.issues[0]?.message ?? "Thông tin lộ trình không hợp lệ.",
     );
-  const { requestId, title, description, sequentialUnlock } = parsed.data;
+  const {
+    requestId,
+    title,
+    description,
+    sequentialUnlock,
+    difficulty,
+    tags,
+    estimatedMinutes,
+    coverTheme,
+  } = parsed.data;
   // Scope retry identity to the authenticated creator without adding a database column.
   const id = `p_${createHash("sha256").update(user.id).update("\0").update(requestId).digest("hex")}`;
   function replay(saved: Prisma.PathGetPayload<{ select: typeof selection }>) {
@@ -33,7 +46,11 @@ export async function createManagedPath(body: unknown) {
       saved.creatorId !== user.id ||
       saved.title !== title ||
       saved.description !== description ||
-      saved.sequentialUnlock !== sequentialUnlock
+      saved.sequentialUnlock !== sequentialUnlock ||
+      saved.difficulty !== difficulty ||
+      saved.estimatedMinutes !== estimatedMinutes ||
+      saved.coverTheme !== coverTheme ||
+      saved.tags.join("\0") !== tags.join("\0")
     )
       throw new AppError(
         409,
@@ -58,6 +75,10 @@ export async function createManagedPath(body: unknown) {
           title,
           description,
           sequentialUnlock,
+          difficulty,
+          tags,
+          estimatedMinutes,
+          coverTheme,
           creatorId: user.id,
           published: false,
         },

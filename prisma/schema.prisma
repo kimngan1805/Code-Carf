@@ -217,6 +217,16 @@ model Path {
   description      String       @default("")
   published        Boolean      @default(false)
   sequentialUnlock Boolean      @default(true)
+  /// Độ khó tổng thể, hiện trên thẻ lộ trình ở trang cộng đồng.
+  difficulty       Difficulty   @default(EASY)
+  /// Chủ đề ngắn (tối đa 5), dùng để lọc và hiện trên thẻ.
+  tags             String[]     @default([])
+  /// Thời lượng ước tính để hoàn thành, tính bằng phút; null khi giảng viên chưa nhập.
+  estimatedMinutes Int?
+  /// Khóa giao diện ảnh bìa có sẵn (không upload ảnh), xem src/features/paths/cover-themes.ts.
+  coverTheme       String       @default("blue")
+  /// Lúc xuất bản gần nhất; null khi còn là bản nháp.
+  publishedAt      DateTime?
   creatorId        String
   creator          User         @relation("PathCreator", fields: [creatorId], references: [id])
   rooms            Room[]

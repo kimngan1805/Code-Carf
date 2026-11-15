@@ -2,21 +2,52 @@
 
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookPlus, LoaderCircle } from "lucide-react";
+import { BookPlus, LoaderCircle, Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { pathFieldsSchema } from "../creation-schema";
+import { cn } from "@/lib/utils";
+import { pathFieldsSchema, MAX_PATH_TAGS } from "../creation-schema";
+import {
+  COVER_THEMES,
+  DIFFICULTY_LABELS,
+  coverThemeClass,
+} from "../cover-themes";
+import { updatePathDetailsAction } from "../details-actions";
 
-export function CreatePathForm() {
+type Existing = {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  difficulty: keyof typeof DIFFICULTY_LABELS;
+  tags: string[];
+  estimatedMinutes: number | null;
+  coverTheme: string;
+};
+type FieldErrors = Partial<
+  Record<"title" | "description" | "tags" | "hours", string>
+>;
+
+const inputClass =
+  "h-11 w-full rounded-lg border bg-background px-3 text-sm focus-visible:outline-2";
+
+/** Tạo lộ trình mới, hoặc sửa thông tin hiển thị khi truyền `path`. */
+export function CreatePathForm({ path }: { path?: Existing }) {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
+  const editing = !!path;
+  const [title, setTitle] = useState(path?.title ?? "");
+  const [description, setDescription] = useState(path?.description ?? "");
   const [sequentialUnlock, setSequentialUnlock] = useState(true);
+  const [difficulty, setDifficulty] = useState(path?.difficulty ?? "EASY");
+  const [tags, setTags] = useState(path?.tags.join(", ") ?? "");
+  const [hours, setHours] = useState(
+    path?.estimatedMinutes
+      ? String(+(path.estimatedMinutes / 60).toFixed(1))
+      : "",
+  );
+  const [coverTheme, setCoverTheme] = useState(path?.coverTheme ?? "blue");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
-  const [fields, setFields] = useState<{
-    title?: string;
-    description?: string;
-  }>({});
+  const [fields, setFields] = useState<FieldErrors>({});
   const inFlight = useRef(false);
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
 
@@ -25,16 +56,32 @@ export function CreatePathForm() {
     if (inFlight.current) return;
     setError("");
     setFields({});
+    const hoursValue = hours.trim();
+    if (hoursValue && !(Number(hoursValue) > 0)) {
+      setFields({ hours: "Thời lượng phải là một số lớn hơn 0 (giờ)." });
+      return;
+    }
     const parsed = pathFieldsSchema.safeParse({
       title,
       description,
       sequentialUnlock,
+      difficulty,
+      tags: tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean),
+      estimatedMinutes: hoursValue ? Math.round(Number(hoursValue) * 60) : null,
+      coverTheme,
     });
     if (!parsed.success) {
-      const next: { title?: string; description?: string } = {};
+      const next: FieldErrors = {};
       for (const issue of parsed.error.issues) {
-        if (issue.path[0] === "title") next.title ??= issue.message;
-        if (issue.path[0] === "description") next.description ??= issue.message;
+        const key = issue.path[0];
+        if (key === "title") next.title ??= issue.message;
+        else if (key === "description") next.description ??= issue.message;
+        else if (key === "tags") next.tags ??= issue.message;
+        else if (key === "estimatedMinutes") next.hours ??= issue.message;
+        else setError(issue.message);
       }
       setFields(next);
       return;
@@ -43,6 +90,24 @@ export function CreatePathForm() {
     setPending(true);
     let navigating = false;
     try {
+      if (path) {
+        const { sequentialUnlock: _unused, ...details } = parsed.data;
+        void _unused;
+        const result = await updatePathDetailsAction({
+          ...details,
+          pathId: path.id,
+        });
+        if (result.error || !result.data) {
+          setError(result.error ?? "Chưa thể lưu thông tin lộ trình.");
+          return;
+        }
+        router.push(
+          `/gv/paths/${encodeURIComponent(result.data.slug)}?saved=1`,
+        );
+        router.refresh();
+        navigating = true;
+        return;
+      }
       const fingerprint = JSON.stringify(parsed.data);
       if (request.current?.fingerprint !== fingerprint)
         request.current = { fingerprint, id: crypto.randomUUID() };
@@ -98,7 +163,7 @@ export function CreatePathForm() {
             aria-invalid={!!fields.title}
             aria-describedby={fields.title ? "path-title-error" : undefined}
             placeholder="Ví dụ: Lập trình C++ cơ bản"
-            className="h-11 w-full rounded-lg border bg-background px-3 text-sm focus-visible:outline-2"
+            className={inputClass}
           />
           {fields.title && (
             <p
@@ -141,23 +206,136 @@ export function CreatePathForm() {
             </p>
           )}
         </div>
-        <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/50 p-4">
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <label htmlFor="path-difficulty" className="text-sm font-semibold">
+              Độ khó <span className="text-destructive">*</span>
+            </label>
+            <select
+              id="path-difficulty"
+              value={difficulty}
+              onChange={(event) =>
+                setDifficulty(event.target.value as typeof difficulty)
+              }
+              className={inputClass}
+            >
+              {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2">
+            <label htmlFor="path-hours" className="text-sm font-semibold">
+              Thời lượng ước tính (giờ){" "}
+              <span className="font-normal text-muted-foreground">
+                (không bắt buộc)
+              </span>
+            </label>
+            <input
+              id="path-hours"
+              inputMode="decimal"
+              value={hours}
+              onChange={(event) => setHours(event.target.value)}
+              aria-invalid={!!fields.hours}
+              aria-describedby={fields.hours ? "path-hours-error" : undefined}
+              placeholder="Ví dụ: 12"
+              className={inputClass}
+            />
+            {fields.hours && (
+              <p
+                id="path-hours-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
+                {fields.hours}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <label htmlFor="path-tags" className="text-sm font-semibold">
+            Chủ đề{" "}
+            <span className="font-normal text-muted-foreground">
+              (tối đa {MAX_PATH_TAGS}, cách nhau bằng dấu phẩy)
+            </span>
+          </label>
           <input
-            type="checkbox"
-            name="sequentialUnlock"
-            checked={sequentialUnlock}
-            onChange={(event) => setSequentialUnlock(event.target.checked)}
-            className="mt-1 size-4 accent-primary"
+            id="path-tags"
+            value={tags}
+            onChange={(event) => setTags(event.target.value)}
+            aria-invalid={!!fields.tags}
+            aria-describedby={fields.tags ? "path-tags-error" : undefined}
+            placeholder="Ví dụ: C++, nhập môn, thuật toán"
+            className={inputClass}
           />
-          <span>
-            <span className="block text-sm font-semibold">
-              Mở khóa bài học theo thứ tự
+          {fields.tags && (
+            <p
+              id="path-tags-error"
+              role="alert"
+              className="text-sm text-destructive"
+            >
+              {fields.tags}
+            </p>
+          )}
+        </div>
+
+        <fieldset className="space-y-2">
+          <legend className="text-sm font-semibold">Ảnh bìa</legend>
+          <div className="flex flex-wrap gap-3">
+            {COVER_THEMES.map((theme) => (
+              <label key={theme.key} className="cursor-pointer">
+                <input
+                  type="radio"
+                  name="coverTheme"
+                  value={theme.key}
+                  checked={coverTheme === theme.key}
+                  onChange={() => setCoverTheme(theme.key)}
+                  className="peer sr-only"
+                />
+                <span
+                  className={cn(
+                    "block h-12 w-20 rounded-lg bg-gradient-to-br ring-offset-2 ring-offset-background peer-checked:ring-2 peer-checked:ring-primary peer-focus-visible:outline-2",
+                    theme.className,
+                  )}
+                  title={theme.label}
+                >
+                  <span className="sr-only">{theme.label}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <div
+            aria-hidden
+            className={cn(
+              "h-16 rounded-xl bg-gradient-to-br",
+              coverThemeClass(coverTheme),
+            )}
+          />
+        </fieldset>
+
+        {!editing && (
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl bg-muted/50 p-4">
+            <input
+              type="checkbox"
+              name="sequentialUnlock"
+              checked={sequentialUnlock}
+              onChange={(event) => setSequentialUnlock(event.target.checked)}
+              className="mt-1 size-4 accent-primary"
+            />
+            <span>
+              <span className="block text-sm font-semibold">
+                Mở khóa bài học theo thứ tự
+              </span>
+              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+                Học viên hoàn thành bài học trước để mở bài tiếp theo.
+              </span>
             </span>
-            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-              Học viên hoàn thành bài học trước để mở bài tiếp theo.
-            </span>
-          </span>
-        </label>
+          </label>
+        )}
         {error && (
           <p
             role="alert"
@@ -171,17 +349,27 @@ export function CreatePathForm() {
             type="button"
             variant="outline"
             disabled={pending}
-            onClick={() => router.push("/gv/paths")}
+            onClick={() =>
+              router.push(path ? `/gv/paths/${path.slug}` : "/gv/paths")
+            }
           >
             Hủy
           </Button>
           <Button type="submit" disabled={pending}>
             {pending ? (
               <LoaderCircle aria-hidden className="size-4 animate-spin" />
+            ) : editing ? (
+              <Save aria-hidden className="size-4" />
             ) : (
               <BookPlus aria-hidden className="size-4" />
             )}
-            {pending ? "Đang tạo..." : "Tạo lộ trình"}
+            {pending
+              ? editing
+                ? "Đang lưu..."
+                : "Đang tạo..."
+              : editing
+                ? "Lưu thay đổi"
+                : "Tạo lộ trình"}
           </Button>
         </div>
       </fieldset>
