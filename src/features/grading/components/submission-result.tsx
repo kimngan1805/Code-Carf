@@ -1,4 +1,10 @@
-import { CheckCircle2, CircleAlert, CircleX, MinusCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  CircleAlert,
+  CircleX,
+  MinusCircle,
+  X,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type {
   PracticeSubmissionView,
@@ -28,19 +34,17 @@ const toneIcon = {
 
 export function SubmissionResult({
   result,
+  onDismiss,
 }: {
   result: PracticeSubmissionView;
+  onDismiss?: () => void;
 }) {
   const summary = summaryView(result.status);
   const compile = compileOutput(result.tests);
   const SummaryIcon = toneIcon[summary.tone];
   return (
-    <section
-      aria-label="Kết quả chấm"
-      className="space-y-4 border-t p-4"
-      data-testid="submission-result"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <section aria-label="Kết quả chấm" data-testid="submission-result">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 bg-background px-4 py-3 lg:sticky lg:top-0 lg:z-10">
         <div
           className={cn(
             "inline-flex items-center gap-2 rounded-full px-3 py-1 text-sm font-semibold",
@@ -50,25 +54,40 @@ export function SubmissionResult({
           <SummaryIcon className="size-4" aria-hidden />
           {summary.title}
         </div>
-        <p className="text-sm font-semibold">
-          {result.score}/{result.maxScore} điểm · {passedCount(result.tests)}/
-          {result.tests.length} test
-        </p>
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold">
+            {result.score}/{result.maxScore} điểm · {passedCount(result.tests)}/
+            {result.tests.length} test
+          </p>
+          {onDismiss && (
+            <button
+              type="button"
+              onClick={onDismiss}
+              aria-label="Ẩn kết quả"
+              title="Ẩn kết quả"
+              className="grid size-7 place-items-center rounded-full text-muted-foreground hover:bg-muted focus-visible:outline-2"
+            >
+              <X className="size-4" aria-hidden />
+            </button>
+          )}
+        </div>
       </div>
-      <p className="text-sm text-muted-foreground">{result.feedback}</p>
-      {compile && (
-        <pre
-          aria-label="Lỗi biên dịch"
-          className="max-h-48 overflow-auto rounded-xl bg-muted p-3 font-mono text-xs"
-        >
-          {compile}
-        </pre>
-      )}
-      <ol className="space-y-2">
-        {result.tests.map((test) => (
-          <TestRow key={test.index} test={test} />
-        ))}
-      </ol>
+      <div className="space-y-3 px-4 pb-4">
+        <p className="text-sm text-muted-foreground">{result.feedback}</p>
+        {compile && (
+          <pre
+            aria-label="Lỗi biên dịch"
+            className="max-h-48 overflow-auto rounded-xl bg-muted p-3 font-mono text-xs"
+          >
+            {compile}
+          </pre>
+        )}
+        <ol className="space-y-2">
+          {result.tests.map((test) => (
+            <TestRow key={test.index} test={test} />
+          ))}
+        </ol>
+      </div>
     </section>
   );
 }

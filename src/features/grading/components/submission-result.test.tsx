@@ -107,4 +107,16 @@ describe("SubmissionResult", () => {
     expect(html).toContain("Hệ thống chấm gặp lỗi");
     expect(html).toContain("0/100 điểm");
   });
+
+  it("offers a dismiss button only when a handler is given", () => {
+    const view = result([test({})]);
+    expect(
+      renderToStaticMarkup(<SubmissionResult result={view} />),
+    ).not.toContain("Ẩn kết quả");
+    expect(
+      renderToStaticMarkup(
+        <SubmissionResult result={view} onDismiss={() => {}} />,
+      ),
+    ).toContain('aria-label="Ẩn kết quả"');
+  });
 });

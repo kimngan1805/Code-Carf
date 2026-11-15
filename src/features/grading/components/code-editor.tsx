@@ -20,7 +20,7 @@ export function CodeEditor({
       language={language}
       value={value}
       onChange={(next) => onChange(next ?? "")}
-      options={{ minimap: { enabled: false }, readOnly }}
+      options={{ minimap: { enabled: false }, readOnly, automaticLayout: true }}
     />
   );
 }
