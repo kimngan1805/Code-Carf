@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getManagedPaths } from "@/features/paths/management";
 import { PathUnlockSetting } from "@/features/paths/components/path-unlock-setting";
 import { AppError } from "@/lib/errors";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 export default async function ManagedPathsPage() {
   const paths = await getManagedPaths().catch((error) => {
@@ -14,10 +16,20 @@ export default async function ManagedPathsPage() {
   });
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
-      <h1 className="text-2xl font-bold text-primary">Quản lý lộ trình</h1>
-      <p className="text-muted-foreground">
-        Thiết lập cách học viên mở các Room trong lộ trình.
-      </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-primary">Quản lý lộ trình</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Tạo lộ trình và thiết lập cách học viên mở các bài học.
+          </p>
+        </div>
+        <Button asChild>
+          <Link href="/gv/paths/new">
+            <Plus aria-hidden className="size-4" />
+            Tạo lộ trình
+          </Link>
+        </Button>
+      </header>
       {paths.length === 0 && (
         <p className="rounded-xl border bg-background p-4">
           Bạn chưa có lộ trình để quản lý.
