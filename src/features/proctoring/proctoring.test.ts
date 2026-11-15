@@ -3,15 +3,21 @@ import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 const tx = vi.hoisted(() => ({
   $queryRaw: vi.fn(),
   contest: { findUnique: vi.fn() },
-  contestParticipant: { findUnique: vi.fn() },
+  contestParticipant: { findUnique: vi.fn(), update: vi.fn() },
+  submission: { updateMany: vi.fn() },
   proctoringEvent: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn() },
 }));
 const auth = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/db", () => ({
-  db: { $transaction: (run: (client: typeof tx) => unknown) => run(tx) },
+  db: {
+    $transaction: (run: (client: typeof tx) => unknown) => run(tx),
+    contest: tx.contest,
+    contestParticipant: tx.contestParticipant,
+  },
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: auth }));
-import { reportContestEvent } from "./service";
+import { reportContestEvent, getOwnViolationStatus } from "./service";
+import { violationStatus } from "./rules";
 import { recordProctoringEvent } from "./repository";
 import { proctoringEventSchema } from "./schema";
 import { createEventReporter } from "./reporter";
@@ -24,6 +30,8 @@ const event = {
   pasteLength: 15,
 };
 const participant = {
+  violationCount: 0,
+  flaggedAt: null,
   startedAt: new Date(now - 1000),
   deadlineAt: new Date(now + 60000),
   finishedAt: null,
@@ -40,6 +48,7 @@ beforeEach(() => {
     examStartsAt: new Date(now - 1000),
     examEndsAt: new Date(now + 120000),
     requireFaceCheck: false,
+    violationThreshold: 3,
   });
   tx.contestParticipant.findUnique.mockResolvedValue(participant);
   tx.proctoringEvent.findUnique.mockResolvedValue(null);
@@ -99,7 +108,9 @@ describe("proctoring event storage", () => {
   });
   it("deduplicates a retry before the rate check", async () => {
     tx.proctoringEvent.findUnique.mockResolvedValue({ id: "old" });
-    expect(await recordProctoringEvent("sample", "student", event)).toEqual({
+    expect(
+      await recordProctoringEvent("sample", "student", event),
+    ).toMatchObject({
       eventId: "old",
       duplicate: true,
     });
@@ -115,6 +126,59 @@ describe("proctoring event storage", () => {
       recordProctoringEvent("sample", "student", event),
     ).rejects.toMatchObject({ code: "CONTEST_NOT_OPEN" });
     expect(tx.proctoringEvent.create).not.toHaveBeenCalled();
+  });
+});
+
+describe("violation counts and flags", () => {
+  it.each([
+    { count: 2, flagged: false },
+    { count: 3, flagged: true },
+  ])(
+    "flags only after exceeding the configured maximum (%s)",
+    async ({ count, flagged }) => {
+      tx.contestParticipant.findUnique.mockResolvedValue({
+        ...participant,
+        violationCount: count,
+      });
+      const result = await recordProctoringEvent("sample", "student", event);
+      expect(result.status).toMatchObject({
+        violationCount: count + 1,
+        threshold: 3,
+        flagged,
+      });
+      expect(
+        tx.contestParticipant.update.mock.calls[0][0].data.violationCount,
+      ).toEqual({ increment: 1 });
+      expect(tx.submission.updateMany).toHaveBeenCalledTimes(flagged ? 1 : 0);
+      if (flagged)
+        expect(tx.submission.updateMany).toHaveBeenCalledWith({
+          where: { contestId: "contest", userId: "student" },
+          data: { flaggedForReview: true },
+        });
+    },
+  );
+  it("duplicate events do not increment counts or flag submissions again", async () => {
+    tx.proctoringEvent.findUnique.mockResolvedValue({ id: "existing" });
+    await recordProctoringEvent("sample", "student", event);
+    expect(tx.contestParticipant.update).not.toHaveBeenCalled();
+    expect(tx.submission.updateMany).not.toHaveBeenCalled();
+  });
+  it("preserves flags when a teacher raises the threshold", () => {
+    expect(violationStatus(4, 10, new Date(now)).flagged).toBe(true);
+  });
+  it("returns only the signed-in participant's status", async () => {
+    expect(await getOwnViolationStatus("sample")).toEqual({
+      violationCount: 0,
+      threshold: 3,
+      flagged: false,
+    });
+    expect(tx.contestParticipant.findUnique).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          contestId_userId: { contestId: "contest", userId: "student" },
+        },
+      }),
+    );
   });
 });
 
