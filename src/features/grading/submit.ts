@@ -22,6 +22,7 @@ import {
 import { emitContestLeaderboardUpdated } from "../leaderboard/contest-events";
 import { isPassing, summarizeTests } from "./scoring";
 import { completeRoomIfDone, type RoomCompletion } from "./room-completion";
+import { recordStreakActivity } from "../progress/activity";
 import { getGradingAdapter } from "./service";
 import { canAccessRoom } from "../rooms/access";
 
@@ -350,10 +351,11 @@ async function gradeStoredSolution(
 
 /**
  * Finishing the last exercise of a room completes it (progress, XP, next room
- * unlock). Only accepted practice submissions count; contests are scored by
- * their own flow. The submission is already saved, so a failure here must not
- * lose the grading result: it is logged, and the next accepted submission
- * retries (completion is idempotent).
+ * unlock) and updates the learner's streak + milestone badges inside the same
+ * transaction. Any other accepted practice submission updates the streak once
+ * without awarding XP. Contest submissions never update practice rooms or
+ * learning streaks. The submission is already saved, so a failure here must
+ * not lose the grading result.
  */
 async function completeRoomAfterAcceptance(
   userId: string,
@@ -362,17 +364,35 @@ async function completeRoomAfterAcceptance(
   status: SubmissionResult["status"],
   submissionId: string,
 ): Promise<RoomCompletion | null> {
-  if (contestId || !roomId || status !== "ACCEPTED") return null;
-  try {
-    return await completeRoomIfDone(userId, roomId);
-  } catch (error) {
-    logger.error("submission.room_completion_failed", {
-      submissionId,
-      roomId,
-      message: error instanceof Error ? error.message : String(error),
-    });
-    return null;
+  if (contestId || status !== "ACCEPTED") return null;
+
+  let roomCompletion: RoomCompletion | null = null;
+  if (roomId) {
+    try {
+      roomCompletion = await completeRoomIfDone(userId, roomId);
+    } catch (error) {
+      logger.error("submission.room_completion_failed", {
+        submissionId,
+        roomId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
   }
+
+  if (!roomCompletion) {
+    try {
+      await recordStreakActivity({ userId });
+    } catch (error) {
+      logger.error("submission.streak_update_failed", {
+        submissionId,
+        userId,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  return roomCompletion;
 }
 
 /** e.g. "Đạt 3/5 test case. Sai kết quả: 1, Quá thời gian: 1." */

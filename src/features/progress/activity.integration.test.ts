@@ -7,7 +7,7 @@ import {
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 import { db } from "../../lib/db";
 import { canConnectToDatabase } from "../../test-utils/database";
-import { recordLearningActivity } from "./activity";
+import { recordLearningActivity, recordStreakActivity } from "./activity";
 import { awardCompletedWeekTopBadge } from "./badge-awarding";
 import { MILESTONE_BADGES } from "./badges";
 
@@ -424,6 +424,141 @@ describe.skipIf(!hasDatabase)(
       expect(awardedRows.map((row) => row.userId).sort()).toEqual(
         [tiedA.id, tiedB.id].sort(),
       );
+    });
+
+    it("stores lastActiveOn as the exact Vietnam @db.Date without UTC+7 shift across midnight boundaries", async () => {
+      await ensureMilestoneAndLegacyBadges();
+      const user = await createStudentUser();
+
+      // Day 1: 2026-11-11 23:59:59 +07:00 (2026-11-11T16:59:59Z) -> streak = 1, lastActiveOn = 2026-11-11
+      await recordStreakActivity({
+        userId: user.id,
+        occurredAt: new Date("2026-11-11T23:59:59+07:00"),
+      });
+      // Same VN day earlier: should keep streak = 1
+      await recordStreakActivity({
+        userId: user.id,
+        occurredAt: new Date("2026-11-11T00:05:00+07:00"),
+      });
+      let snapshot = await db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: {
+          currentStreak: true,
+          longestStreak: true,
+          lastActiveOn: true,
+        },
+      });
+      expect(snapshot.currentStreak).toBe(1);
+      expect(snapshot.longestStreak).toBe(1);
+      expect(snapshot.lastActiveOn?.toISOString().slice(0, 10)).toBe(
+        "2026-11-11",
+      );
+
+      // Day 2: 2026-11-12 00:00:00 +07:00 (2026-11-11T17:00:00Z) -> streak = 2, lastActiveOn = 2026-11-12
+      await recordLearningActivity({
+        userId: user.id,
+        xp: 20,
+        source: XpSource.ROOM_COMPLETED,
+        occurredAt: new Date("2026-11-12T00:00:00+07:00"),
+      });
+      snapshot = await db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: {
+          currentStreak: true,
+          longestStreak: true,
+          lastActiveOn: true,
+        },
+      });
+      expect(snapshot.currentStreak).toBe(2);
+      expect(snapshot.longestStreak).toBe(2);
+      expect(snapshot.lastActiveOn?.toISOString().slice(0, 10)).toBe(
+        "2026-11-12",
+      );
+
+      // Missed 2026-11-13 -> study on 2026-11-14 resets currentStreak to 1, keeps longestStreak = 2
+      await recordStreakActivity({
+        userId: user.id,
+        occurredAt: new Date("2026-11-14T08:00:00+07:00"),
+      });
+      snapshot = await db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: {
+          currentStreak: true,
+          longestStreak: true,
+          lastActiveOn: true,
+        },
+      });
+      expect(snapshot.currentStreak).toBe(1);
+      expect(snapshot.longestStreak).toBe(2);
+      expect(snapshot.lastActiveOn?.toISOString().slice(0, 10)).toBe(
+        "2026-11-14",
+      );
+    });
+
+    it("awards streak-7 once when transitioning from 6 to 7 and serializes concurrent streak updates without double increment", async () => {
+      await ensureMilestoneAndLegacyBadges();
+      const user = await createStudentUser({
+        currentStreak: 5,
+        longestStreak: 5,
+      });
+      await db.user.update({
+        where: { id: user.id },
+        data: { lastActiveOn: new Date("2026-11-10T00:00:00.000Z") },
+      });
+
+      // Concurrent submissions on 2026-11-11 VN must advance streak from 5 -> 6 exactly once.
+      const day6Timestamp = new Date("2026-11-11T10:00:00+07:00");
+      await Promise.all([
+        recordStreakActivity({ userId: user.id, occurredAt: day6Timestamp }),
+        recordStreakActivity({ userId: user.id, occurredAt: day6Timestamp }),
+        recordLearningActivity({
+          userId: user.id,
+          xp: 15,
+          source: XpSource.ROOM_COMPLETED,
+          occurredAt: day6Timestamp,
+        }),
+      ]);
+
+      const afterDay6 = await db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { currentStreak: true, longestStreak: true, xp: true },
+      });
+      expect(afterDay6).toEqual({
+        currentStreak: 6,
+        longestStreak: 6,
+        xp: 15,
+      });
+      expect(
+        await db.userBadge.findMany({
+          where: { userId: user.id, badge: { slug: "streak-7" } },
+        }),
+      ).toHaveLength(0);
+
+      // Concurrent activities on 2026-11-12 VN advance 6 -> 7 once and award streak-7 once.
+      const day7Timestamp = new Date("2026-11-12T00:01:00+07:00");
+      await Promise.all([
+        recordStreakActivity({ userId: user.id, occurredAt: day7Timestamp }),
+        recordLearningActivity({
+          userId: user.id,
+          xp: 25,
+          source: XpSource.ROOM_COMPLETED,
+          occurredAt: day7Timestamp,
+        }),
+      ]);
+
+      const afterDay7 = await db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: { currentStreak: true, longestStreak: true, xp: true },
+      });
+      expect(afterDay7).toEqual({
+        currentStreak: 7,
+        longestStreak: 7,
+        xp: 40,
+      });
+      const streakBadges = await db.userBadge.findMany({
+        where: { userId: user.id, badge: { slug: "streak-7" } },
+      });
+      expect(streakBadges).toHaveLength(1);
     });
   },
 );

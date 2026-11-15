@@ -1,7 +1,10 @@
 import { SubmissionStatus, XpSource } from "@prisma/client";
 import { db } from "../../lib/db";
 import { getLevel } from "../progress/levels";
-import { recordLearningActivityInTx } from "../progress/activity";
+import {
+  recordLearningActivityInTx,
+  recordStreakActivityInTx,
+} from "../progress/activity";
 
 export interface RoomCompletion {
   roomId: string;
@@ -71,24 +74,28 @@ export async function completeRoomIfDone(
     if (created.count === 0) return null;
 
     const xpAwarded = Math.max(0, room.xpReward);
-    // A reward of 0 still completes the room, there is just no XP to record.
-    const totalXp =
-      xpAwarded > 0
-        ? (
-            await recordLearningActivityInTx(tx, {
-              userId,
-              xp: xpAwarded,
-              source: XpSource.ROOM_COMPLETED,
-              pathId: room.pathId,
-              roomId,
-            })
-          ).xp
-        : (
-            await tx.user.findUniqueOrThrow({
-              where: { id: userId },
-              select: { xp: true },
-            })
-          ).xp;
+    let totalXp: number;
+    if (xpAwarded > 0) {
+      totalXp = (
+        await recordLearningActivityInTx(tx, {
+          userId,
+          xp: xpAwarded,
+          source: XpSource.ROOM_COMPLETED,
+          pathId: room.pathId,
+          roomId,
+        })
+      ).xp;
+    } else {
+      // A reward of 0 still completes the room and updates streak/badges,
+      // without creating an XpEvent or awarding XP.
+      await recordStreakActivityInTx(tx, { userId });
+      totalXp = (
+        await tx.user.findUniqueOrThrow({
+          where: { id: userId },
+          select: { xp: true },
+        })
+      ).xp;
+    }
 
     const nextRoom = await tx.room.findFirst({
       where: { pathId: room.pathId, position: { gt: room.position } },

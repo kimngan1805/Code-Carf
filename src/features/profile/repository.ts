@@ -8,6 +8,7 @@ export const publicStudentSelect = {
   xp: true,
   currentStreak: true,
   longestStreak: true,
+  lastActiveOn: true,
   createdAt: true,
 } as const;
 

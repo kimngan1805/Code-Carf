@@ -3,6 +3,7 @@ import { formatAwardedDate } from "@/features/achievements/service";
 import { requireRole } from "@/features/auth/service";
 import { languages } from "@/features/contests/languages";
 import { getLevel } from "@/features/progress/levels";
+import { resolveEffectiveStreak } from "@/features/progress/streak";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
 import { AppError } from "@/lib/errors";
 import {
@@ -63,6 +64,7 @@ export function getSubmissionLanguageLabel(language: string | null): string {
  */
 export function buildPublicStudentProfile(
   record: PublicStudentRecord,
+  now: Date = new Date(),
 ): PublicStudentProfile {
   const completedRoomIds = new Set(record.completedRoomIds);
 
@@ -101,16 +103,21 @@ export function buildPublicStudentProfile(
   const completedPaths = paths.filter(
     (path) => path.total > 0 && path.completed === path.total,
   ).length;
+  const streak = resolveEffectiveStreak(
+    {
+      currentStreak: record.user.currentStreak,
+      longestStreak: record.user.longestStreak,
+      lastActiveOn: record.user.lastActiveOn,
+    },
+    now,
+  );
 
   return {
     id: record.user.id,
     name: record.user.name,
     joinedAt: new Date(record.user.createdAt),
     level: getLevel(record.user.xp),
-    streak: {
-      current: Math.max(0, record.user.currentStreak),
-      longest: Math.max(0, record.user.longestStreak),
-    },
+    streak,
     stats: {
       enrolledPaths: paths.length,
       completedPaths,

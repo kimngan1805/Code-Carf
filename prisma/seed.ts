@@ -8,6 +8,11 @@ import {
 } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { MILESTONE_BADGES } from "../src/features/progress/badges";
+import {
+  dateKeyToDbDate,
+  toActivityDateKey,
+} from "../src/features/progress/streak";
+import { addDays, toVnMidnight } from "../src/features/progress/week-activity";
 import { computeContestParticipantStanding } from "../src/features/leaderboard/contest-ranking";
 import { SAMPLE_SCHOOLS } from "./schools";
 
@@ -346,8 +351,11 @@ async function seedStudentDemo(
   }
 
   // XP history is rebuilt on every seed so the demo always looks current:
-  // the last 7 days build the streak, earlier days fill the activity heatmap.
-  const day = 24 * 60 * 60 * 1000;
+  // the last 7 Vietnam calendar days build the streak, earlier days fill the activity heatmap.
+  const now = new Date();
+  const todayKey = toActivityDateKey(now);
+  const yesterdayKey = addDays(todayKey, -1);
+  const middayMs = 12 * 60 * 60 * 1000;
   const history = Array.from({ length: 83 }, (_, index) => index + 1)
     .filter(
       (daysAgo) => daysAgo <= 7 || ![0, 3, 5].includes((daysAgo * 37) % 7),
@@ -360,7 +368,9 @@ async function seedStudentDemo(
         daysAgo % 2 === 0
           ? demoPathIds["ctdl-giai-thuat"]
           : demoPathIds["nhap-mon-lap-trinh"],
-      createdAt: new Date(Date.now() - daysAgo * day),
+      createdAt: new Date(
+        toVnMidnight(addDays(todayKey, -daysAgo)).getTime() + middayMs,
+      ),
     }));
   const historyXp = history.reduce((sum, event) => sum + event.amount, 0);
   const startingXp = Math.max(0, 1250 - historyXp);
@@ -373,7 +383,9 @@ async function seedStudentDemo(
         amount: startingXp,
         source: XpSource.ADMIN_ADJUSTMENT,
         pathId: demoPathIds["nhap-mon-lap-trinh"],
-        createdAt: new Date(Date.now() - 120 * day),
+        createdAt: new Date(
+          toVnMidnight(addDays(todayKey, -120)).getTime() + middayMs,
+        ),
       },
     ],
   });
@@ -384,7 +396,7 @@ async function seedStudentDemo(
       xp: historyXp + startingXp,
       currentStreak: 7,
       longestStreak: 12,
-      lastActiveOn: new Date(Date.now() - day),
+      lastActiveOn: dateKeyToDbDate(yesterdayKey),
     },
   });
   return demoPathIds;

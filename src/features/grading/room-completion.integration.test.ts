@@ -26,6 +26,8 @@ vi.mock("./service", () => ({
 }));
 
 import { awardActivityBadgesInTx } from "../progress/badge-awarding";
+import { dateKeyToDbDate, toActivityDateKey } from "../progress/streak";
+import { addDays } from "../progress/week-activity";
 import { completeRoomIfDone } from "./room-completion";
 import { submitSolution } from "./submit";
 
@@ -261,8 +263,28 @@ describe.skipIf(!hasDatabase)(
       expect(await userXp(user.id)).toBe(530);
     });
 
-    it("completes a room without XP when its reward is 0", async () => {
+    it("completes a room without XP when its reward is 0 and still updates streak and streak-7 badge", async () => {
+      await db.badge.upsert({
+        where: { slug: "streak-7" },
+        update: {},
+        create: {
+          slug: "streak-7",
+          name: "Chuỗi 7 ngày",
+          description: "Học 7 ngày liên tiếp",
+        },
+      });
       const { user, first, second, exercises } = await setup({ xpReward: 0 });
+      // Seed user at day 6 ending yesterday (Vietnam time) so completing the 0-XP room reaches day 7.
+      const todayKey = toActivityDateKey(new Date());
+      const yesterdayUtc = dateKeyToDbDate(addDays(todayKey, -1));
+      await db.user.update({
+        where: { id: user.id },
+        data: {
+          currentStreak: 6,
+          longestStreak: 6,
+          lastActiveOn: yesterdayUtc,
+        },
+      });
       await submit(user.id, exercises[0].id);
       await submit(user.id, exercises[1].id);
 
@@ -271,6 +293,25 @@ describe.skipIf(!hasDatabase)(
       expect(result).toMatchObject({ xpAwarded: 0, totalXp: 0 });
       expect(await xpEvents(user.id)).toHaveLength(0);
       expect(await canAccessRoom(user.id, second.id)).toBe(true);
+
+      const updatedUser = await db.user.findUniqueOrThrow({
+        where: { id: user.id },
+        select: {
+          currentStreak: true,
+          longestStreak: true,
+          lastActiveOn: true,
+        },
+      });
+      expect(updatedUser.currentStreak).toBe(7);
+      expect(updatedUser.longestStreak).toBe(7);
+      expect(updatedUser.lastActiveOn?.toISOString().slice(0, 10)).toBe(
+        todayKey,
+      );
+
+      const streakBadges = await db.userBadge.findMany({
+        where: { userId: user.id, badge: { slug: "streak-7" } },
+      });
+      expect(streakBadges).toHaveLength(1);
     });
 
     it("rolls back progress and XP together when a step fails mid-transaction", async () => {
@@ -325,6 +366,12 @@ describe.skipIf(!hasDatabase)(
       expect(one).not.toHaveProperty("roomCompletion");
       expect(await userXp(user.id)).toBe(0);
       expect(await canAccessRoom(user.id, second.id)).toBe(false);
+      expect(
+        await db.user.findUniqueOrThrow({
+          where: { id: user.id },
+          select: { currentStreak: true, longestStreak: true },
+        }),
+      ).toEqual({ currentStreak: 1, longestStreak: 1 });
 
       const two = await solve(exercises[1].id);
       expect(two.status).toBe("ACCEPTED");
@@ -337,12 +384,18 @@ describe.skipIf(!hasDatabase)(
       expect(await userXp(user.id)).toBe(80);
       expect(await canAccessRoom(user.id, second.id)).toBe(true);
 
-      // a second accepted submission of the same exercise pays nothing
+      // a second accepted submission of the same exercise pays nothing and keeps streak at 1
       const again = await solve(exercises[1].id);
       expect(again.status).toBe("ACCEPTED");
       expect(again).not.toHaveProperty("roomCompletion");
       expect(await userXp(user.id)).toBe(80);
       expect(await xpEvents(user.id)).toHaveLength(1);
+      expect(
+        await db.user.findUniqueOrThrow({
+          where: { id: user.id },
+          select: { currentStreak: true, longestStreak: true },
+        }),
+      ).toEqual({ currentStreak: 1, longestStreak: 1 });
     });
   },
 );
