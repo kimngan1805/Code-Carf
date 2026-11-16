@@ -12,6 +12,7 @@ import { Progress } from "@/components/ui/progress";
 import type { getRoomPage } from "../service";
 import { RoomMarkdown } from "./room-markdown";
 import { RefreshRoom } from "./refresh-room";
+import { ExerciseReportForm } from "@/features/exercise-reports/components/report-form";
 
 const states = {
   not_started: {
@@ -193,6 +194,9 @@ export function RoomView({
                         )}
                       </div>
                     </details>
+                    <div className="mt-4">
+                      <ExerciseReportForm exerciseId={exercise.id} />
+                    </div>
                   </li>
                 );
               })}

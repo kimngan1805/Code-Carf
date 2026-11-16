@@ -21,6 +21,12 @@ enum ExerciseKind {
   HANDWRITTEN
 }
 
+enum ExerciseReportKind {
+  STATEMENT
+  TEST_CASE
+  AMBIGUOUS
+}
+
 /// PENDING: chờ chấm. RUNNING: đang chạy test case. NEEDS_REVIEW: bài viết tay AI đã chấm sơ bộ, chờ grader duyệt.
 enum Difficulty {
   EASY
@@ -124,6 +130,7 @@ model User {
   assignedContests     ContestGrader[]
   contestEntries       ContestParticipant[]
   proctoringEvents     ProctoringEvent[]
+  exerciseReports      ExerciseReport[]
   passwordResetToken   PasswordResetToken?
 
   @@index([xp])
@@ -236,19 +243,20 @@ model Path {
 }
 
 model Room {
-  id          String         @id @default(cuid())
-  pathId      String
-  path        Path           @relation(fields: [pathId], references: [id], onDelete: Cascade)
-  title       String
-  description String         @default("")
+  id              String           @id @default(cuid())
+  pathId          String
+  path            Path             @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  title           String
+  description     String           @default("")
   /// Phần lý thuyết của bài học, dạng Markdown.
-  content     String         @default("")
+  content         String           @default("")
   /// Thứ tự trong path; room position N mở khóa khi đã xong room trước đó.
-  position    Int
-  xpReward    Int            @default(50)
-  exercises   Exercise[]
-  progress    RoomProgress[]
-  xpEvents    XpEvent[]
+  position        Int
+  xpReward        Int              @default(50)
+  exercises       Exercise[]
+  progress        RoomProgress[]
+  xpEvents        XpEvent[]
+  exerciseReports ExerciseReport[]
 
   @@unique([pathId, position])
 }
@@ -283,6 +291,24 @@ model Exercise {
   submissions   Submission[]
   contests      ContestExercise[]
   contestDrafts ContestDraft[]
+  reports       ExerciseReport[]
+}
+
+model ExerciseReport {
+  id          String             @id @default(cuid())
+  userId      String
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  exercise    Exercise           @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  roomId      String
+  room        Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  kind        ExerciseReportKind
+  description String             @db.VarChar(2000)
+  createdAt   DateTime           @default(now())
+
+  @@index([userId, exerciseId, createdAt])
+  @@index([exerciseId, createdAt])
+  @@index([roomId, createdAt])
 }
 
 model TestCase {
