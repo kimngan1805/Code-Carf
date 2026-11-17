@@ -1,8 +1,9 @@
 import { RoleName } from "@prisma/client";
 import Link from "next/link";
-import { BadgeCheck, Bell, CodeXml, LogOut, Search } from "lucide-react";
+import { BadgeCheck, CodeXml, LogOut, Search } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
 import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
 import { SearchForm } from "@/features/search/components/search-form";
 import { Sidebar } from "./sidebar";
@@ -92,15 +93,7 @@ export function AppShell({
                   </Link>
                 </>
               )}
-
-              <button
-                type="button"
-                aria-label="Thông báo"
-                className={`relative ${roundButton}`}
-              >
-                <Bell className="size-5" aria-hidden />
-                <span className="absolute top-2 right-2.5 size-2 rounded-full bg-accent ring-2 ring-background" />
-              </button>
+              <NotificationBell />
               {adminMode && (
                 <Link
                   href="/admin/teacher-applications"
