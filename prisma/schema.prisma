@@ -250,6 +250,7 @@ model Room {
   description     String           @default("")
   /// Phần lý thuyết của bài học, dạng Markdown.
   content         String           @default("")
+  published       Boolean          @default(false)
   /// Thứ tự trong path; room position N mở khóa khi đã xong room trước đó.
   position        Int
   xpReward        Int              @default(50)
@@ -259,6 +260,7 @@ model Room {
   exerciseReports ExerciseReport[]
 
   @@unique([pathId, position])
+  @@index([pathId, published, position])
 }
 
 /// Một dòng = người học đã hoàn thành room, dùng cho mở khóa tuần tự.

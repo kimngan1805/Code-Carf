@@ -65,6 +65,7 @@ async function main() {
         create: {
           title: "Getting started",
           position: 1,
+          published: true,
           content:
             "# Getting started\n\nUse `console.log` to print text to the console.",
           exercises: {
@@ -295,6 +296,7 @@ async function seedStudentDemo(
           create: Array.from({ length: demo.rooms }, (_, index) => ({
             title: `Bài ${index + 1}`,
             position: index + 1,
+            published: true,
           })),
         },
       },

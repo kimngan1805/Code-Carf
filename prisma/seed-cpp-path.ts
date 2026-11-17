@@ -650,6 +650,7 @@ async function main() {
       title: room.title,
       description: room.description,
       content: room.content,
+      published: true,
     };
     const saved = await prisma.room.upsert({
       where: { pathId_position: { pathId: path.id, position } },
