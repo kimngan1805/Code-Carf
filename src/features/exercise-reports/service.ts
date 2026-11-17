@@ -13,7 +13,11 @@ export async function reportExercise(exerciseId: string, input: unknown) {
   if (typeof exerciseId !== "string" || !exerciseId || exerciseId.length > 200)
     throw new AppError(400, "INVALID_REPORT", "Bài tập không hợp lệ.");
   const exercise = await findReportExercise(exerciseId);
-  if (!exercise?.room || !exercise.room.path.published)
+  if (
+    !exercise?.room ||
+    !exercise.room.published ||
+    !exercise.room.path.published
+  )
     throw new AppError(404, "EXERCISE_NOT_FOUND", "Không tìm thấy bài tập.");
   if (!(await canAccessRoom(user.id, exercise.room.id)))
     throw new AppError(

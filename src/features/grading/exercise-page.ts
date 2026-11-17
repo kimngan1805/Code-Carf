@@ -19,6 +19,7 @@ export async function getExercisePage(exerciseId: string) {
     !exercise ||
     exercise.kind !== ExerciseKind.CODE ||
     !exercise.room ||
+    !exercise.room.published ||
     !exercise.room.path.published
   )
     throw new AppError(404, "EXERCISE_NOT_FOUND", "Không tìm thấy bài tập.");
