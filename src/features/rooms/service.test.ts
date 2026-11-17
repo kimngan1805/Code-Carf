@@ -24,6 +24,7 @@ beforeEach(() => {
   mocks.findRoomAccess.mockResolvedValue({
     id: "room-1",
     title: "Room",
+    published: true,
     pathId: "path-1",
     position: 2,
     path: {
@@ -59,8 +60,12 @@ describe("room content authorization", () => {
   });
   it.each([
     null,
-    { path: { published: false, deletedAt: null } },
-    { path: { published: true, deletedAt: new Date("2026-11-22T00:00:00Z") } },
+    { published: false, path: { published: true, deletedAt: null } },
+    { published: true, path: { published: false, deletedAt: null } },
+    {
+      published: true,
+      path: { published: true, deletedAt: new Date("2026-11-22T00:00:00Z") },
+    },
   ])("hides missing, unpublished, and soft-deleted content", async (room) => {
     mocks.findRoomAccess.mockResolvedValue(room);
     await expect(getRoom("room-1")).rejects.toMatchObject({ status: 404 });
@@ -92,7 +97,14 @@ describe("room content authorization", () => {
   });
   it("explains enrollment requirements without querying a previous room", async () => {
     mocks.findRoomAccess.mockResolvedValue({
-      path: { published: true, enrollments: [], title: "Path", slug: "path" },
+      published: true,
+      path: {
+        published: true,
+        deletedAt: null,
+        enrollments: [],
+        title: "Path",
+        slug: "path",
+      },
     });
     mocks.canAccessRoom.mockResolvedValue(false);
     await expect(getRoomPage("room-1")).resolves.toMatchObject({

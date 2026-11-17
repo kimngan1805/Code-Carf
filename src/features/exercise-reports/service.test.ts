@@ -24,7 +24,11 @@ beforeEach(() => {
   mocks.requireRole.mockResolvedValue({ id: "real-student" });
   mocks.find.mockResolvedValue({
     id: "exercise",
-    room: { id: "real-room", path: { published: true, deletedAt: null } },
+    room: {
+      id: "real-room",
+      published: true,
+      path: { published: true, deletedAt: null },
+    },
   });
   mocks.access.mockResolvedValue(true);
   mocks.create.mockResolvedValue({ id: "report" });
@@ -98,12 +102,25 @@ describe("student exercise reports", () => {
     { id: "exercise", room: null },
     {
       id: "exercise",
-      room: { id: "room", path: { published: false, deletedAt: null } },
+      room: {
+        id: "room",
+        published: false,
+        path: { published: true, deletedAt: null },
+      },
     },
     {
       id: "exercise",
       room: {
         id: "room",
+        published: true,
+        path: { published: false, deletedAt: null },
+      },
+    },
+    {
+      id: "exercise",
+      room: {
+        id: "room",
+        published: true,
         path: {
           published: true,
           deletedAt: new Date("2026-11-22T00:00:00Z"),
