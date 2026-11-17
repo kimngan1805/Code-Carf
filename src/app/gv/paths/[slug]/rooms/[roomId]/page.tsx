@@ -4,8 +4,9 @@ import { getManagedRoom } from "@/features/paths/management";
 import { AppError } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
+import { RoomPublication } from "@/features/rooms/components/room-publication";
 import { DeleteExerciseButton } from "@/features/exercises/components/delete-exercise-button";
-import { Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 
 const difficultyLabel = {
   EASY: "Dễ",
@@ -43,15 +44,35 @@ export default async function ManagedRoomPage({
         </p>
       )}
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="text-2xl font-bold text-primary break-words">
-          {room.title}
-        </h1>
-        <Button asChild variant="outline">
-          <Link href={`/gv/paths/${room.path.slug}/rooms/${room.id}/edit`}>
-            Chỉnh sửa bài học
-          </Link>
-        </Button>
+        <div className="min-w-0 space-y-2">
+          <span
+            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+              room.published
+                ? "bg-success/15 text-success"
+                : "bg-warning/15 text-warning"
+            }`}
+          >
+            {room.published ? "Đã xuất bản" : "Bản nháp"}
+          </span>
+          <h1 className="text-2xl font-bold text-primary break-words">
+            {room.title}
+          </h1>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild variant="secondary">
+            <Link href={`/gv/paths/${room.path.slug}/rooms/${room.id}/preview`}>
+              <Eye className="size-4" aria-hidden />
+              Xem trước
+            </Link>
+          </Button>
+          <Button asChild variant="outline">
+            <Link href={`/gv/paths/${room.path.slug}/rooms/${room.id}/edit`}>
+              Chỉnh sửa bài học
+            </Link>
+          </Button>
+        </div>
       </div>
+      <RoomPublication roomId={room.id} published={room.published} />
       <p className="text-muted-foreground break-words">{room.description}</p>
       <section className="rounded-2xl border bg-background p-4 sm:p-6">
         <RoomMarkdown content={room.content} />

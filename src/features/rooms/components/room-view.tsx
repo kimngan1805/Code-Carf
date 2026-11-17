@@ -4,6 +4,7 @@ import {
   CheckCircle2,
   Clock3,
   Circle,
+  Eye,
   LockKeyhole,
   ArrowLeft,
 } from "lucide-react";
@@ -34,18 +35,66 @@ const states = {
 
 export function RoomView({
   room,
+  preview,
 }: {
   room: Awaited<ReturnType<typeof getRoomPage>>;
+  preview?: {
+    backHref: string;
+    editHref: string;
+    roomPublished: boolean;
+    pathPublished: boolean;
+  };
 }) {
-  const pathHref = `/hv/paths/${room.path.slug}`;
+  const isPreview = Boolean(preview);
+  const backHref = preview ? preview.backHref : `/hv/paths/${room.path.slug}`;
+  const backLabel = preview ? "Quay lại quản lý bài học" : room.path.title;
   return (
     <div className="mx-auto w-full max-w-5xl space-y-6">
+      {preview && (
+        <section
+          role="status"
+          aria-label="Chế độ xem trước"
+          className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-primary/25 bg-secondary/40 p-4"
+        >
+          <div className="min-w-0 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-primary">
+                <Eye className="size-4" aria-hidden />
+                Chế độ xem trước
+              </span>
+              <span
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                  preview.roomPublished
+                    ? "bg-success/15 text-success"
+                    : "bg-warning/15 text-warning"
+                }`}
+              >
+                {preview.roomPublished ? "Đã xuất bản" : "Bản nháp"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Hiển thị giao diện như học viên nhìn thấy (tiến độ mô phỏng, không
+              lưu bài nộp thật).
+              {!preview.pathPublished &&
+                " Lộ trình chứa bài học này hiện đang ở bản nháp."}
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={preview.editHref}>Chỉnh sửa bài học</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href={preview.backHref}>Quay lại</Link>
+            </Button>
+          </div>
+        </section>
+      )}
       <Link
-        href={pathHref}
+        href={backHref}
         className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
       >
         <ArrowLeft className="size-4" aria-hidden />
-        {room.path.title}
+        {backLabel}
       </Link>
       {!room.accessible ? (
         <section
@@ -62,7 +111,7 @@ export function RoomView({
           </div>
           <div className="flex flex-wrap gap-3">
             <Button asChild>
-              <Link href={pathHref}>
+              <Link href={backHref}>
                 {room.reason === "enrollment"
                   ? "Đăng ký lộ trình"
                   : "Về lộ trình học"}
@@ -88,7 +137,7 @@ export function RoomView({
                 </p>
               )}
             </div>
-            <RefreshRoom />
+            {!isPreview && <RefreshRoom />}
           </header>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
             <section
@@ -173,13 +222,23 @@ export function RoomView({
                         {label}
                       </span>
                     </div>
-                    {exercise.kind === "CODE" && (
-                      <Button asChild size="sm" className="mt-4">
-                        <Link href={`/hv/exercises/${exercise.id}`}>
-                          Làm bài
-                        </Link>
-                      </Button>
-                    )}
+                    {exercise.kind === "CODE" &&
+                      (isPreview ? (
+                        <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <Button type="button" size="sm" disabled>
+                            Làm bài
+                          </Button>
+                          <span className="text-xs text-muted-foreground">
+                            Chế độ xem trước — chỉ học viên mới nộp bài.
+                          </span>
+                        </div>
+                      ) : (
+                        <Button asChild size="sm" className="mt-4">
+                          <Link href={`/hv/exercises/${exercise.id}`}>
+                            Làm bài
+                          </Link>
+                        </Button>
+                      ))}
                     <details className="mt-4 border-t pt-3">
                       <summary className="cursor-pointer rounded text-sm font-semibold text-primary focus-visible:outline-2 focus-visible:outline-ring">
                         Xem đề bài
@@ -194,9 +253,11 @@ export function RoomView({
                         )}
                       </div>
                     </details>
-                    <div className="mt-4">
-                      <ExerciseReportForm exerciseId={exercise.id} />
-                    </div>
+                    {!isPreview && (
+                      <div className="mt-4">
+                        <ExerciseReportForm exerciseId={exercise.id} />
+                      </div>
+                    )}
                   </li>
                 );
               })}

@@ -110,14 +110,33 @@ export default async function ManagedPathPage({
               key={room.id}
               className="space-y-2 rounded-xl border bg-background p-4"
             >
-              <h3 className="font-semibold break-words">
-                <Link
-                  href={`/gv/paths/${path.slug}/rooms/${room.id}`}
-                  className="text-primary hover:underline"
-                >
-                  {room.position}. {room.title}
-                </Link>
-              </h3>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <h3 className="font-semibold break-words">
+                  <Link
+                    href={`/gv/paths/${path.slug}/rooms/${room.id}`}
+                    className="text-primary hover:underline"
+                  >
+                    {room.position}. {room.title}
+                  </Link>
+                </h3>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      room.published
+                        ? "bg-success/15 text-success"
+                        : "bg-warning/15 text-warning"
+                    }`}
+                  >
+                    {room.published ? "Đã xuất bản" : "Bản nháp"}
+                  </span>
+                  <Link
+                    href={`/gv/paths/${path.slug}/rooms/${room.id}/preview`}
+                    className="text-xs font-semibold text-primary hover:underline"
+                  >
+                    Xem trước
+                  </Link>
+                </div>
+              </div>
               <p className="text-sm text-muted-foreground break-words">
                 {room.description}
               </p>
