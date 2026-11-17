@@ -10,6 +10,7 @@ export function findReportExercise(exerciseId: string) {
       room: {
         select: {
           id: true,
+          published: true,
           path: { select: { published: true, deletedAt: true } },
         },
       },
@@ -46,7 +47,7 @@ export function createExerciseReport(
       where: {
         id: exerciseId,
         roomId,
-        room: { path: { published: true, deletedAt: null } },
+        room: { published: true, path: { published: true, deletedAt: null } },
       },
       select: { id: true },
     });

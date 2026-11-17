@@ -3,6 +3,8 @@ import { getRoomPage } from "@/features/rooms/service";
 import { RoomView } from "@/features/rooms/components/room-view";
 import { AppError } from "@/lib/errors";
 
+export const dynamic = "force-dynamic";
+
 export default async function RoomPage({
   params,
 }: {

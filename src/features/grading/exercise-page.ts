@@ -20,6 +20,7 @@ export async function getExercisePage(exerciseId: string) {
   if (
     !exercise ||
     !exercise.room ||
+    !exercise.room.published ||
     !exercise.room.path.published ||
     exercise.room.path.deletedAt != null
   )
