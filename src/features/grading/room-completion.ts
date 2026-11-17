@@ -98,7 +98,11 @@ export async function completeRoomIfDone(
     }
 
     const nextRoom = await tx.room.findFirst({
-      where: { pathId: room.pathId, position: { gt: room.position } },
+      where: {
+        pathId: room.pathId,
+        published: true,
+        position: { gt: room.position },
+      },
       orderBy: { position: "asc" },
       select: { id: true, title: true },
     });

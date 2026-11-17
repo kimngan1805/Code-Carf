@@ -82,12 +82,17 @@ export async function awardActivityBadgesInTx(
           deletedAt: null,
           OR: [
             { enrollments: { some: { userId } } },
-            { rooms: { some: { progress: { some: { userId } } } } },
+            {
+              rooms: {
+                some: { published: true, progress: { some: { userId } } },
+              },
+            },
           ],
         },
         select: {
           id: true,
           rooms: {
+            where: { published: true },
             select: {
               id: true,
               progress: {
