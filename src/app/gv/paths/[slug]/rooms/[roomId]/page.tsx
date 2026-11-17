@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CheckCircle2, CodeXml, Pencil, Plus } from "lucide-react";
+import { CheckCircle2, CodeXml, Eye, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteExerciseButton } from "@/features/exercises/components/delete-exercise-button";
-import { PathBreadcrumb } from "@/features/paths/components/path-badges";
+import {
+  PathBreadcrumb,
+  PathStatusBadge,
+} from "@/features/paths/components/path-badges";
 import { getManagedRoom } from "@/features/paths/management";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
+import { RoomPublication } from "@/features/rooms/components/room-publication";
 import { AppError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
@@ -57,7 +61,6 @@ export default async function ManagedRoomPage({
           <p>Đã lưu bài học thành công.</p>
         </div>
       )}
-
       {exerciseSaved && (
         <div
           role="status"
@@ -71,9 +74,12 @@ export default async function ManagedRoomPage({
       <header className="rounded-2xl border border-border/70 bg-background p-5 sm:p-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1.5">
-            <p className="text-xs font-semibold tracking-wide text-primary uppercase">
-              Nội dung bài học
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-semibold tracking-wide text-primary uppercase">
+                Nội dung bài học
+              </p>
+              <PathStatusBadge published={room.published} />
+            </div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground break-words sm:text-3xl">
               {room.title}
             </h1>
@@ -83,19 +89,31 @@ export default async function ManagedRoomPage({
               </p>
             )}
           </div>
-          <Button
-            asChild
-            variant="outline"
-            size="sm"
-            className="shrink-0 rounded-xl"
-          >
-            <Link href={`/gv/paths/${room.path.slug}/rooms/${room.id}/edit`}>
-              <Pencil className="size-3.5" aria-hidden />
-              Chỉnh sửa bài học
-            </Link>
-          </Button>
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button
+              asChild
+              variant="secondary"
+              size="sm"
+              className="rounded-xl"
+            >
+              <Link
+                href={`/gv/paths/${room.path.slug}/rooms/${room.id}/preview`}
+              >
+                <Eye className="size-3.5" aria-hidden />
+                Xem như học viên
+              </Link>
+            </Button>
+            <Button asChild variant="outline" size="sm" className="rounded-xl">
+              <Link href={`/gv/paths/${room.path.slug}/rooms/${room.id}/edit`}>
+                <Pencil className="size-3.5" aria-hidden />
+                Chỉnh sửa bài học
+              </Link>
+            </Button>
+          </div>
         </div>
       </header>
+
+      <RoomPublication roomId={room.id} published={room.published} />
 
       <section
         aria-label="Lý thuyết bài học"

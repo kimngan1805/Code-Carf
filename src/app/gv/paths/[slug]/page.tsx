@@ -8,6 +8,7 @@ import {
   CheckCircle2,
   Clock,
   CodeXml,
+  Eye,
   Pencil,
   Plus,
   Settings2,
@@ -359,14 +360,17 @@ export default async function ManagedPathPage({
                             {room.position}
                           </span>
                           <div className="min-w-0 flex-1 space-y-1.5">
-                            <h3 className="text-base font-semibold text-foreground break-words">
-                              <Link
-                                href={`/gv/paths/${path.slug}/rooms/${room.id}`}
-                                className="rounded transition-colors hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                              >
-                                {room.title}
-                              </Link>
-                            </h3>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h3 className="text-base font-semibold text-foreground break-words">
+                                <Link
+                                  href={`/gv/paths/${path.slug}/rooms/${room.id}`}
+                                  className="rounded transition-colors hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                                >
+                                  {room.title}
+                                </Link>
+                              </h3>
+                              <PathStatusBadge published={room.published} />
+                            </div>
                             {room.description.trim() && (
                               <p className="line-clamp-2 text-xs leading-5 text-muted-foreground break-words">
                                 {room.description}
@@ -399,7 +403,20 @@ export default async function ManagedPathPage({
                           </div>
                         </div>
 
-                        <div className="flex shrink-0 items-center gap-1.5 sm:pt-0.5">
+                        <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:pt-0.5">
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="sm"
+                            className="rounded-lg text-muted-foreground hover:text-primary"
+                          >
+                            <Link
+                              href={`/gv/paths/${path.slug}/rooms/${room.id}/preview`}
+                            >
+                              <Eye className="size-3.5" aria-hidden />
+                              Xem như học viên
+                            </Link>
+                          </Button>
                           <Button
                             asChild
                             variant="ghost"
