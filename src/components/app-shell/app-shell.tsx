@@ -1,8 +1,9 @@
 import { RoleName } from "@prisma/client";
 import Link from "next/link";
-import { BadgeCheck, Bell, CodeXml, LogOut, Search } from "lucide-react";
+import { BadgeCheck, CodeXml, LogOut, Search } from "lucide-react";
 import { logoutAction } from "@/features/auth/actions";
 import { allowedRole, isTeacherRole } from "@/features/auth/permissions";
+import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { APP_TIME_ZONE } from "@/features/progress/week-activity";
 import { Sidebar } from "./sidebar";
 import { MobileSidebar } from "./mobile-sidebar";
@@ -10,9 +11,6 @@ import { MobileSidebar } from "./mobile-sidebar";
 function initials(name: string) {
   return (name.trim().split(/\s+/).at(-1)?.[0] ?? "?").toUpperCase();
 }
-
-const roundButton =
-  "grid size-10 place-items-center rounded-full text-foreground/70 transition-colors hover:bg-muted hover:text-primary";
 
 function Logo({ href }: { href: string }) {
   return (
@@ -89,14 +87,7 @@ export function AppShell({
                   className="h-10 w-72 rounded-full border border-border/80 bg-muted/50 pr-4 pl-10 text-sm transition-[box-shadow,background-color] placeholder:text-muted-foreground focus-visible:bg-background focus-visible:ring-4 focus-visible:ring-highlight/20 focus-visible:outline-none"
                 />
               </label>
-              <button
-                type="button"
-                aria-label="Thông báo"
-                className={`relative ${roundButton}`}
-              >
-                <Bell className="size-5" aria-hidden />
-                <span className="absolute top-2 right-2.5 size-2 rounded-full bg-accent ring-2 ring-background" />
-              </button>
+              <NotificationBell />
               {adminMode && (
                 <Link
                   href="/admin/teacher-applications"
