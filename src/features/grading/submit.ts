@@ -20,6 +20,7 @@ import {
   claimPendingSubmission,
 } from "./repository";
 import { emitContestLeaderboardUpdated } from "../leaderboard/contest-events";
+import { notifyContestSubmissionResult } from "../notifications/writer";
 import { isPassing, summarizeTests } from "./scoring";
 import { completeRoomIfDone, type RoomCompletion } from "./room-completion";
 import { recordStreakActivity } from "../progress/activity";
@@ -202,6 +203,15 @@ export async function gradePendingSubmission(submissionId: string) {
           userId: saved.userId,
         });
         emitContestLeaderboardUpdated(saved.contestId);
+        await notifyContestSubmissionResult({
+          userId: saved.userId,
+          submissionId,
+          contestId: saved.contestId,
+          exerciseId: saved.exerciseId,
+          status: errorOutcome.status,
+          score: errorOutcome.score,
+          maxScore: exercise?.points ?? 0,
+        });
       } else {
         await finishSubmission(submissionId, errorOutcome);
       }
@@ -324,6 +334,15 @@ async function gradeStoredSolution(
       userId,
     });
     emitContestLeaderboardUpdated(contestId);
+    await notifyContestSubmissionResult({
+      userId,
+      submissionId,
+      contestId,
+      exerciseId,
+      status: outcome.status,
+      score: outcome.score,
+      maxScore,
+    });
   } else {
     await finishSubmission(submissionId, submissionOutcome);
   }

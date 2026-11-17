@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
+import { notifyNewLessonPublished } from "@/features/notifications/writer";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { saveLessonSchema } from "./authoring-schema";
@@ -22,7 +23,7 @@ export async function saveManagedLesson(body: unknown) {
   };
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await db.$transaction(
+      const outcome = await db.$transaction(
         async (tx) => {
           const path = await tx.path.findFirst({
             where: {
@@ -30,7 +31,7 @@ export async function saveManagedLesson(body: unknown) {
               deletedAt: null,
               ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
             },
-            select: { id: true, slug: true },
+            select: { id: true, slug: true, title: true, published: true },
           });
           if (!path)
             throw new AppError(
@@ -49,7 +50,11 @@ export async function saveManagedLesson(body: unknown) {
                 "ROOM_NOT_FOUND",
                 "Không tìm thấy bài học trong lộ trình này.",
               );
-            return { id: input.roomId, slug: path.slug };
+            return {
+              id: input.roomId,
+              slug: path.slug,
+              created: false as const,
+            };
           }
           const id = `r_${createHash("sha256").update(user.id).update("\0").update(path.id).update("\0").update(input.requestId).digest("hex")}`;
           const existing = await tx.room.findUnique({ where: { id } });
@@ -65,7 +70,7 @@ export async function saveManagedLesson(body: unknown) {
                 "LESSON_REQUEST_REUSED",
                 "Yêu cầu này đã lưu nội dung khác. Vui lòng thử lại.",
               );
-            return { id, slug: path.slug };
+            return { id, slug: path.slug, created: false as const };
           }
           const last = await tx.room.aggregate({
             where: { pathId: path.id },
@@ -80,10 +85,29 @@ export async function saveManagedLesson(body: unknown) {
             },
             select: { id: true },
           });
-          return { id: room.id, slug: path.slug };
+          return {
+            id: room.id,
+            slug: path.slug,
+            created: true as const,
+            pathId: path.id,
+            pathTitle: path.title,
+            pathPublished: Boolean(path.published),
+          };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
+
+      if (outcome.created && outcome.pathPublished) {
+        await notifyNewLessonPublished({
+          pathId: outcome.pathId,
+          pathTitle: outcome.pathTitle,
+          roomId: outcome.id,
+          roomTitle: fields.title,
+          actorUserId: user.id,
+        });
+      }
+
+      return { id: outcome.id, slug: outcome.slug };
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

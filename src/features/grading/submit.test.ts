@@ -12,11 +12,13 @@ const {
   completeRoomIfDone,
   recordStreakActivity,
   emitContestLeaderboardUpdated,
+  notifyContestSubmissionResult,
 } = vi.hoisted(() => ({
   canAccessRoom: vi.fn(),
   completeRoomIfDone: vi.fn(),
   recordStreakActivity: vi.fn(),
   emitContestLeaderboardUpdated: vi.fn(),
+  notifyContestSubmissionResult: vi.fn(),
   repo: {
     findCodeExerciseWithTests: vi.fn(),
     isExerciseInContest: vi.fn(),
@@ -40,6 +42,9 @@ vi.mock("../progress/activity", () => ({ recordStreakActivity }));
 vi.mock("./service", () => ({ getGradingAdapter: () => adapter }));
 vi.mock("../leaderboard/contest-events", () => ({
   emitContestLeaderboardUpdated,
+}));
+vi.mock("../notifications/writer", () => ({
+  notifyContestSubmissionResult,
 }));
 vi.mock("../../lib/logger", () => ({
   logger: { info: vi.fn(), error: vi.fn() },
@@ -492,6 +497,26 @@ describe("submitSolution", () => {
     ).rejects.toThrow("DB tx failed");
 
     expect(emitContestLeaderboardUpdated).not.toHaveBeenCalled();
+    expect(notifyContestSubmissionResult).not.toHaveBeenCalled();
+  });
+
+  it("notifies submission owner after contest grading succeeds and skips practice submissions", async () => {
+    adapter.grade.mockResolvedValue({ status: "ACCEPTED", feedback: "OK" });
+
+    await submitSolution(validInput);
+    expect(notifyContestSubmissionResult).not.toHaveBeenCalled();
+
+    await submitSolution({ ...validInput, contestId: "contest-1" });
+    expect(notifyContestSubmissionResult).toHaveBeenCalledTimes(1);
+    expect(notifyContestSubmissionResult).toHaveBeenCalledWith({
+      userId: "user-1",
+      submissionId: "sub-1",
+      contestId: "contest-1",
+      exerciseId: "ex-1",
+      status: "ACCEPTED",
+      score: 100,
+      maxScore: 100,
+    });
   });
 
   it("synchronizes contest standing and emits leaderboard update in gradePendingSubmission", async () => {
@@ -516,6 +541,16 @@ describe("submitSolution", () => {
     );
     expect(emitContestLeaderboardUpdated).toHaveBeenCalledTimes(1);
     expect(emitContestLeaderboardUpdated).toHaveBeenCalledWith("contest-1");
+    expect(notifyContestSubmissionResult).toHaveBeenCalledTimes(1);
+    expect(notifyContestSubmissionResult).toHaveBeenCalledWith({
+      userId: "user-1",
+      submissionId: "sub-auto-1",
+      contestId: "contest-1",
+      exerciseId: "ex-1",
+      status: "REJECTED",
+      score: 0,
+      maxScore: 100,
+    });
   });
 });
 
