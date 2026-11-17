@@ -35,6 +35,7 @@ function learnerSelection(userId: string) {
     _count: { select: { enrollments: true } },
     enrollments: { where: { userId }, select: { userId: true }, take: 1 },
     rooms: {
+      where: { published: true },
       orderBy: { position: "asc" as const },
       select: {
         id: true,

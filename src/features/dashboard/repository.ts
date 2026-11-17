@@ -29,6 +29,7 @@ export async function getDashboardRecords(
             slug: true,
             title: true,
             rooms: {
+              where: { published: true },
               orderBy: { position: "asc" },
               select: { id: true, title: true },
             },
@@ -59,7 +60,9 @@ export async function getDashboardRecords(
         slug: true,
         title: true,
         description: true,
-        _count: { select: { rooms: true, enrollments: true } },
+        _count: {
+          select: { rooms: { where: { published: true } }, enrollments: true },
+        },
       },
     }),
     db.contest.findMany({
@@ -103,7 +106,12 @@ export async function getDashboardRecords(
           slug: true,
           title: true,
           description: true,
-          _count: { select: { rooms: true, enrollments: true } },
+          _count: {
+            select: {
+              rooms: { where: { published: true } },
+              enrollments: true,
+            },
+          },
         },
       })
     : null;

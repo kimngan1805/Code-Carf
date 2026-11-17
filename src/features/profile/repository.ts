@@ -36,6 +36,7 @@ export async function findPublicStudentRecord(targetUserId: string) {
             slug: true,
             title: true,
             rooms: {
+              where: { published: true },
               orderBy: { position: "asc" },
               select: { id: true, title: true },
             },
