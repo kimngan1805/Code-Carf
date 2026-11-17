@@ -65,6 +65,7 @@ export async function getManagedPath(slug: string) {
           title: true,
           description: true,
           position: true,
+          published: true,
           _count: { select: { exercises: true } },
         },
       },
@@ -94,7 +95,8 @@ export async function getManagedRoom(slug: string, roomId: string) {
       title: true,
       description: true,
       content: true,
-      path: { select: { title: true, slug: true } },
+      published: true,
+      path: { select: { title: true, slug: true, published: true } },
       exercises: {
         orderBy: { id: "asc" },
         select: {
@@ -114,6 +116,62 @@ export async function getManagedRoom(slug: string, roomId: string) {
       "Không tìm thấy bài học bạn được quản lý.",
     );
   return room;
+}
+
+export async function getManagedRoomPreview(slug: string, roomId: string) {
+  const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
+  const room = await db.room.findFirst({
+    where: {
+      id: roomId,
+      path: {
+        slug,
+        ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
+      },
+    },
+    select: {
+      id: true,
+      title: true,
+      description: true,
+      content: true,
+      published: true,
+      path: { select: { title: true, slug: true, published: true } },
+      exercises: {
+        orderBy: { id: "asc" },
+        select: {
+          id: true,
+          title: true,
+          prompt: true,
+          kind: true,
+          points: true,
+        },
+      },
+    },
+  });
+  if (!room)
+    throw new AppError(
+      404,
+      "ROOM_NOT_FOUND",
+      "Không tìm thấy bài học bạn được quản lý.",
+    );
+
+  return {
+    accessible: true as const,
+    id: room.id,
+    title: room.title,
+    description: room.description,
+    content: room.content,
+    published: room.published,
+    path: {
+      slug: room.path.slug,
+      title: room.path.title,
+      published: room.path.published,
+    },
+    exercises: room.exercises.map((exercise) => ({
+      ...exercise,
+      state: "not_started" as const,
+    })),
+    passedExercises: 0,
+  };
 }
 
 export async function getManagedExercise(
