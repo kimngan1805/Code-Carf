@@ -26,6 +26,7 @@ const exercise = {
   room: {
     id: "room-1",
     title: "Room 1",
+    published: true,
     path: { slug: "python", title: "Python", published: true },
   },
   testCases: [{ id: "t1", input: "1 2", expected: "3" }],
@@ -88,6 +89,16 @@ describe("getExercisePage", () => {
     ["missing exercise", null],
     ["handwritten exercise", { ...exercise, kind: "HANDWRITTEN" }],
     ["exercise without a room", { ...exercise, room: null, roomId: null }],
+    [
+      "unpublished room",
+      {
+        ...exercise,
+        room: {
+          ...exercise.room,
+          published: false,
+        },
+      },
+    ],
     [
       "unpublished path",
       {

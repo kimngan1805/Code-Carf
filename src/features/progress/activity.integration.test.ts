@@ -122,8 +122,8 @@ describe.skipIf(!hasDatabase)(
           creatorId,
           rooms: {
             create: [
-              { title: "Room 1", position: 1 },
-              { title: "Room 2", position: 2 },
+              { title: "Room 1", position: 1, published: true },
+              { title: "Room 2", position: 2, published: true },
             ],
           },
         },
@@ -256,7 +256,9 @@ describe.skipIf(!hasDatabase)(
           title: "Five Exercises Path",
           published: false,
           creatorId: user.id,
-          rooms: { create: [{ title: "Room 1", position: 1 }] },
+          rooms: {
+            create: [{ title: "Room 1", position: 1, published: true }],
+          },
         },
         include: { rooms: true },
       });

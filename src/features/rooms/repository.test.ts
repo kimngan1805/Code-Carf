@@ -23,6 +23,7 @@ it("aggregates only the current learner's practice submissions in this room", as
 it("does not select hidden tests, rubrics, sources or another learner's submissions", async () => {
   await findRoomContent("room-1");
   const query = mocks.room.mock.calls[0][0];
+  expect(query.where.published).toBe(true);
   expect(query.where.path).toEqual({ published: true });
   const selection = query.select.exercises.select;
   expect(selection.prompt).toBe(true);

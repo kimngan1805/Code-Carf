@@ -9,6 +9,7 @@ beforeEach(() => {
   mocks.findUnique.mockResolvedValue({
     pathId: "path-1",
     position: 5,
+    published: true,
     path: {
       published: true,
       sequentialUnlock: true,
@@ -26,7 +27,11 @@ describe("canAccessRoom", () => {
     mocks.findFirst.mockResolvedValue({ progress: [] });
     await expect(canAccessRoom("user-1", "room-1")).resolves.toBe(false);
     const query = mocks.findFirst.mock.calls[0][0];
-    expect(query.where).toEqual({ pathId: "path-1", position: { lt: 5 } });
+    expect(query.where).toEqual({
+      pathId: "path-1",
+      published: true,
+      position: { lt: 5 },
+    });
     expect(query.orderBy).toEqual({ position: "desc" });
     expect(query.select.progress.where).toEqual({ userId: "user-1" });
     expect(
@@ -44,6 +49,7 @@ describe("canAccessRoom", () => {
     mocks.findUnique.mockResolvedValue({
       pathId: "path-1",
       position: 5,
+      published: true,
       path: { published: true, sequentialUnlock: false, enrollments: [{}] },
     });
     await expect(canAccessRoom("user-1", "room-1")).resolves.toBe(true);
@@ -52,12 +58,23 @@ describe("canAccessRoom", () => {
   it.each([
     { label: "missing room", room: null },
     {
+      label: "draft room",
+      room: {
+        published: false,
+        path: { published: true, enrollments: [{}] },
+      },
+    },
+    {
       label: "draft path",
-      room: { path: { published: false, enrollments: [{}] } },
+      room: {
+        published: true,
+        path: { published: false, enrollments: [{}] },
+      },
     },
     {
       label: "unenrolled learner",
       room: {
+        published: true,
         path: { published: true, sequentialUnlock: false, enrollments: [] },
       },
     },
