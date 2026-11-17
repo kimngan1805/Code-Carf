@@ -10,8 +10,12 @@ const mocks = vi.hoisted(() => ({
   update: vi.fn(),
   aggregate: vi.fn(),
   create: vi.fn(),
+  notifyNewLessonPublished: vi.fn(),
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.role }));
+vi.mock("@/features/notifications/writer", () => ({
+  notifyNewLessonPublished: mocks.notifyNewLessonPublished,
+}));
 vi.mock("@/lib/db", () => ({ db: { $transaction: mocks.transaction } }));
 import { saveManagedLesson } from "./authoring";
 
@@ -159,4 +163,55 @@ it("bounds conflict retries and does not hide other database errors", async () =
   expect(mocks.transaction).toHaveBeenCalledTimes(3);
   mocks.transaction.mockRejectedValue(new Error("Database offline"));
   await expect(saveManagedLesson(input)).rejects.toThrow("Database offline");
+});
+
+it("notifies enrolled learners only when creating a new lesson in a published path", async () => {
+  mocks.path.mockResolvedValue({
+    id: "path-1",
+    slug: "my-path",
+    title: "Lộ trình TS",
+    published: true,
+  });
+
+  const created = await saveManagedLesson(input);
+  expect(mocks.notifyNewLessonPublished).toHaveBeenCalledTimes(1);
+  expect(mocks.notifyNewLessonPublished).toHaveBeenCalledWith({
+    pathId: "path-1",
+    pathTitle: "Lộ trình TS",
+    roomId: created.id,
+    roomTitle: "Lesson",
+    actorUserId: "teacher-1",
+  });
+
+  // Updating an existing room must not notify.
+  mocks.notifyNewLessonPublished.mockClear();
+  await saveManagedLesson({
+    pathSlug: input.pathSlug,
+    title: input.title,
+    description: input.description,
+    content: input.content,
+    roomId: "room-1",
+  });
+  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
+
+  // Replaying the same requestId must not notify.
+  mocks.find.mockResolvedValue({
+    pathId: "path-1",
+    title: "Lesson",
+    description: "Intro",
+    content: input.content,
+  });
+  await saveManagedLesson(input);
+  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
+
+  // Creating a room inside an unpublished draft path must not notify.
+  mocks.find.mockResolvedValue(null);
+  mocks.path.mockResolvedValue({
+    id: "path-1",
+    slug: "my-path",
+    title: "Lộ trình TS",
+    published: false,
+  });
+  await saveManagedLesson(input);
+  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
 });
