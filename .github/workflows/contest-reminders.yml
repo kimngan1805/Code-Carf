@@ -1,0 +1,107 @@
+name: Contest Reminders
+
+on:
+  schedule:
+    # Runs every 30 minutes (UTC). GitHub Actions schedules run on the default branch
+    # and may be delayed by several minutes under load.
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: contest-reminders
+  cancel-in-progress: false
+
+jobs:
+  trigger-contest-reminders:
+    name: Trigger contest reminder cron
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      APP_URL: ${{ vars.APP_URL || secrets.APP_URL }}
+      CRON_SECRET: ${{ secrets.CRON_SECRET }}
+    steps:
+      - name: Validate configuration
+        run: |
+          if [ -z "${APP_URL:-}" ]; then
+            echo "::error::Missing APP_URL. Set Repository Variable APP_URL (or Secret APP_URL) in GitHub Actions settings."
+            exit 1
+          fi
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "::error::Missing CRON_SECRET. Set Repository Secret CRON_SECRET in GitHub Actions settings."
+            exit 1
+          fi
+          case "$APP_URL" in
+            http://*|https://*) ;;
+            *)
+              echo "::error::APP_URL must start with http:// or https://."
+              exit 1
+              ;;
+          esac
+
+      - name: Call POST /api/cron/contest-reminders
+        run: |
+          base_url="$APP_URL"
+          while [[ "$base_url" == */ ]]; do
+            base_url="${base_url%/}"
+          done
+          target_url="${base_url}/api/cron/contest-reminders"
+
+          max_attempts=4
+          attempt=1
+          response_file="$(mktemp)"
+          trap 'rm -f "$response_file"' EXIT
+
+          while [ "$attempt" -le "$max_attempts" ]; do
+            http_code="000"
+            set +e
+            http_code="$(
+              curl \
+                --fail-with-body \
+                --silent \
+                --show-error \
+                --connect-timeout 15 \
+                --max-time 75 \
+                --request POST \
+                --header "Authorization: Bearer ${CRON_SECRET}" \
+                --output "$response_file" \
+                --write-out "%{http_code}" \
+                "$target_url"
+            )"
+            curl_exit=$?
+            set -e
+
+            if [ "$curl_exit" -eq 0 ]; then
+              echo "Contest reminders succeeded (HTTP ${http_code}) on attempt ${attempt}."
+              cat "$response_file"
+              echo ""
+              exit 0
+            fi
+
+            echo "Attempt ${attempt}/${max_attempts} failed (curl exit ${curl_exit}, HTTP ${http_code})." >&2
+            if [ -s "$response_file" ]; then
+              cat "$response_file" >&2
+              echo "" >&2
+            fi
+
+            # Retry only transient network/cold-start gateway failures; fail fast on 401/500/etc.
+            case "$http_code" in
+              000|429|502|503|504)
+                ;;
+              *)
+                echo "::error::Non-recoverable HTTP status ${http_code} from contest reminders endpoint." >&2
+                exit 1
+                ;;
+            esac
+
+            if [ "$attempt" -eq "$max_attempts" ]; then
+              echo "::error::Contest reminders failed after ${max_attempts} attempts." >&2
+              exit 1
+            fi
+
+            delay=$((attempt * 20))
+            echo "Waiting ${delay}s before retry..."
+            sleep "$delay"
+            attempt=$((attempt + 1))
+          done
