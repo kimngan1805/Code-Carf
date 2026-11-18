@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ShieldAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { getManagedContestWarnings } from "@/features/proctoring/management";
 import { ThresholdForm } from "@/features/proctoring/components/threshold-form";
 import { formatContestDate } from "@/features/contests/time";
@@ -34,10 +35,17 @@ export default async function ManagedContestWarningsPage() {
                 {contest.title}
               </Link>
             </h2>
-            <span className="flex items-center gap-1.5 text-sm text-warning">
-              <ShieldAlert aria-hidden className="size-4" />
-              {contest._count.participants} lượt cần xem xét
-            </span>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="flex items-center gap-1.5 text-sm text-warning">
+                <ShieldAlert aria-hidden className="size-4" />
+                {contest._count.participants} lượt cần xem xét
+              </span>
+              <Button asChild variant="outline" size="sm">
+                <Link href={`/gv/contests/${contest.slug}`}>
+                  Dashboard vi phạm
+                </Link>
+              </Button>
+            </div>
           </div>
           <ThresholdForm
             slug={contest.slug}
