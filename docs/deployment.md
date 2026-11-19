@@ -9,7 +9,9 @@ once CI is green, and the container applies pending migrations on start.
 1. Create a project at supabase.com and note the database password.
 2. **Database URL**: Project Settings → Database → Connection string → **Session pooler**
    (works over IPv4). Replace `[YOUR-PASSWORD]`. It starts with `postgresql://`.
-3. **Storage**: create a bucket named `teacher-documents` and keep it **private**.
+3. **Storage**: create a bucket named `teacher-documents` and keep it **private**. It holds
+   teacher evidence files and learners' handwritten answer images (under `handwritten/`);
+   neither is ever served from a public link.
 4. **API keys**: Project Settings → API → copy the project URL and the `service_role`
    key. The service key is a secret: server only, never in the browser or in git.
 
