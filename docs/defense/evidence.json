@@ -76,7 +76,7 @@
       "title": "feat(proctoring): add teacher violation dashboard"
     }
   ],
-  "rubricStatus": "Not supplied; no scores or weights invented.",
+  "rubricStatus": "Official weights and project documents supplied; provisional self-assessment proposed for team review, not an approved or council score.",
   "baseCommit": "105a1656158fc9e1a4164f1dffa76302b91f42f4",
   "checks": {
     "baseCommit": "105a1656158fc9e1a4164f1dffa76302b91f42f4",
@@ -87,5 +87,95 @@
     "build": "passed",
     "typecheck": "passed",
     "scope": "Local checks; not UAT, coverage or a production availability claim"
+  },
+  "officialRequirements": {
+    "sourceFile": "Project-Guidelines.md",
+    "sections": [1, 4, 5, 7, 8],
+    "demoSeconds": 300,
+    "sha256": "1249f1e68f2c6c89f3e62d5808539d8575bb85713c7cac063bafcba895e02ad8",
+    "authenticityGate": "Pass/Fail; if failed, project grade capped at 5.0/10",
+    "qaSeconds": 300,
+    "presentationSeconds": 360,
+    "weights": [30, 20, 30, 20]
+  },
+  "governanceAudit": {
+    "windowEndExclusive": "2026-11-19T00:00:00.0000000+07:00",
+    "interpretation": "Actual PR merges in a fixed seven-day window; not story-point velocity or quality.",
+    "windowStart": "2026-11-12T00:00:00.0000000+07:00",
+    "mergedPullRequestNumbers": [
+      160, 159, 157, 156, 155, 154, 152, 151, 150, 148, 146, 145, 144, 142, 140,
+      137, 136, 135, 134, 120, 118, 117, 116, 115, 114, 113, 111, 110, 103, 102,
+      101, 100, 99, 98, 97, 96, 95, 94, 93, 92, 91, 90, 89, 88, 87, 86, 84, 56,
+      55, 54, 53
+    ],
+    "mergedPullRequestsInWindow": 51,
+    "mainProtected": false
+  },
+  "suppliedDocuments": [
+    {
+      "file": "01_Final_Technical_Report.docx",
+      "sha256": "530598b96a96ec890d82f012340bd895b3cddf869fad87676ff49e857eddeee6",
+      "bytes": 1258217
+    },
+    {
+      "file": "02_Project_Charter_Signed.docx",
+      "sha256": "b49c3fb9084d750e4fb706b02d158e6a22b4d99227bc6bb3d2a10fc078727010",
+      "bytes": 522830
+    },
+    {
+      "file": "03_WBS_and_WBS_Dictionary.docx",
+      "sha256": "c5368f25f0787244add2476d52fb84d85778e062f6dc9fb1620e1edb8c946c34",
+      "bytes": 47162
+    },
+    {
+      "file": "04_Risk_Register_Evolution.xlsx",
+      "sha256": "3e7676b9938d4236a70cc48ba6e974e31d6e3f339ce391b8b3cfcbc90f76a116",
+      "bytes": 20389
+    },
+    {
+      "file": "05_Sprint_Retrospectives.docx",
+      "sha256": "b98c1fa82e17c25e8a6004db81c0bc03c487577f76b1efd6401a307223e61626",
+      "bytes": 39885
+    },
+    {
+      "file": "06_Scope_Change_Control_Record.docx",
+      "sha256": "19b32fc995263a44d385667cc9405217d4279fb0881cca9991d7b8e0a3b2bb00",
+      "bytes": 203062
+    },
+    {
+      "file": "07_Stakeholder_Acceptance_Signoff.docx",
+      "sha256": "c7ca37a4919ba1f82f13c77b25818a4e9a3d17553592580eb3f5a563ba512a9f",
+      "bytes": 41459
+    },
+    {
+      "file": "08_Presentation_Slide_Deck.pdf",
+      "sha256": "2c11e1c7137272213d3ef86b58133fdbcb8002fa4e30cd782819145b00e19045",
+      "bytes": 1022675
+    },
+    {
+      "file": "MÔ TẢ DỰ ÁN_ Nền tảng học & thi lập trình trực tuyến.docx",
+      "sha256": "35212b0f3fbfdd0b37229d1e07b2cd3de888497aed1ebc4a3e3ed7ff427526cd",
+      "bytes": 9694
+    }
+  ],
+  "suppliedEvidenceStatus": {
+    "team": "Group 02, QLDA (5); five named roles from Charter",
+    "methodology": "Hybrid described in report",
+    "wbs": "11 top-level branches and 36 second-level packages per supplied document",
+    "signoff": "Template supplied; results, decision and signatures blank",
+    "charter": "Draft label; signature/date fields blank",
+    "changeRequests": "CR-01 through CR-04; approval fields blank",
+    "riskRegister": "9 rows; first update blank; text says R01-R10",
+    "deployment": {
+      "url": "https://code-carf.onrender.com",
+      "probe": "web tool unavailable; local HTTPS request timed out; availability and authenticated workflows not verified"
+    }
+  },
+  "selfAssessment": {
+    "status": "provisional proposal by document preparer; team review required",
+    "weightedPoints": [1.8, 1.2, 1.8, 0.8],
+    "maximumPoints": [3, 2, 3, 2],
+    "totalBeforeGate": 5.6,
+    "authenticityGate": "not confirmed; cap at 5.0 only if assessed Fail"
   }
 }

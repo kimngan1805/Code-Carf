@@ -102,7 +102,7 @@ To preview the issue plan, run `python3 scripts/seed_sprint_issues.py --repo kim
 
 ## Checks
 
-The draft defense presentation, evidence snapshot, demo plan and pending Rubric mapping for #128 are in `docs/defense/`. This preparation package still needs the official course Rubric and a team review before submission.
+The draft defense presentation, evidence snapshot, demo plan and official 30/20/30/20 Rubric mapping for #128 are in `docs/defense/`. The schedule is six minutes of slides, five of demo and five of Q&A. This preparation package still needs project evidence, confirmed self-assessment scores and a team review before submission.
 
 Password recovery is available from the login page via `/forgot-password`. The console mailer logs reset links locally; set `AUTH_URL` to the app origin. Apply the password-reset migration and regenerate Prisma Client before running. Tokens expire in 30 minutes and only succeed once; requests are limited to three per normalized email per 15-minute window with the same public response for unknown addresses. See `docs/password-reset-development.md` for verification.
 

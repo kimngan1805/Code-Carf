@@ -1,18 +1,21 @@
 # Bộ chuẩn bị bảo vệ — issue #128
 
-- `slides.html`: 10 slide offline, dùng phím trái/phải để chuyển; nút Ghi chú mở lời dẫn và nguồn. In thành PDF bằng trình duyệt.
-- `slides.pdf`: bản PDF 10 trang để mở offline hoặc trình chiếu dự phòng; cần xuất lại sau khi sửa slide.
-- `slides.md`: cùng nội dung và ghi chú, dễ rà soát/chỉnh sửa.
-- `evidence.json`: số liệu GitHub, commit nền và kết quả kiểm tra local tại thời điểm ghi nhận.
-- `rubric.md`: bảng đối chiếu bằng chứng, **chưa chấm điểm vì thiếu Rubric chính thức**.
-- `demo.md`: kịch bản demo, chuẩn bị môi trường và dự phòng.
+- `slides.html`: 10 slide offline; phím trái/phải để chuyển; nút Ghi chú mở lời dẫn và nguồn.
+- `slides.pdf`: bản PDF 10 trang; cần xuất lại sau khi sửa nội dung. Khi nhóm hoàn thiện, dùng tên nộp `08_Presentation_Slide_Deck.pdf`.
+- `slides.md`: nội dung và ghi chú để rà soát.
+- `slides-content.json`: nguồn nội dung và thời lượng từng slide.
+- `evidence.json`: snapshot GitHub, commit nền, kết quả local và hash hướng dẫn cùng hồ sơ đã cung cấp.
+- `supplied-evidence.md`: đối chiếu 9 file trong `bangchung`, các ô còn trống và chỗ lệch số liệu.
+- `course-requirements.md`: đối chiếu mục 1, 4, 5, 7, 8 của hướng dẫn đã nhận.
+- `rubric.md`: Cổng chân thực và tự đánh giá đề xuất đúng trọng số **30/20/30/20**; điểm tạm 5.6/10 trước Gate, chưa được nhóm xác nhận.
+- `demo.md`: **6 phút slide + 5 phút demo + 5 phút Q&A**, chuẩn bị và dự phòng.
 
-Tạo lại HTML/Markdown sau khi sửa dữ liệu hoặc nội dung trong script:
+Tạo lại HTML/Markdown sau khi sửa nội dung hoặc số liệu:
 
 ```powershell
 node docs/defense/build-slides.mjs
 ```
 
-Không cần cài thêm package cho script. Các slide có tổng thời gian nói 960 giây (16 phút). Các file được tạo dùng chung nguồn nội dung để tránh sai lệch số liệu.
+Script dùng Node built-ins, không cần package mới. Nó kiểm tra 10 slide tổng 360 giây và demo/Q&A mỗi phần 300 giây. Mở HTML rồi in PDF để xuất lại bản offline. HTML/Markdown lấy chung nguồn; PDF phải xuất lại sau khi sửa.
 
-**Trạng thái:** bản chuẩn bị để nhóm rà soát. #128 chưa đủ điều kiện đóng cho tới khi nhận Rubric học phần, điền tự đánh giá theo tiêu chí thật, phân công người nói và nhóm rà soát. Không có điểm số, kết quả UAT, video dự phòng hay phê duyệt của nhóm nào được tự tạo ra.
+**Trạng thái:** đã có Rubric, thông tin nhóm/vai trò, hồ sơ dự án và thời lượng chính thức. Điểm đề xuất là nhận định của người soạn, cần nhóm rà soát. #128 vẫn cần chốt Pathway/baseline, ký/phê duyệt các mục thật, hoàn tất UAT và diễn tập. Không tự tạo phê duyệt, sign-off, video hoặc lịch sử Sprint.

@@ -2,152 +2,145 @@
 
 Bằng chứng ngày 2026-11-19; commit 105a1656158fc9e1a4164f1dffa76302b91f42f4.
 
-**Chưa hoàn tất #128: cần Rubric chính thức và rà soát của nhóm.**
+**Rubric đã có. Chưa hoàn tất #128: cần hồ sơ thật, điểm tự đánh giá và rà soát nhóm.**
 
 ---
 
-## 1. Code Carf (0:45)
+## 1. Code Carf · Nhóm 02 · QLDA (5) (0:25)
 
-- Bản chuẩn bị bảo vệ — chưa chốt theo Rubric học phần
-- Nhóm đã ghi nhận bằng chứng từ GitHub ngày 2026-11-19.
-- Mục tiêu trình bày: sản phẩm, cách tổ chức công việc, bằng chứng và giới hạn.
+- Pathway 1 theo slide nhóm; giảng viên: TS. Nguyễn Thanh Tuấn.
+- Kim Ngân — PL · Đình Quang — TL · Quỳnh Nhi — Backend.
+- Ngọc Sơn — Frontend · Thanh Phúc — QA & Test.
+- Nguồn: Charter và slide đã cung cấp; cần chốt tên đề tài/học phần song hành.
 
-**Ghi chú người nói:** Giới thiệu nhóm và mục tiêu. Bổ sung tên học phần, giảng viên và người trình bày sau khi nhóm xác nhận; không tự suy diễn các thông tin này.
+**Ghi chú người nói:** Họ tên đầy đủ theo Charter: Nguyễn Ánh Kim Ngân, Trần Đình Quang, Nguyễn Nhã Quỳnh Nhi, Hồ Ngọc Sơn, Phan Thanh Phúc. Pathway 1 được ghi trong PDF cũ; Charter còn liệt kê ba lựa chọn. Không đưa MSSV/mật khẩu vào slide nếu không cần.
 
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf
+- Bằng chứng: supplied-evidence.md
+- Bằng chứng: course-requirements.md
 
 ---
 
-## 2. Bài toán và phạm vi đã triển khai (1:30)
+## 2. Business Case đã ghi trong Charter (0:35)
 
-- Học viên đã có luồng tìm lộ trình, đăng ký, học Room và làm bài tập.
-- Giáo viên đã có khu vực tạo nội dung và xem thông tin cuộc thi/vi phạm.
-- Nhóm đã tách đường dẫn /hv, /gv và /admin theo vai trò.
-- Nhóm chưa coi email thật, AI chấm bài viết tay hay mọi tính năng đang mở là đã hoàn thành.
+- Người học đã phải dùng nhiều công cụ rời rạc; giảng viên khó tổng hợp tiến độ và bài nộp.
+- Nhóm đã phát triển luồng lộ trình → luyện tập → thi trực tuyến trên một nền tảng.
+- Charter đã nêu mục tiêu SMART; số người dùng/lượt nộp thử còn để trống.
 
-**Ghi chú người nói:** Nêu đúng phạm vi có bằng chứng. Không khẳng định mọi trang quản trị hoặc mọi luồng cuộc thi đều hoàn chỉnh. Các nhánh chưa merge không đại diện cho bản main.
+**Ghi chú người nói:** Trình bày vấn đề và giải pháp theo Charter/báo cáo, không coi nhận định trong tài liệu là khảo sát khách hàng đã xác nhận. Không tự đặt số người dùng hoặc thời gian tiết kiệm.
 
+- Bằng chứng: supplied-evidence.md
 - Bằng chứng: ../../README.md
+
+---
+
+## 3. Kiến trúc và WBS đã lập (0:45)
+
+- Next.js / React / TypeScript → service/repository → Prisma/PostgreSQL.
+- Hồ sơ đã mô tả Render và Supabase DB/Storage; có URL triển khai.
+- WBS đã có 11 nhánh / 36 gói cấp 2, đầu ra, tiêu chí và truy vết issue.
+- Cần chốt baseline và đồng bộ trạng thái với code mới.
+
+**Ghi chú người nói:** WBS không còn thiếu tài liệu: đã đọc file 03. Phân biệt có bản mô tả 100% Rule với đã được stakeholder duyệt. Không khẳng định URL đã được chạy thử thành công từ môi trường thẩm định.
+
+- Bằng chứng: supplied-evidence.md
+- Bằng chứng: ../../prisma/schema.prisma
+
+---
+
+## 4. Hybrid và chỉ số thực thi (0:45)
+
+- Báo cáo đã chọn Hybrid: cổng mốc học phần kết hợp thực thi theo sprint.
+- Baseline hồ sơ: 260 SP; Sprint 1: 86 SP, Sprint 2: 174 SP — không phải Velocity.
+- Snapshot GitHub: 61/105 issue đóng; 51 PR merge trong 12–18/11, mọi nhánh đích.
+- PDF cũ có Burndown/99 SP đã đóng tới 15/11; cần đối chiếu dữ liệu board.
+
+**Ghi chú người nói:** Không trộn snapshot 15/11 với cửa sổ GitHub 12–18/11. Các số SP trong hồ sơ là số liệu được cung cấp, chưa xác minh phép tính từ lịch sử Project. PR throughput không thay Velocity.
+
+- Bằng chứng: supplied-evidence.md
+- Bằng chứng: evidence.json
+
+---
+
+## 5. Kiểm soát phạm vi — CR-03 (0:45)
+
+- Hồ sơ đã ghi áp lực backlog 12 nhóm chức năng và đề xuất ưu tiên F1–F8, F10 một phần.
+- CR-03 đã mô tả cắt F9/F11/F12 và F10-3/F10-4 khỏi scope bàn giao.
+- Cột quyết định/người duyệt/ngày duyệt còn trống; chưa gọi là Approved CR.
+- Code mới đã có F11/F10-3: cần nhóm đối chiếu baseline và phần làm thêm.
+
+**Ghi chú người nói:** Dùng biến cố quản lý được ghi trong hồ sơ thay vì lấy bug tích hợp làm Approved CR. Nêu rõ quyết định chưa được xác nhận; cần nhóm chốt phạm vi và đối chiếu WBS/backlog/UAT.
+
+- Bằng chứng: supplied-evidence.md
 - Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/159
 - Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/160
 
 ---
 
-## 3. Tổ chức công việc và trạng thái (1:30)
+## 6. Chất lượng và bằng chứng kỹ thuật (0:35)
 
-- GitHub đã ghi nhận 61/105 issue đóng; 44 issue còn mở tại thời điểm chụp.
-- Số issue đã bao gồm Epic và kế hoạch; nhóm không quy đổi thành tỷ lệ hoàn thành sản phẩm.
-- Nhóm đã chia công việc theo issue, branch và Pull Request.
-- Sơn còn #128 cùng hai Epic #24/#49; task con và trạng thái cần được đối chiếu riêng.
+- Bản nền đã đạt 704 test / 87 file local có PostgreSQL.
+- Lint, TypeScript và production build đã qua kiểm tra.
+- Repo đã có CI/PR; main hiện chưa bật Branch Protection.
+- Số test không đại diện cho coverage, UAT hay khả năng chịu tải.
 
-**Ghi chú người nói:** Giải thích khác biệt giữa issue đóng, code đã merge và luồng được nghiệm thu. Không tuyên bố có dữ liệu burn-down, velocity hoặc ngày Sprint nếu chưa có biên bản thật.
-
-- Bằng chứng: evidence.json
-- Bằng chứng: https://github.com/users/kimngan1805/projects/2
-
----
-
-## 4. Kiến trúc đã sử dụng (1:30)
-
-- UI và API đã nằm trong ứng dụng Next.js 16 / React 19 / TypeScript.
-- Service đã kiểm tra vai trò và điều phối; repository đã truy cập PostgreSQL qua Prisma.
-- Dữ liệu đã liên kết User → Enrollment → Path → Room → Exercise → Submission.
-- Nhóm đã dùng NextAuth; adapter mock/Judge0 đã tách khỏi luồng nộp bài.
-
-**Ghi chú người nói:** Nêu lý do tách service và repository: kiểm quyền có thể kiểm thử, hạn chế truy vấn trực tiếp từ UI. Nói rõ mock chỉ mô phỏng tích hợp, không thực thi hoặc xác minh code thật.
-
-- Bằng chứng: ../../README.md
-- Bằng chứng: ../../prisma/schema.prisma
-- Bằng chứng: ../../src/features/grading/adapter.ts
-
----
-
-## 5. Luồng học viên đã có bằng chứng (2:30)
-
-- Đăng nhập → tìm kiếm không dấu → Path đã publish → đăng ký.
-- Room đã được mở theo đăng ký và tiến độ của Room trước; URL trực tiếp vẫn bị kiểm tra.
-- Trang bài tập đã có editor, lưu nháp, nộp và hiển thị kết quả.
-- Học viên đã gửi được báo lỗi; server đã giới hạn gửi liên tục cùng bài.
-
-**Ghi chú người nói:** Dành khoảng 90 giây cho thao tác thực tế, còn lại giải thích. Dùng kịch bản demo.md. Nếu Judge0 không sẵn sàng, nói rõ mock và chỉ chứng minh luồng UI/API; không kết luận bài làm đúng dựa trên mock.
-
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/101
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/152
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/159
-
----
-
-## 6. Kiểm chứng chất lượng (2:00)
-
-- Bản kiểm tra đã đạt 704 test / 87 file trên máy local có PostgreSQL.
-- Nhóm đã dùng lint, TypeScript, Vitest và production build.
-- Test đã bao phủ khóa Room, quyền truy cập, token mật khẩu và chống gửi report trùng.
-- Kết quả local, CI của từng commit và UAT của stakeholder là ba loại bằng chứng khác nhau.
-
-**Ghi chú người nói:** Mở evidence.json và chỉ đúng commit đã kiểm tra. Số test không phải độ bao phủ. Không khẳng định đã đạt UAT, tải lớn hoặc an toàn tuyệt đối khi chưa có báo cáo riêng.
+**Ghi chú người nói:** Chỉ đúng commit trong evidence.json. Yêu cầu Branch Protection ở mục 4 chưa đạt tại thời điểm đọc GitHub. Merge không tự chứng minh review approval từ người khác.
 
 - Bằng chứng: evidence.json
-- Bằng chứng: ../../docs/testing.md
-- Bằng chứng: ../../src/features/exercise-reports/service.test.ts
+- Bằng chứng: ../../.github/workflows/ci.yml
+- Bằng chứng: course-requirements.md
 
 ---
 
-## 7. Đóng góp và phối hợp đã ghi nhận (1:30)
+## 7. Stakeholder, UAT và Cổng chân thực (0:35)
 
-- Sơn đã có PR về đăng ký Path, mở khóa Room, trang Room, quên mật khẩu, báo lỗi và tìm kiếm.
-- Bằng chứng đã được liên kết bằng PR #97, #101, #114, #137, #152 và #159.
-- Nhóm đã dùng Conventional Commits và PR để tích hợp thay đổi.
-- Tình trạng review phải đọc từ từng PR; việc merge tự nó không chứng minh đã có người khác review.
+- Stakeholder dự kiến: TS. Nguyễn Thanh Tuấn và nhóm sinh viên dùng thử, theo Charter.
+- Hồ sơ đã có UAT-01–12 và URL https://code-carf.onrender.com.
+- Kết quả/commit/ngày nghiệm thu, quyết định và chữ ký vẫn để trống.
+- Chưa kết luận Cổng chân thực đạt; lần kiểm tra HTTPS hiện bị timeout.
 
-**Ghi chú người nói:** Chỉ trình bày phần mình giải thích được. Không lấy toàn bộ số commit trên các nhánh backup để tính đóng góp, vì rebase tạo SHA khác cho cùng thay đổi. Mời Nhi bổ sung phần phối hợp theo phân công thật.
+**Ghi chú người nói:** Tên Signed/Signoff trong file không chứng minh có chữ ký. Tài liệu UAT là kịch bản chưa điền kết quả, không phải xác nhận đã đạt. Timeout từ môi trường trợ lý không chứng minh website ngừng hoạt động. Cần nhóm kiểm chứng URL và lấy xác nhận stakeholder thật.
 
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/97
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/101
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/114
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/137
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/152
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/159
+- Bằng chứng: supplied-evidence.md
+- Bằng chứng: rubric.md
 
 ---
 
-## 8. Rủi ro và giới hạn đã nhận diện (1:30)
+## 8. Bài học theo hồ sơ Retro (0:35)
 
-- Local đã dùng PostgreSQL 16 cổng 5433; Docker cần chạy trước migration và integration test.
-- GRADER_ADAPTER=mock đã giúp demo không cần Judge0, nhưng không chạy code thực.
-- Email local đã ghi link vào log; email thật vẫn cần tích hợp #109.
-- Nhóm chưa có bằng chứng trong bộ này cho tải lớn, UAT hay kết quả AI chấm bài viết tay.
+- Phạm vi đã cần đồng bộ giữa Charter, WBS, backlog và UAT.
+- Ước lượng đã cần tính cả kiểm thử/tích hợp giữa các mô-đun.
+- PR đã hỗ trợ truy vết; vai trò DB và storage đã cần kiểm tra sớm khi deploy.
+- Retro đã có nội dung 4Ls; ngày họp, người tham dự và xác nhận còn trống.
 
-**Ghi chú người nói:** Trình bày rủi ro như trạng thái thực tế, không sáng tác một biên bản quản trị rủi ro đã được phê duyệt. Với deploy, Supabase/Render chỉ được trình bày là cấu hình dự án trừ khi có bằng chứng hoạt động thực tế.
+**Ghi chú người nói:** Các bài học lấy từ file 05 và report, chưa tuyên bố cuộc họp đã được xác nhận. Không dùng nội dung tổng hợp để tự tạo biên bản có ngày/người dự giả.
 
-- Bằng chứng: ../../docs/deployment.md
-- Bằng chứng: ../../docs/password-reset-development.md
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/issues/109
+- Bằng chứng: supplied-evidence.md
+- Bằng chứng: https://github.com/kimngan1805/Code-Carf/pull/113
 
 ---
 
-## 9. Tự đánh giá — chờ Rubric chính thức (1:45)
+## 9. Tự đánh giá theo Rubric chính thức (0:35)
 
-- Nhóm đã lập bảng đối chiếu bằng chứng trong rubric.md.
-- Rubric học phần và trọng số chưa được cung cấp cho bản chuẩn bị này.
-- Nhóm chưa gán điểm, tỷ lệ hay mức đạt cho tiêu chí không có căn cứ.
-- Cần đối chiếu Rubric thật, điền điểm có dẫn chứng và để cả nhóm rà soát trước khi nộp.
+- Kế hoạch 30% · Phương pháp luận 20% · Thực thi 30% · Trình bày/demo 20%.
+- Nhóm đã lập bảng bằng chứng và phần thiếu theo từng tiêu chí.
+- Tự đánh giá đề xuất: 5.6/10 trước Cổng chân thực, chưa được nhóm xác nhận.
+- Còn chờ phê duyệt hồ sơ, UAT và diễn tập; không phải điểm Hội đồng.
 
-**Ghi chú người nói:** Trang này là chỗ giữ cho phần đánh giá bắt buộc, chưa phải bảng điểm đã hoàn tất. Khi nhận Rubric phải cập nhật tên tiêu chí, trọng số, giới hạn điểm và bằng chứng tương ứng.
+**Ghi chú người nói:** Đề xuất nội bộ 1.8/3 + 1.2/2 + 1.8/3 + 0.8/2 = 5.6/10 dựa trên mức chuẩn bị; chưa phải điểm nhóm đã chốt hay dự báo Hội đồng. Không áp trọng số lần nữa. Nếu Cổng chân thực được đánh không đạt, trần là 5.0; hiện chưa kết luận Pass/Fail.
 
 - Bằng chứng: rubric.md
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/issues/128
+- Bằng chứng: course-requirements.md
 
 ---
 
-## 10. Kế hoạch hoàn thiện và demo dự phòng (1:30)
+## 10. Live Demo 5 phút · Q&A 5 phút (0:25)
 
-- Nhóm đã chuẩn bị kịch bản demo theo phút và phương án offline.
-- Cần rà luồng Teacher xử lý report #47 và thông báo #48; không ghi nhận nhánh chờ merge là đã xong.
-- Cần hoàn tất Rubric, phân vai nói, chạy thử 16 phút và xác nhận của nhóm.
-- Bộ hiện tại đã tách bằng chứng đã có khỏi phần chưa được kiểm chứng.
+- 6 phút slide đã kết thúc; bắt đầu demo, dừng phút 11 và hỏi đáp tới phút 16.
+- Luồng trọng tâm: Path → Room → bài tập → kết quả; mock không thực thi code thật.
+- URL theo hồ sơ: https://code-carf.onrender.com; local/PDF là dự phòng.
+- Video backup chưa có trong thư mục đã cung cấp.
 
-**Ghi chú người nói:** Kết thúc bằng các việc còn thiếu cụ thể. Nếu bị hỏi tính năng chưa xong, mở issue thay vì diễn giải như tính năng đã tồn tại. Dành phần hỏi đáp ngoài 16 phút nếu quy định học phần cho phép.
+**Ghi chú người nói:** Theo scope Charter, luồng học/nộp bài là core; tìm kiếm/report là tính năng đã merge nhưng nằm ngoài scope được ghi trong CR-03, chỉ demo phụ nếu nhóm xác nhận. Không dùng phần bổ sung để thay luồng chính.
 
 - Bằng chứng: demo.md
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/issues/47
-- Bằng chứng: https://github.com/kimngan1805/Code-Carf/issues/48
+- Bằng chứng: supplied-evidence.md
