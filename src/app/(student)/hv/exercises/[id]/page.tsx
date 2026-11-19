@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getExercisePage } from "@/features/grading/exercise-page";
 import { ExerciseView } from "@/features/grading/components/exercise-view";
+import { HandwrittenView } from "@/features/handwritten/components/handwritten-view";
 import { AppError } from "@/lib/errors";
 
 export default async function ExercisePage({
@@ -22,5 +23,7 @@ export default async function ExercisePage({
   });
   // Locked room: the room page already explains how to unlock it.
   if (!exercise.accessible) redirect(`/hv/rooms/${exercise.roomId}`);
+  if (exercise.kind === "HANDWRITTEN")
+    return <HandwrittenView exercise={exercise} />;
   return <ExerciseView exercise={exercise} />;
 }
