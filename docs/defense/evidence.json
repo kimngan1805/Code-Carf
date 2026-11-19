@@ -1,0 +1,91 @@
+{
+  "issues": {
+    "open": 44,
+    "note": "Counts include Epic and planning issues; closed/open is not a percentage of implemented features.",
+    "total": 105,
+    "closed": 61
+  },
+  "repository": "kimngan1805/Code-Carf",
+  "asOfDate": "2026-11-19",
+  "assignedOpen": [
+    {
+      "number": 128,
+      "url": "https://github.com/kimngan1805/Code-Carf/issues/128",
+      "title": "[Docs] Slide bảo vệ và tự đánh giá theo Rubric"
+    },
+    {
+      "number": 49,
+      "url": "https://github.com/kimngan1805/Code-Carf/issues/49",
+      "title": "[EPIC] F11: Báo lỗi đề và thông báo"
+    },
+    {
+      "number": 24,
+      "url": "https://github.com/kimngan1805/Code-Carf/issues/24",
+      "title": "[EPIC] F5: Profile: level, streak, huy hiệu"
+    }
+  ],
+  "source": "GitHub REST API, authenticated read; git origin/main",
+  "mergedPullRequests": [
+    {
+      "mergedAt": "2026-11-14T16:51:05Z",
+      "number": 97,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/97",
+      "merged": true,
+      "title": "feat(paths): add published catalog, details and enrollment (#11)"
+    },
+    {
+      "mergedAt": "2026-11-15T07:19:30Z",
+      "number": 101,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/101",
+      "merged": true,
+      "title": "feat(rooms): enforce sequential unlock and teacher path settings (#12)"
+    },
+    {
+      "mergedAt": "2026-11-15T08:58:11Z",
+      "number": 114,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/114",
+      "merged": true,
+      "title": "feat(rooms): complete learner room page and exercise states (#13)"
+    },
+    {
+      "mergedAt": "2026-11-15T14:48:01Z",
+      "number": 137,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/137",
+      "merged": true,
+      "title": "feat(auth): add forgot password and single-use reset flow (#68)"
+    },
+    {
+      "mergedAt": "2026-11-16T13:01:54Z",
+      "number": 152,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/152",
+      "merged": true,
+      "title": "feat: add student exercise error reports"
+    },
+    {
+      "mergedAt": "2026-11-18T13:28:06Z",
+      "number": 159,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/159",
+      "merged": true,
+      "title": "fix(search): restore learner header search on current main (#69)"
+    },
+    {
+      "mergedAt": "2026-11-18T08:40:41Z",
+      "number": 160,
+      "url": "https://github.com/kimngan1805/Code-Carf/pull/160",
+      "merged": true,
+      "title": "feat(proctoring): add teacher violation dashboard"
+    }
+  ],
+  "rubricStatus": "Not supplied; no scores or weights invented.",
+  "baseCommit": "105a1656158fc9e1a4164f1dffa76302b91f42f4",
+  "checks": {
+    "baseCommit": "105a1656158fc9e1a4164f1dffa76302b91f42f4",
+    "testsPassed": 704,
+    "testFilesPassed": 87,
+    "database": "PostgreSQL 16, local Docker, migrations current",
+    "lint": "passed",
+    "build": "passed",
+    "typecheck": "passed",
+    "scope": "Local checks; not UAT, coverage or a production availability claim"
+  }
+}

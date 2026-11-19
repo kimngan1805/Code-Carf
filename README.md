@@ -102,6 +102,8 @@ To preview the issue plan, run `python3 scripts/seed_sprint_issues.py --repo kim
 
 ## Checks
 
+The draft defense presentation, evidence snapshot, demo plan and pending Rubric mapping for #128 are in `docs/defense/`. This preparation package still needs the official course Rubric and a team review before submission.
+
 Password recovery is available from the login page via `/forgot-password`. The console mailer logs reset links locally; set `AUTH_URL` to the app origin. Apply the password-reset migration and regenerate Prisma Client before running. Tokens expire in 30 minutes and only succeed once; requests are limited to three per normalized email per 15-minute window with the same public response for unknown addresses. See `docs/password-reset-development.md` for verification.
 
 Learners can search Path, Room, and Contest titles from the header or `/hv/search`. Search ignores Vietnamese accents and letter case, returns published content only, and groups up to 10 results per type. Existing room access rules still apply. See `docs/search-development.md` for verification; no extra database extension or configuration is needed.
