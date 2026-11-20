@@ -4,6 +4,7 @@ import {
   evaluateEligibleBadges,
   getCompletedWeekWinners,
   getLastCompletedWeekRange,
+  isWeekCompleted,
   MILESTONE_BADGE_BY_SLUG,
   type CompletedWeekWindow,
   type MilestoneBadgeSlug,
@@ -135,10 +136,20 @@ export async function awardActivityBadgesInTx(
  */
 export async function awardCompletedWeekTopBadge(
   referenceDate = new Date(),
+  options?: { week?: CompletedWeekWindow },
 ): Promise<WeeklyTopBadgeAwardResult> {
-  const week = getLastCompletedWeekRange(referenceDate);
+  const week = options?.week ?? getLastCompletedWeekRange(referenceDate);
+  if (!isWeekCompleted(week, referenceDate)) {
+    return { week, winnerUserIds: [], awardedUserIds: [] };
+  }
 
   return db.$transaction(async (tx) => {
+    // Serialize concurrent weekly-top badge runs in PostgreSQL while staying
+    // compatible with mocked unit-test transaction objects.
+    if ("$executeRaw" in tx && typeof tx.$executeRaw === "function") {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(80023)`;
+    }
+
     const grouped = await tx.xpEvent.groupBy({
       by: ["userId"],
       where: {
