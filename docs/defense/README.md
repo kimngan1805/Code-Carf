@@ -1,5 +1,7 @@
 # Bộ chuẩn bị bảo vệ — issue #128
 
+Hai file tổng hợp để đọc/chỉnh sửa là **`Issue-128-Defense-Package.docx`** (Word) và **`Issue-128-Defense-Package.md`** (Markdown). Mỗi file gồm nội dung 10 slide, bảng tự đánh giá và kịch bản demo/Q&A/dự phòng. Tạo lại sau khi sửa nguồn bằng `python docs/defense/export-package.py` (chỉ dùng Python standard library).
+
 - `slides.html`: 10 slide offline; phím trái/phải để chuyển; nút Ghi chú mở lời dẫn và nguồn.
 - `slides.pdf`: bản PDF 10 trang; cần xuất lại sau khi sửa nội dung. Khi nhóm hoàn thiện, dùng tên nộp `08_Presentation_Slide_Deck.pdf`.
 - `slides.md`: nội dung và ghi chú để rà soát.
