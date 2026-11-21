@@ -173,13 +173,13 @@ export function RoomView({
                         {label}
                       </span>
                     </div>
-                    {exercise.kind === "CODE" && (
-                      <Button asChild size="sm" className="mt-4">
-                        <Link href={`/hv/exercises/${exercise.id}`}>
-                          Làm bài
-                        </Link>
-                      </Button>
-                    )}
+                    <Button asChild size="sm" className="mt-4">
+                      <Link href={`/hv/exercises/${exercise.id}`}>
+                        {exercise.kind === "CODE"
+                          ? "Làm bài"
+                          : "Nộp ảnh bài làm"}
+                      </Link>
+                    </Button>
                     <details className="mt-4 border-t pt-3">
                       <summary className="cursor-pointer rounded text-sm font-semibold text-primary focus-visible:outline-2 focus-visible:outline-ring">
                         Xem đề bài

@@ -4,10 +4,14 @@ const mocks = vi.hoisted(() => ({
   requireRole: vi.fn(),
   canAccessRoom: vi.fn(),
   findExerciseForPractice: vi.fn(),
+  getOwnHandwrittenUpload: vi.fn(),
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/features/rooms/access", () => ({
   canAccessRoom: mocks.canAccessRoom,
+}));
+vi.mock("@/features/handwritten/service", () => ({
+  getOwnHandwrittenUpload: mocks.getOwnHandwrittenUpload,
 }));
 vi.mock("./repository", () => ({
   findExerciseForPractice: mocks.findExerciseForPractice,
@@ -54,6 +58,7 @@ describe("getExercisePage", () => {
     expect(mocks.canAccessRoom).toHaveBeenCalledWith("user-1", "room-1");
     expect(page).toMatchObject({
       accessible: true,
+      kind: "CODE",
       userId: "user-1",
       title: "Tổng hai số",
       room: { id: "room-1" },
@@ -70,12 +75,53 @@ describe("getExercisePage", () => {
       ],
     });
     const page = await getExercisePage("ex-1");
-    if (!page.accessible) throw new Error("expected accessible");
+    if (!page.accessible || page.kind !== "CODE")
+      throw new Error("expected an accessible code exercise");
     expect(Object.keys(page.sampleTests[0]).sort()).toEqual([
       "expected",
       "id",
       "input",
     ]);
+  });
+
+  it("returns a handwritten exercise with the learner's own upload and no tests", async () => {
+    const upload = {
+      id: "sub-1",
+      status: "PENDING",
+      submittedAt: new Date("2026-11-19T10:00:00Z"),
+    };
+    mocks.findExerciseForPractice.mockResolvedValue({
+      ...exercise,
+      kind: "HANDWRITTEN",
+    });
+    mocks.getOwnHandwrittenUpload.mockResolvedValue(upload);
+
+    const page = await getExercisePage("ex-1");
+
+    expect(mocks.getOwnHandwrittenUpload).toHaveBeenCalledWith(
+      "user-1",
+      "ex-1",
+    );
+    expect(page).toMatchObject({
+      accessible: true,
+      kind: "HANDWRITTEN",
+      title: "Tổng hai số",
+      upload,
+    });
+    expect(page).not.toHaveProperty("sampleTests");
+  });
+
+  it("does not look up an upload while the room is locked", async () => {
+    mocks.findExerciseForPractice.mockResolvedValue({
+      ...exercise,
+      kind: "HANDWRITTEN",
+    });
+    mocks.canAccessRoom.mockResolvedValue(false);
+    expect(await getExercisePage("ex-1")).toEqual({
+      accessible: false,
+      roomId: "room-1",
+    });
+    expect(mocks.getOwnHandwrittenUpload).not.toHaveBeenCalled();
   });
 
   it("returns a locked result without exposing the prompt or tests", async () => {
@@ -86,7 +132,6 @@ describe("getExercisePage", () => {
 
   it.each([
     ["missing exercise", null],
-    ["handwritten exercise", { ...exercise, kind: "HANDWRITTEN" }],
     ["exercise without a room", { ...exercise, room: null, roomId: null }],
     [
       "unpublished path",
