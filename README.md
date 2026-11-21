@@ -110,6 +110,8 @@ Run `npm run lint`, `npm run typecheck`, `npm test`, and `npm run build` before 
 
 ## API contract
 
+Teachers handle exercise reports at `/gv/reports`; learners read responses and resolution notifications at `/hv/reports`. Apply the notification-foundation and teacher-report migrations and regenerate Prisma Client before running. Resolution requires a response and atomically creates one owner-only notification. See `docs/teacher-reports-development.md` for setup, permissions, and integration notes for #48.
+
 Students can report an incorrect statement, test, or ambiguous wording from exercise cards in unlocked Rooms and from practice exercise pages. Descriptions are required; the server allows one report per learner/exercise every five minutes. Apply the exercise-report migration and regenerate Prisma Client before running. See `docs/exercise-reports-development.md` for setup and verification.
 
 Successful handlers return `{ "data": ..., "error": null }`. Errors return `{ "data": null, "error": { "code": "...", "message": "..." } }` with an HTTP status. `src/lib/api-response.ts` and `src/lib/logger.ts` centralize this behavior.

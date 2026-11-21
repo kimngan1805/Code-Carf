@@ -7,6 +7,7 @@ import {
   Award,
   BadgeCheck,
   BookOpen,
+  Flag,
   History,
   House,
   LayoutDashboard,
@@ -48,6 +49,12 @@ export const navGroups: { title: string; items: NavItem[] }[] = [
         short: "Bài nộp",
         icon: History,
       },
+      {
+        href: "/hv/reports",
+        label: "Báo lỗi của tôi",
+        short: "Báo lỗi",
+        icon: Flag,
+      },
       { href: "/contests", label: "Cuộc thi", short: "Cuộc thi", icon: Trophy },
     ],
   },
@@ -85,6 +92,12 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
         label: "Tổng quan",
         short: "Tổng quan",
         icon: LayoutDashboard,
+      },
+      {
+        href: "/gv/reports",
+        label: "Xử lý báo lỗi",
+        short: "Báo lỗi",
+        icon: Flag,
       },
       {
         href: "/gv/paths",
