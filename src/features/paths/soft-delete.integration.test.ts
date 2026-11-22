@@ -23,6 +23,7 @@ vi.mock("@/features/grading/service", () => ({
   }),
 }));
 
+import { getDashboardRecords } from "@/features/dashboard/repository";
 import { reportExercise } from "@/features/exercise-reports/service";
 import {
   deleteManagedExercise,
@@ -30,6 +31,10 @@ import {
 } from "@/features/exercises/authoring";
 import { getExercisePage } from "@/features/grading/exercise-page";
 import { submitSolution } from "@/features/grading/submit";
+import { getXpLeaderboard } from "@/features/leaderboard/service";
+import { getOwnProfile, getPublicProfile } from "@/features/profile/service";
+import { recordStreakActivity } from "@/features/progress/activity";
+import { awardCompletedWeekTopBadge } from "@/features/progress/badge-awarding";
 import { canAccessRoom } from "@/features/rooms/access";
 import { saveManagedLesson } from "@/features/rooms/authoring";
 import { getRoom, getRoomPage } from "@/features/rooms/service";
@@ -55,10 +60,10 @@ describe.skipIf(!hasDatabase)(
     const pathIds: string[] = [];
     const exerciseIds: string[] = [];
     const contestIds: string[] = [];
-    let ownerTeacher = { id: "", role: { name: RoleName.TEACHER } };
-    let otherTeacher = { id: "", role: { name: RoleName.TEACHER } };
-    let student = { id: "", role: { name: RoleName.STUDENT } };
-    let otherStudent = { id: "", role: { name: RoleName.STUDENT } };
+    let ownerTeacher = { id: "", name: "", role: { name: RoleName.TEACHER } };
+    let otherTeacher = { id: "", name: "", role: { name: RoleName.TEACHER } };
+    let student = { id: "", name: "", role: { name: RoleName.STUDENT } };
+    let otherStudent = { id: "", name: "", role: { name: RoleName.STUDENT } };
 
     beforeAll(async () => {
       const [teacherRole, studentRole] = await Promise.all([
@@ -109,10 +114,22 @@ describe.skipIf(!hasDatabase)(
         }),
       ]);
 
-      ownerTeacher = { id: t1.id, role: { name: RoleName.TEACHER } };
-      otherTeacher = { id: t2.id, role: { name: RoleName.TEACHER } };
-      student = { id: s1.id, role: { name: RoleName.STUDENT } };
-      otherStudent = { id: s2.id, role: { name: RoleName.STUDENT } };
+      ownerTeacher = {
+        id: t1.id,
+        name: t1.name,
+        role: { name: RoleName.TEACHER },
+      };
+      otherTeacher = {
+        id: t2.id,
+        name: t2.name,
+        role: { name: RoleName.TEACHER },
+      };
+      student = { id: s1.id, name: s1.name, role: { name: RoleName.STUDENT } };
+      otherStudent = {
+        id: s2.id,
+        name: s2.name,
+        role: { name: RoleName.STUDENT },
+      };
       userIds.push(t1.id, t2.id, s1.id, s2.id);
     });
 
@@ -376,6 +393,190 @@ describe.skipIf(!hasDatabase)(
         select: { xp: true },
       });
       expect(learnerAfter.xp).toBe(50);
+    });
+
+    it("excludes soft-deleted paths from dashboard, leaderboard, public profile and new path-completed badges while keeping historical XP, submissions and earned badges", async () => {
+      const studentRole = await db.role.findUniqueOrThrow({
+        where: { name: RoleName.STUDENT },
+      });
+      const [completedLearnerRow, lateLearnerRow] = await Promise.all([
+        db.user.create({
+          data: {
+            email: `${prefix}-p2b-s1@local.test`,
+            name: "Completed Learner",
+            passwordHash: "unused",
+            roleId: studentRole.id,
+          },
+        }),
+        db.user.create({
+          data: {
+            email: `${prefix}-p2b-s2@local.test`,
+            name: "Late Learner",
+            passwordHash: "unused",
+            roleId: studentRole.id,
+          },
+        }),
+      ]);
+      userIds.push(completedLearnerRow.id, lateLearnerRow.id);
+
+      const completedLearner = {
+        id: completedLearnerRow.id,
+        name: completedLearnerRow.name,
+        role: { name: RoleName.STUDENT },
+      };
+
+      const completedPath = await db.path.create({
+        data: {
+          slug: `${prefix}-p2b-done`,
+          title: `${prefix} Completed Path`,
+          published: true,
+          creatorId: ownerTeacher.id,
+          rooms: {
+            create: [
+              {
+                title: `${prefix} Only Room`,
+                content: "# Only lesson",
+                position: 1,
+                xpReward: 75,
+              },
+            ],
+          },
+        },
+        include: { rooms: true },
+      });
+      pathIds.push(completedPath.id);
+      const [onlyRoom] = completedPath.rooms;
+
+      const completedExercise = await db.exercise.create({
+        data: {
+          roomId: onlyRoom.id,
+          title: `${prefix} Final Exercise`,
+          prompt: "Print OK",
+          kind: ExerciseKind.CODE,
+          points: 100,
+          testCases: {
+            create: { input: "", expected: "OK", isHidden: false, weight: 1 },
+          },
+        },
+      });
+      exerciseIds.push(completedExercise.id);
+
+      // 1. completedLearner finishes the 1-room path -> earns 75 XP and path-completed badge.
+      mocks.requireRole.mockResolvedValue(completedLearner);
+      await registerForPath(completedPath.slug);
+      const subResult = await submitSolution({
+        userId: completedLearner.id,
+        exerciseId: completedExercise.id,
+        source: "print('OK')",
+        language: "python",
+      });
+      expect(subResult.status).toBe(SubmissionStatus.ACCEPTED);
+
+      // lateLearner has roomProgress on a path that gets soft-deleted before badge evaluation.
+      await db.enrollment.create({
+        data: { userId: lateLearnerRow.id, pathId: completedPath.id },
+      });
+      await db.roomProgress.create({
+        data: { userId: lateLearnerRow.id, roomId: onlyRoom.id },
+      });
+
+      // Seed a historical closed-week XP event tied to completedPath to verify weekly-top-1 stays intact.
+      await db.xpEvent.create({
+        data: {
+          userId: completedLearner.id,
+          amount: 500,
+          source: "ROOM_COMPLETED",
+          pathId: completedPath.id,
+          roomId: onlyRoom.id,
+          createdAt: new Date("2019-01-09T10:00:00+07:00"),
+        },
+      });
+
+      // 2. Owner soft-deletes the path.
+      mocks.requireRole.mockResolvedValue(ownerTeacher);
+      await deleteManagedPath(completedPath.id);
+
+      // 3. Dashboard hides the soft-deleted path while keeping completedRoomIds, badges, and activity.
+      const dashboard = await getDashboardRecords(
+        completedLearner.id,
+        75,
+        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+      );
+      expect(
+        dashboard.enrollments.some((e) => e.path.id === completedPath.id),
+      ).toBe(false);
+      expect(
+        dashboard.suggestedPaths.some((p) => p.id === completedPath.id),
+      ).toBe(false);
+      expect(dashboard.completedRoomIds.has(onlyRoom.id)).toBe(true);
+      expect(
+        dashboard.badges.some((b) => b.badge.slug === "path-completed"),
+      ).toBe(true);
+      expect(dashboard.activity.length).toBeGreaterThanOrEqual(1);
+
+      // 4. Leaderboard hides the soft-deleted path but preserves all-time XP.
+      mocks.requireRole.mockResolvedValue(completedLearner);
+      const allTimeBoard = await getXpLeaderboard({ period: "all" });
+      expect(allTimeBoard.paths.some((p) => p.id === completedPath.id)).toBe(
+        false,
+      );
+      expect(allTimeBoard.myStanding.xp).toBe(575);
+      await expect(
+        getXpLeaderboard({ pathSlug: completedPath.slug }),
+      ).rejects.toMatchObject({ status: 404, code: "PATH_NOT_FOUND" });
+
+      // 5. Public Profile excludes the soft-deleted path while preserving XP, roomsDone, and badges.
+      const publicView = await getPublicProfile(completedLearner.id);
+      expect(
+        publicView.profile.paths.some((p) => p.id === completedPath.id),
+      ).toBe(false);
+      expect(publicView.profile.level.xp).toBe(75);
+      expect(publicView.profile.stats.roomsDone).toBe(1);
+      expect(
+        publicView.profile.badges.some((b) => b.slug === "path-completed"),
+      ).toBe(true);
+
+      // 6. Private Profile preserves submission history (with null href) and earned badges.
+      const ownProfile = await getOwnProfile();
+      expect(ownProfile.paths.some((p) => p.id === completedPath.id)).toBe(
+        false,
+      );
+      expect(ownProfile.badges.some((b) => b.slug === "path-completed")).toBe(
+        true,
+      );
+      const historicSub = ownProfile.submissions.find(
+        (s) => s.exerciseId === completedExercise.id,
+      );
+      expect(historicSub).toMatchObject({
+        exerciseTitle: `${prefix} Final Exercise`,
+        contextLabel: `${prefix} Completed Path · ${prefix} Only Room`,
+        contextHref: null,
+        status: SubmissionStatus.ACCEPTED,
+      });
+
+      // 7. Badges: previously earned badge stays; lateLearner does not gain path-completed from soft-deleted path; weekly-top-1 preserved.
+      await recordStreakActivity({ userId: completedLearner.id });
+      const completedLearnerBadges = await db.userBadge.findMany({
+        where: { userId: completedLearner.id },
+        include: { badge: { select: { slug: true } } },
+      });
+      expect(
+        completedLearnerBadges.some((b) => b.badge.slug === "path-completed"),
+      ).toBe(true);
+
+      await recordStreakActivity({ userId: lateLearnerRow.id });
+      const lateLearnerBadges = await db.userBadge.findMany({
+        where: { userId: lateLearnerRow.id },
+        include: { badge: { select: { slug: true } } },
+      });
+      expect(
+        lateLearnerBadges.some((b) => b.badge.slug === "path-completed"),
+      ).toBe(false);
+
+      const weeklyResult = await awardCompletedWeekTopBadge(
+        new Date("2019-01-14T01:00:00+07:00"),
+      );
+      expect(weeklyResult.winnerUserIds).toContain(completedLearner.id);
     });
   },
 );

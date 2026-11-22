@@ -344,6 +344,8 @@ describe("getOwnProfile", () => {
             path: {
               slug: "nhap-mon-lap-trinh",
               title: "Nhập môn lập trình",
+              published: true,
+              deletedAt: null,
             },
           },
         },
@@ -394,6 +396,66 @@ describe("getOwnProfile", () => {
       contextHref: "/hv/paths/nhap-mon-lap-trinh",
       language: null,
       status: SubmissionStatus.NEEDS_REVIEW,
+    });
+  });
+
+  it("preserves historical submissions and earned badges when their path was soft-deleted while clearing dead path links", async () => {
+    requireRoleMock.mockResolvedValue({
+      id: "student-1",
+      role: { name: RoleName.STUDENT },
+    });
+    mockPublicDbStudent();
+    enrollmentFindManyMock.mockResolvedValue([]);
+    userFindUniqueMock.mockResolvedValue({ email: "student@local.test" });
+    submissionFindManyMock.mockResolvedValue([
+      {
+        id: "sub-deleted-path",
+        exerciseId: "ex-old",
+        language: "python",
+        status: SubmissionStatus.ACCEPTED,
+        score: 100,
+        runtimeMs: 25,
+        memoryKb: 512,
+        createdAt: new Date("2026-05-09T09:00:00.000Z"),
+        exercise: {
+          title: "Old Path Exercise",
+          kind: ExerciseKind.CODE,
+          points: 100,
+          room: {
+            title: "Bài cũ",
+            path: {
+              slug: "archived-path",
+              title: "Lộ trình đã xóa",
+              published: false,
+              deletedAt: new Date("2026-05-10T00:00:00.000Z"),
+            },
+          },
+        },
+        contest: null,
+      },
+    ]);
+
+    const profile = await getOwnProfile();
+
+    expect(enrollmentFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "student-1",
+          path: { published: true, deletedAt: null },
+        },
+      }),
+    );
+    expect(profile.paths).toEqual([]);
+    expect(profile.badges).toHaveLength(2);
+    expect(profile.stats.roomsDone).toBe(2);
+    expect(profile.submissions).toHaveLength(1);
+    expect(profile.submissions[0]).toMatchObject({
+      id: "sub-deleted-path",
+      exerciseTitle: "Old Path Exercise",
+      contextLabel: "Lộ trình đã xóa · Bài cũ",
+      contextHref: null,
+      status: SubmissionStatus.ACCEPTED,
+      score: 100,
     });
   });
 
@@ -450,7 +512,10 @@ describe("getPublicProfile", () => {
     });
     expect(enrollmentFindManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { userId: "student-2", path: { published: true } },
+        where: {
+          userId: "student-2",
+          path: { published: true, deletedAt: null },
+        },
       }),
     );
     expect(userFindUniqueMock).not.toHaveBeenCalled();

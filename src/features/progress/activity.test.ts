@@ -185,6 +185,19 @@ describe("recordLearningActivity", () => {
 
     expect(mockTransaction).toHaveBeenCalledTimes(1);
     expect(mockTx.xpEvent.create).toHaveBeenCalledTimes(1);
+    expect(mockTx.path.findMany.mock.calls[0][0].where).toEqual({
+      published: true,
+      deletedAt: null,
+      OR: [
+        { enrollments: { some: { userId: "user-1" } } },
+        { rooms: { some: { progress: { some: { userId: "user-1" } } } } },
+      ],
+    });
+    expect(mockTx.submission.findMany).toHaveBeenCalledWith({
+      where: { userId: "user-1", status: "ACCEPTED" },
+      distinct: ["exerciseId"],
+      select: { exerciseId: true },
+    });
     expect(mockTx.userBadge.createMany).toHaveBeenCalledWith({
       data: [
         { userId: "user-1", badgeId: "b-path" },

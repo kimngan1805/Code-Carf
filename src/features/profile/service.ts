@@ -139,8 +139,12 @@ function presentSubmissionItem(
     contextLabel = `Cuộc thi: ${row.contest.title}`;
     contextHref = `/contests/${row.contest.slug}`;
   } else if (row.exercise.room?.path) {
-    contextLabel = `${row.exercise.room.path.title} · ${row.exercise.room.title}`;
-    contextHref = `/hv/paths/${row.exercise.room.path.slug}`;
+    const path = row.exercise.room.path;
+    contextLabel = `${path.title} · ${row.exercise.room.title}`;
+    contextHref =
+      path.published !== false && path.deletedAt == null
+        ? `/hv/paths/${path.slug}`
+        : null;
   } else if (row.exercise.room) {
     contextLabel = row.exercise.room.title;
   }

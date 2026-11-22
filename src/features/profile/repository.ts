@@ -27,7 +27,7 @@ export async function findPublicStudentRecord(targetUserId: string) {
 
   const [enrollments, completedRooms, userBadges] = await Promise.all([
     db.enrollment.findMany({
-      where: { userId: user.id, path: { published: true } },
+      where: { userId: user.id, path: { published: true, deletedAt: null } },
       orderBy: [{ enrolledAt: "asc" }, { pathId: "asc" }],
       select: {
         path: {
@@ -103,6 +103,8 @@ export async function findOwnPrivateProfileExtras(userId: string) {
                   select: {
                     slug: true,
                     title: true,
+                    published: true,
+                    deletedAt: true,
                   },
                 },
               },

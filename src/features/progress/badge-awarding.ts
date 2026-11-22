@@ -78,6 +78,7 @@ export async function awardActivityBadgesInTx(
       tx.path.findMany({
         where: {
           published: true,
+          deletedAt: null,
           OR: [
             { enrollments: { some: { userId } } },
             { rooms: { some: { progress: { some: { userId } } } } },
