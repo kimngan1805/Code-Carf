@@ -48,7 +48,7 @@ function learnerSelection(userId: string) {
   } as const;
 }
 
-export function listPaths(userId: string, filters?: CatalogFilters) {
+function buildCatalogWhere(filters?: CatalogFilters): Prisma.PathWhereInput {
   const where: Prisma.PathWhereInput = { published: true, deletedAt: null };
   if (filters?.difficulty) where.difficulty = filters.difficulty;
   if (filters?.tag) where.tags = { has: filters.tag };
@@ -61,18 +61,46 @@ export function listPaths(userId: string, filters?: CatalogFilters) {
       { creator: { name: contains } },
     ];
   }
+  return where;
+}
+
+function buildCatalogOrderBy(sort?: CatalogFilters["sort"]) {
   const newest = [
     { publishedAt: { sort: "desc" as const, nulls: "last" as const } },
     { createdAt: "desc" as const },
     { id: "asc" as const },
   ];
+  return sort === "popular"
+    ? [{ enrollments: { _count: "desc" as const } }, ...newest]
+    : newest;
+}
+
+export function listPaths(userId: string, filters?: CatalogFilters) {
   return db.path.findMany({
-    where,
+    where: buildCatalogWhere(filters),
     select: learnerSelection(userId),
-    orderBy:
-      filters?.sort === "popular"
-        ? [{ enrollments: { _count: "desc" as const } }, ...newest]
-        : newest,
+    orderBy: buildCatalogOrderBy(filters?.sort),
+  });
+}
+
+export function countPublishedPaths(filters?: CatalogFilters) {
+  return db.path.count({
+    where: buildCatalogWhere(filters),
+  });
+}
+
+export function listPublishedPathsPage(
+  userId: string,
+  filters: CatalogFilters | undefined,
+  skip: number,
+  take: number,
+) {
+  return db.path.findMany({
+    where: buildCatalogWhere(filters),
+    select: learnerSelection(userId),
+    orderBy: buildCatalogOrderBy(filters?.sort),
+    skip,
+    take,
   });
 }
 

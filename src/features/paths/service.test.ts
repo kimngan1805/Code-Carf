@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
   requireRole: vi.fn(),
+  count: vi.fn(),
   findMany: vi.fn(),
   findFirst: vi.fn(),
   upsert: vi.fn(),
@@ -9,11 +10,21 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.requireRole }));
 vi.mock("@/lib/db", () => ({
   db: {
-    path: { findMany: mocks.findMany, findFirst: mocks.findFirst },
+    path: {
+      count: mocks.count,
+      findMany: mocks.findMany,
+      findFirst: mocks.findFirst,
+    },
     enrollment: { upsert: mocks.upsert },
   },
 }));
-import { getCatalogTags, getPath, getPaths, registerForPath } from "./service";
+import {
+  getCatalogPathsPage,
+  getCatalogTags,
+  getPath,
+  getPaths,
+  registerForPath,
+} from "./service";
 
 function pathRecord(completed = 1, total = 3) {
   return {
@@ -188,7 +199,89 @@ describe("learner path catalog", () => {
   it("checks authentication before loading paths", async () => {
     mocks.requireRole.mockRejectedValue(new Error("Unauthorized"));
     await expect(getPaths()).rejects.toThrow("Unauthorized");
+    await expect(getCatalogPathsPage()).rejects.toThrow("Unauthorized");
+    expect(mocks.count).not.toHaveBeenCalled();
     expect(mocks.findMany).not.toHaveBeenCalled();
+  });
+
+  it("paginates catalog paths while preserving filters, soft-delete exclusion and stable sorting", async () => {
+    mocks.count.mockResolvedValue(20);
+    mocks.findMany.mockResolvedValue([pathRecord(1, 3)]);
+
+    const filters = {
+      q: "cpp",
+      difficulty: "HARD" as const,
+      tag: "C++",
+      sort: "popular" as const,
+    };
+    const result = await getCatalogPathsPage(filters, {
+      page: "2",
+      pageSize: 9,
+    });
+
+    expect(mocks.count.mock.calls[0][0].where).toMatchObject({
+      published: true,
+      deletedAt: null,
+      difficulty: "HARD",
+      tags: { has: "C++" },
+    });
+    expect(mocks.findMany.mock.calls[0][0]).toMatchObject({
+      where: {
+        published: true,
+        deletedAt: null,
+        difficulty: "HARD",
+        tags: { has: "C++" },
+      },
+      skip: 9,
+      take: 9,
+    });
+    expect(mocks.findMany.mock.calls[0][0].orderBy).toEqual([
+      { enrollments: { _count: "desc" } },
+      { publishedAt: { sort: "desc", nulls: "last" } },
+      { createdAt: "desc" },
+      { id: "asc" },
+    ]);
+    expect(result).toMatchObject({
+      page: 2,
+      pageSize: 9,
+      totalItems: 20,
+      totalPages: 3,
+    });
+    expect(result.items).toHaveLength(1);
+  });
+
+  it("handles invalid page, out-of-range page and empty results in getCatalogPathsPage", async () => {
+    mocks.count.mockResolvedValueOnce(11);
+    mocks.findMany.mockResolvedValueOnce([pathRecord()]);
+    const clamped = await getCatalogPathsPage(undefined, {
+      page: "99",
+      pageSize: 9,
+    });
+    expect(clamped).toMatchObject({ page: 2, totalItems: 11, totalPages: 2 });
+    expect(mocks.findMany.mock.calls[0][0]).toMatchObject({ skip: 9, take: 9 });
+
+    mocks.count.mockResolvedValueOnce(11);
+    mocks.findMany.mockResolvedValueOnce([pathRecord()]);
+    const invalid = await getCatalogPathsPage(undefined, {
+      page: "-4",
+      pageSize: 9,
+    });
+    expect(invalid).toMatchObject({ page: 1, totalItems: 11, totalPages: 2 });
+    expect(mocks.findMany.mock.calls[1][0]).toMatchObject({ skip: 0, take: 9 });
+
+    mocks.count.mockResolvedValueOnce(0);
+    const empty = await getCatalogPathsPage(undefined, {
+      page: "2",
+      pageSize: 9,
+    });
+    expect(empty).toEqual({
+      items: [],
+      page: 1,
+      pageSize: 9,
+      totalItems: 0,
+      totalPages: 1,
+    });
+    expect(mocks.findMany).toHaveBeenCalledTimes(2);
   });
 });
 

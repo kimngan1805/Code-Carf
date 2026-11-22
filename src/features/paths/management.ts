@@ -2,24 +2,58 @@ import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import {
+  computePagination,
+  MANAGED_PATHS_PAGE_SIZE,
+  normalizePageSize,
+} from "./pagination";
 
-export async function getManagedPaths() {
+export async function getManagedPaths(options?: {
+  page?: unknown;
+  pageSize?: number;
+}) {
   const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
-  return db.path.findMany({
-    where: {
-      deletedAt: null,
-      ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
-    },
-    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
-    select: {
-      id: true,
-      slug: true,
-      title: true,
-      published: true,
-      sequentialUnlock: true,
-      _count: { select: { rooms: true } },
-    },
-  });
+  const where = {
+    deletedAt: null,
+    ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
+  };
+  const pageSize = normalizePageSize(
+    options?.pageSize,
+    MANAGED_PATHS_PAGE_SIZE,
+  );
+  const totalItems = await db.path.count({ where });
+  const pagination = computePagination(options?.page, totalItems, pageSize);
+  const items =
+    totalItems === 0
+      ? []
+      : await db.path.findMany({
+          where,
+          orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+          skip: pagination.skip,
+          take: pagination.pageSize,
+          select: {
+            id: true,
+            slug: true,
+            title: true,
+            description: true,
+            published: true,
+            sequentialUnlock: true,
+            difficulty: true,
+            tags: true,
+            estimatedMinutes: true,
+            coverTheme: true,
+            publishedAt: true,
+            createdAt: true,
+            _count: { select: { rooms: true, enrollments: true } },
+          },
+        });
+  return {
+    items,
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalItems: pagination.totalItems,
+    totalPages: pagination.totalPages,
+  };
 }
 
 export async function setPathSequentialUnlock(
@@ -111,6 +145,8 @@ export async function getManagedPath(slug: string) {
       estimatedMinutes: true,
       coverTheme: true,
       publishedAt: true,
+      createdAt: true,
+      _count: { select: { enrollments: true } },
       rooms: {
         orderBy: { position: "asc" },
         select: {

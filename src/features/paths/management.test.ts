@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/errors";
 
 const mocks = vi.hoisted(() => ({
+  count: vi.fn(),
   find: vi.fn(),
   room: vi.fn(),
   exercise: vi.fn(),
@@ -15,6 +16,7 @@ vi.mock("@/features/auth/service", () => ({ requireRole: mocks.role }));
 vi.mock("@/lib/db", () => ({
   db: {
     path: {
+      count: mocks.count,
       findMany: mocks.list,
       updateMany: mocks.update,
       findFirst: mocks.find,
@@ -37,6 +39,7 @@ import {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.role.mockResolvedValue({ id: "teacher-1", role: { name: "TEACHER" } });
+  mocks.count.mockResolvedValue(1);
   mocks.list.mockResolvedValue([]);
   mocks.find.mockResolvedValue({
     id: "path-1",
@@ -46,12 +49,64 @@ beforeEach(() => {
   mocks.update.mockResolvedValue({ count: 1 });
 });
 
-it("only lists the authenticated teacher's active paths", async () => {
-  await getManagedPaths();
-  expect(mocks.list.mock.calls[0][0].where).toEqual({
-    deletedAt: null,
-    creatorId: "teacher-1",
+it("only lists the authenticated teacher's active paths with pagination metadata and stable order", async () => {
+  const sample = [{ id: "path-1", slug: "owned", title: "Owned" }];
+  mocks.count.mockResolvedValue(15);
+  mocks.list.mockResolvedValue(sample);
+
+  const result = await getManagedPaths({ page: "2" });
+
+  expect(mocks.count).toHaveBeenCalledWith({
+    where: { deletedAt: null, creatorId: "teacher-1" },
   });
+  expect(mocks.list.mock.calls[0][0]).toMatchObject({
+    where: { deletedAt: null, creatorId: "teacher-1" },
+    orderBy: [{ createdAt: "desc" }, { id: "asc" }],
+    skip: 9,
+    take: 9,
+  });
+  expect(result).toEqual({
+    items: sample,
+    page: 2,
+    pageSize: 9,
+    totalItems: 15,
+    totalPages: 2,
+  });
+});
+
+it("clamps out-of-range pages, defaults invalid pages to 1, and skips findMany when empty", async () => {
+  mocks.count.mockResolvedValueOnce(12);
+  mocks.list.mockResolvedValueOnce([{ id: "p-last" }]);
+  const clamped = await getManagedPaths({ page: "99" });
+  expect(clamped).toMatchObject({
+    page: 2,
+    pageSize: 9,
+    totalItems: 12,
+    totalPages: 2,
+  });
+  expect(mocks.list.mock.calls[0][0]).toMatchObject({ skip: 9, take: 9 });
+
+  mocks.count.mockResolvedValueOnce(12);
+  mocks.list.mockResolvedValueOnce([{ id: "p-first" }]);
+  const invalid = await getManagedPaths({ page: "abc" });
+  expect(invalid).toMatchObject({
+    page: 1,
+    pageSize: 9,
+    totalItems: 12,
+    totalPages: 2,
+  });
+  expect(mocks.list.mock.calls[1][0]).toMatchObject({ skip: 0, take: 9 });
+
+  mocks.count.mockResolvedValueOnce(0);
+  const empty = await getManagedPaths({ page: "3" });
+  expect(empty).toEqual({
+    items: [],
+    page: 1,
+    pageSize: 9,
+    totalItems: 0,
+    totalPages: 1,
+  });
+  expect(mocks.list).toHaveBeenCalledTimes(2);
 });
 
 it("lets teachers preview only owned active paths, including drafts", async () => {
@@ -158,6 +213,7 @@ it("does not access paths when student/anonymous authorization fails", async () 
   await expect(deleteManagedPath("path-1")).rejects.toMatchObject({
     status: 403,
   });
+  expect(mocks.count).not.toHaveBeenCalled();
   expect(mocks.list).not.toHaveBeenCalled();
   expect(mocks.find).not.toHaveBeenCalled();
   expect(mocks.update).not.toHaveBeenCalled();

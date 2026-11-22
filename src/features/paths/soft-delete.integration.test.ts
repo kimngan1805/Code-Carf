@@ -48,7 +48,7 @@ import {
 } from "./management";
 import { setPathPublication } from "./publication";
 import { findPublishedPath, listPaths } from "./repository";
-import { getPath, registerForPath } from "./service";
+import { getCatalogPathsPage, getPath, registerForPath } from "./service";
 
 const hasDatabase = await canConnectToDatabase();
 const prefix = `it-path-sd-${randomUUID().slice(0, 8)}`;
@@ -304,7 +304,7 @@ describe.skipIf(!hasDatabase)(
       // 7. Teacher authoring & management operations are blocked on the soft-deleted path.
       mocks.requireRole.mockResolvedValue(ownerTeacher);
       expect(
-        (await getManagedPaths()).some((item) => item.id === path.id),
+        (await getManagedPaths()).items.some((item) => item.id === path.id),
       ).toBe(false);
       await expect(getManagedPath(path.slug)).rejects.toMatchObject({
         status: 404,
@@ -589,6 +589,93 @@ describe.skipIf(!hasDatabase)(
         new Date("2019-01-14T01:00:00+07:00"),
       );
       expect(weeklyResult.winnerUserIds).toContain(completedLearner.id);
+    });
+
+    it("paginates teacher managed paths and student catalog deterministically without duplicates and excludes soft-deleted paths", async () => {
+      const teacherRole = await db.role.findUniqueOrThrow({
+        where: { name: RoleName.TEACHER },
+      });
+      const isolatedTeacherRow = await db.user.create({
+        data: {
+          email: `${prefix}-p3-teacher@local.test`,
+          name: "Pagination Teacher",
+          passwordHash: "unused",
+          roleId: teacherRole.id,
+        },
+      });
+      userIds.push(isolatedTeacherRow.id);
+      const isolatedTeacher = {
+        id: isolatedTeacherRow.id,
+        name: isolatedTeacherRow.name,
+        role: { name: RoleName.TEACHER },
+      };
+
+      const sharedTimestamp = new Date("2026-11-20T10:00:00.000Z");
+      const createdPaths = await Promise.all(
+        [1, 2, 3, 4].map((index) =>
+          db.path.create({
+            data: {
+              slug: `${prefix}-page-${index}`,
+              title: `${prefix} Paginated Path ${index}`,
+              published: true,
+              publishedAt: sharedTimestamp,
+              createdAt: sharedTimestamp,
+              creatorId: isolatedTeacher.id,
+            },
+          }),
+        ),
+      );
+      for (const item of createdPaths) pathIds.push(item.id);
+
+      // Soft-delete one path; 3 active paths remain.
+      mocks.requireRole.mockResolvedValue(isolatedTeacher);
+      await deleteManagedPath(createdPaths[1].id);
+
+      // Teacher pagination: pageSize = 2 across 3 active paths (same createdAt -> stable id asc tie-breaker).
+      const teacherPage1 = await getManagedPaths({ page: 1, pageSize: 2 });
+      const teacherPage2 = await getManagedPaths({ page: 2, pageSize: 2 });
+      const teacherOverflow = await getManagedPaths({ page: 99, pageSize: 2 });
+
+      expect(teacherPage1).toMatchObject({
+        page: 1,
+        pageSize: 2,
+        totalItems: 3,
+        totalPages: 2,
+      });
+      expect(teacherPage1.items).toHaveLength(2);
+      expect(teacherPage2.items).toHaveLength(1);
+      expect(teacherOverflow.page).toBe(2);
+
+      const teacherIds = [
+        ...teacherPage1.items.map((p) => p.id),
+        ...teacherPage2.items.map((p) => p.id),
+      ];
+      expect(new Set(teacherIds).size).toBe(3);
+      expect(teacherIds).not.toContain(createdPaths[1].id);
+
+      // Student catalog pagination scoped by q = prefix: pageSize = 2 across the 3 active published paths.
+      mocks.requireRole.mockResolvedValue(student);
+      const filter = { q: `${prefix} Paginated`, sort: "newest" as const };
+      const catalogPage1 = await getCatalogPathsPage(filter, {
+        page: 1,
+        pageSize: 2,
+      });
+      const catalogPage2 = await getCatalogPathsPage(filter, {
+        page: 2,
+        pageSize: 2,
+      });
+      expect(catalogPage1).toMatchObject({
+        page: 1,
+        pageSize: 2,
+        totalItems: 3,
+        totalPages: 2,
+      });
+      const catalogIds = [
+        ...catalogPage1.items.map((p) => p.id),
+        ...catalogPage2.items.map((p) => p.id),
+      ];
+      expect(new Set(catalogIds).size).toBe(3);
+      expect(catalogIds).not.toContain(createdPaths[1].id);
     });
   },
 );

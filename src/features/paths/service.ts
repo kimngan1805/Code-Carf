@@ -2,10 +2,17 @@ import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { AppError } from "@/lib/errors";
 import {
+  CATALOG_PATHS_PAGE_SIZE,
+  computePagination,
+  normalizePageSize,
+} from "./pagination";
+import {
+  countPublishedPaths,
   enrollInPath,
   findPublishedPath,
   listPaths,
   listPopularTags,
+  listPublishedPathsPage,
   type CatalogFilters,
 } from "./repository";
 
@@ -62,6 +69,39 @@ export async function getPaths(filters?: CatalogFilters) {
     RoleName.ADMIN,
   ]);
   return (await listPaths(user.id, filters)).map(presentPath);
+}
+
+export async function getCatalogPathsPage(
+  filters?: CatalogFilters,
+  options?: { page?: unknown; pageSize?: number },
+) {
+  const user = await requireRole([
+    RoleName.STUDENT,
+    RoleName.TEACHER,
+    RoleName.ADMIN,
+  ]);
+  const pageSize = normalizePageSize(
+    options?.pageSize,
+    CATALOG_PATHS_PAGE_SIZE,
+  );
+  const totalItems = await countPublishedPaths(filters);
+  const pagination = computePagination(options?.page, totalItems, pageSize);
+  const rows =
+    totalItems === 0
+      ? []
+      : await listPublishedPathsPage(
+          user.id,
+          filters,
+          pagination.skip,
+          pagination.pageSize,
+        );
+  return {
+    items: rows.map(presentPath),
+    page: pagination.page,
+    pageSize: pagination.pageSize,
+    totalItems: pagination.totalItems,
+    totalPages: pagination.totalPages,
+  };
 }
 
 export async function getCatalogTags() {
