@@ -10,7 +10,12 @@ export function findExerciseForUpload(exerciseId: string) {
     select: {
       id: true,
       kind: true,
-      room: { select: { id: true, path: { select: { published: true } } } },
+      room: {
+        select: {
+          id: true,
+          path: { select: { published: true, deletedAt: true } },
+        },
+      },
     },
   });
 }

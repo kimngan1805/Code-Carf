@@ -7,7 +7,12 @@ export function findReportExercise(exerciseId: string) {
     where: { id: exerciseId },
     select: {
       id: true,
-      room: { select: { id: true, path: { select: { published: true } } } },
+      room: {
+        select: {
+          id: true,
+          path: { select: { published: true, deletedAt: true } },
+        },
+      },
     },
   });
 }
@@ -38,7 +43,11 @@ export function createExerciseReport(
       );
     // Detect a concurrent move/deletion rather than attach a report to an old Room.
     const exercise = await tx.exercise.findFirst({
-      where: { id: exerciseId, roomId, room: { path: { published: true } } },
+      where: {
+        id: exerciseId,
+        roomId,
+        room: { path: { published: true, deletedAt: null } },
+      },
       select: { id: true },
     });
     if (!exercise)

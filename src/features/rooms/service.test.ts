@@ -28,6 +28,7 @@ beforeEach(() => {
     position: 2,
     path: {
       published: true,
+      deletedAt: null,
       title: "Path",
       slug: "path",
       enrollments: [{ userId: "user-1" }],
@@ -56,14 +57,16 @@ describe("room content authorization", () => {
     });
     expect(mocks.canAccessRoom).toHaveBeenCalledWith("user-1", "room-1");
   });
-  it.each([null, { path: { published: false } }])(
-    "hides missing and unpublished content",
-    async (room) => {
-      mocks.findRoomAccess.mockResolvedValue(room);
-      await expect(getRoom("room-1")).rejects.toMatchObject({ status: 404 });
-      expect(mocks.findRoomContent).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    null,
+    { path: { published: false, deletedAt: null } },
+    { path: { published: true, deletedAt: new Date("2026-11-22T00:00:00Z") } },
+  ])("hides missing, unpublished, and soft-deleted content", async (room) => {
+    mocks.findRoomAccess.mockResolvedValue(room);
+    await expect(getRoom("room-1")).rejects.toMatchObject({ status: 404 });
+    await expect(getRoomPage("room-1")).rejects.toMatchObject({ status: 404 });
+    expect(mocks.findRoomContent).not.toHaveBeenCalled();
+  });
   it("authenticates before querying room metadata", async () => {
     mocks.requireRole.mockRejectedValue(new Error("Unauthorized"));
     await expect(getRoom("room-1")).rejects.toThrow("Unauthorized");

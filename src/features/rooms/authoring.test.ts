@@ -49,6 +49,7 @@ it("creates a lesson at the end of the owned path and preserves Markdown", async
   expect(mocks.role).toHaveBeenCalledWith(["TEACHER", "ADMIN"]);
   expect(mocks.path.mock.calls[0][0].where).toEqual({
     slug: "my-path",
+    deletedAt: null,
     creatorId: "teacher-1",
   });
   expect(mocks.create.mock.calls[0][0].data).toMatchObject({
@@ -88,10 +89,20 @@ it("does not start a transaction when authorization fails", async () => {
   await expect(saveManagedLesson(input)).rejects.toMatchObject({ status: 403 });
   expect(mocks.transaction).not.toHaveBeenCalled();
 });
-it("denies writes to missing or foreign paths", async () => {
+it("denies writes to missing, soft-deleted, or foreign paths", async () => {
   mocks.path.mockResolvedValue(null);
   await expect(saveManagedLesson(input)).rejects.toMatchObject({ status: 404 });
+  await expect(
+    saveManagedLesson({
+      pathSlug: input.pathSlug,
+      title: input.title,
+      description: input.description,
+      content: input.content,
+      roomId: "room-1",
+    }),
+  ).rejects.toMatchObject({ status: 404 });
   expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
 });
 it("updates only a lesson inside the authorized path", async () => {
   const fields = {
@@ -111,10 +122,13 @@ it("updates only a lesson inside the authorized path", async () => {
     saveManagedLesson({ ...fields, roomId: "foreign" }),
   ).rejects.toMatchObject({ code: "ROOM_NOT_FOUND" });
 });
-it("allows admin management without a teacher ownership filter", async () => {
+it("allows admin management without a teacher ownership filter while excluding soft-deleted paths", async () => {
   mocks.role.mockResolvedValue({ id: "admin-1", role: { name: "ADMIN" } });
   await saveManagedLesson(input);
-  expect(mocks.path.mock.calls[0][0].where).toEqual({ slug: "my-path" });
+  expect(mocks.path.mock.calls[0][0].where).toEqual({
+    slug: "my-path",
+    deletedAt: null,
+  });
 });
 it("returns a saved request on retry and rejects changed payloads", async () => {
   mocks.find.mockResolvedValue({

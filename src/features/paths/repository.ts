@@ -49,7 +49,7 @@ function learnerSelection(userId: string) {
 }
 
 export function listPaths(userId: string, filters?: CatalogFilters) {
-  const where: Prisma.PathWhereInput = { published: true };
+  const where: Prisma.PathWhereInput = { published: true, deletedAt: null };
   if (filters?.difficulty) where.difficulty = filters.difficulty;
   if (filters?.tag) where.tags = { has: filters.tag };
   if (filters?.q) {
@@ -79,7 +79,7 @@ export function listPaths(userId: string, filters?: CatalogFilters) {
 /** Chủ đề đang được dùng nhiều nhất trên các lộ trình đã xuất bản, để làm nút lọc nhanh. */
 export async function listPopularTags(limit = 12) {
   const rows = await db.path.findMany({
-    where: { published: true },
+    where: { published: true, deletedAt: null },
     select: { tags: true },
   });
   const counts = new Map<string, number>();
@@ -93,7 +93,7 @@ export async function listPopularTags(limit = 12) {
 
 export function findPublishedPath(slug: string, userId: string) {
   return db.path.findFirst({
-    where: { slug, published: true },
+    where: { slug, published: true, deletedAt: null },
     select: learnerSelection(userId),
   });
 }

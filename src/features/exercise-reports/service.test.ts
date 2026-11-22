@@ -24,7 +24,7 @@ beforeEach(() => {
   mocks.requireRole.mockResolvedValue({ id: "real-student" });
   mocks.find.mockResolvedValue({
     id: "exercise",
-    room: { id: "real-room", path: { published: true } },
+    room: { id: "real-room", path: { published: true, deletedAt: null } },
   });
   mocks.access.mockResolvedValue(true);
   mocks.create.mockResolvedValue({ id: "report" });
@@ -96,9 +96,22 @@ describe("student exercise reports", () => {
   it.each([
     null,
     { id: "exercise", room: null },
-    { id: "exercise", room: { id: "room", path: { published: false } } },
+    {
+      id: "exercise",
+      room: { id: "room", path: { published: false, deletedAt: null } },
+    },
+    {
+      id: "exercise",
+      room: {
+        id: "room",
+        path: {
+          published: true,
+          deletedAt: new Date("2026-11-22T00:00:00Z"),
+        },
+      },
+    },
   ])(
-    "rejects absent, contest-only and unpublished exercises",
+    "rejects absent, contest-only, unpublished, and soft-deleted exercises",
     async (exercise) => {
       mocks.find.mockResolvedValue(exercise);
       await expect(reportExercise("exercise", valid)).rejects.toMatchObject({

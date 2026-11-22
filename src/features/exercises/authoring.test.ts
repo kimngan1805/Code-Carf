@@ -64,7 +64,7 @@ it("creates a CODE exercise with its tests inside an owned room", async () => {
   expect(mocks.role).toHaveBeenCalledWith(["TEACHER", "ADMIN"]);
   expect(mocks.room.mock.calls[0][0].where).toEqual({
     id: "room-1",
-    path: { slug: "cpp", creatorId: "teacher-1" },
+    path: { slug: "cpp", deletedAt: null, creatorId: "teacher-1" },
   });
   const data = mocks.create.mock.calls[0][0].data;
   expect(data).toMatchObject({
@@ -82,10 +82,13 @@ it("creates a CODE exercise with its tests inside an owned room", async () => {
   ]);
 });
 
-it("lets an admin save in any teacher's room", async () => {
+it("lets an admin save in any teacher's active room", async () => {
   mocks.role.mockResolvedValue({ id: "admin-1", role: { name: "ADMIN" } });
   await saveManagedExercise(input);
-  expect(mocks.room.mock.calls[0][0].where.path).toEqual({ slug: "cpp" });
+  expect(mocks.room.mock.calls[0][0].where.path).toEqual({
+    slug: "cpp",
+    deletedAt: null,
+  });
 });
 
 it("is idempotent for a repeated request id", async () => {
@@ -137,13 +140,33 @@ it("does not touch tests when the exercise is not in the room", async () => {
   expect(mocks.deleteTests).not.toHaveBeenCalled();
 });
 
-it("refuses a room the teacher does not own", async () => {
+it("refuses creating, editing, or deleting exercises in a soft-deleted or unowned path", async () => {
   mocks.room.mockResolvedValue(null);
   await expect(saveManagedExercise(input)).rejects.toMatchObject({
     status: 404,
     code: "ROOM_NOT_FOUND",
   });
+  const rest: Partial<typeof input> = { ...input };
+  delete rest.requestId;
+  await expect(
+    saveManagedExercise({ ...rest, exerciseId: "ex-1" }),
+  ).rejects.toMatchObject({
+    status: 404,
+    code: "ROOM_NOT_FOUND",
+  });
+  await expect(
+    deleteManagedExercise({
+      pathSlug: "cpp",
+      roomId: "room-1",
+      exerciseId: "ex-1",
+    }),
+  ).rejects.toMatchObject({
+    status: 404,
+    code: "ROOM_NOT_FOUND",
+  });
   expect(mocks.create).not.toHaveBeenCalled();
+  expect(mocks.update).not.toHaveBeenCalled();
+  expect(mocks.remove).not.toHaveBeenCalled();
 });
 
 it("refuses an exercise without test cases", async () => {

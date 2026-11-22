@@ -13,7 +13,7 @@ vi.mock("@/lib/db", () => ({
     enrollment: { upsert: mocks.upsert },
   },
 }));
-import { getPath, getPaths, registerForPath } from "./service";
+import { getCatalogTags, getPath, getPaths, registerForPath } from "./service";
 
 function pathRecord(completed = 1, total = 3) {
   return {
@@ -70,16 +70,24 @@ describe("learner path catalog", () => {
       (await getPath("basics")).rooms.some((room) => room.accessible),
     ).toBe(false);
   });
-  it("only queries published paths and scopes enrollment and room progress to the current user", async () => {
+  it("only queries active published paths and scopes enrollment and room progress to the current user", async () => {
     mocks.findMany.mockResolvedValue([]);
     await expect(getPaths()).resolves.toEqual([]);
     const query = mocks.findMany.mock.calls[0][0];
-    expect(query.where).toEqual({ published: true });
+    expect(query.where).toEqual({ published: true, deletedAt: null });
     expect(query.select.rooms.select.progress.where).toEqual({
       userId: "student-1",
     });
     expect(query.select.enrollments.where).toEqual({ userId: "student-1" });
     expect(query.select.rooms.select.content).toBeUndefined();
+  });
+  it("excludes soft-deleted paths when listing popular catalog tags", async () => {
+    mocks.findMany.mockResolvedValue([{ tags: ["C++"] }]);
+    await expect(getCatalogTags()).resolves.toEqual(["C++"]);
+    expect(mocks.findMany.mock.calls[0][0].where).toEqual({
+      published: true,
+      deletedAt: null,
+    });
   });
   it.each([
     [0, 0, 0],
@@ -161,18 +169,20 @@ describe("learner path catalog", () => {
     const query = mocks.findMany.mock.calls[0][0];
     expect(query.where).toMatchObject({
       published: true,
+      deletedAt: null,
       difficulty: "HARD",
       tags: { has: "C++" },
     });
     expect(query.where.OR).toHaveLength(4);
     expect(query.orderBy[0]).toEqual({ enrollments: { _count: "desc" } });
   });
-  it("returns 404 for missing or unpublished detail pages", async () => {
+  it("returns 404 for missing, unpublished, or soft-deleted detail pages", async () => {
     mocks.findFirst.mockResolvedValue(null);
     await expect(getPath("draft")).rejects.toMatchObject({ status: 404 });
     expect(mocks.findFirst.mock.calls[0][0].where).toEqual({
       slug: "draft",
       published: true,
+      deletedAt: null,
     });
   });
   it("checks authentication before loading paths", async () => {
@@ -196,10 +206,16 @@ describe("path enrollment", () => {
       select: { pathId: true, enrolledAt: true },
     });
   });
-  it("does not enroll in an unpublished or missing path", async () => {
+  it("does not enroll in an unpublished, soft-deleted, or missing path", async () => {
     mocks.findFirst.mockResolvedValue(null);
-    await expect(registerForPath("draft")).rejects.toMatchObject({
+    await expect(registerForPath("deleted-path")).rejects.toMatchObject({
       status: 404,
+      code: "PATH_NOT_FOUND",
+    });
+    expect(mocks.findFirst.mock.calls[0][0].where).toEqual({
+      slug: "deleted-path",
+      published: true,
+      deletedAt: null,
     });
     expect(mocks.upsert).not.toHaveBeenCalled();
   });

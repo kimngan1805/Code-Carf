@@ -27,6 +27,7 @@ export async function saveManagedLesson(body: unknown) {
           const path = await tx.path.findFirst({
             where: {
               slug: input.pathSlug,
+              deletedAt: null,
               ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
             },
             select: { id: true, slug: true },

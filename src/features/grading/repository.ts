@@ -196,7 +196,14 @@ export function findExerciseForPractice(exerciseId: string) {
         select: {
           id: true,
           title: true,
-          path: { select: { slug: true, title: true, published: true } },
+          path: {
+            select: {
+              slug: true,
+              title: true,
+              published: true,
+              deletedAt: true,
+            },
+          },
         },
       },
       testCases: {

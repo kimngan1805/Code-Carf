@@ -55,7 +55,11 @@ async function resolveTarget(exerciseId: string, contestSlug: string | null) {
         "EXERCISE_NOT_IN_CONTEST",
         "Bài tập không thuộc cuộc thi này.",
       );
-  } else if (!exercise.room || !exercise.room.path.published) {
+  } else if (
+    !exercise.room ||
+    !exercise.room.path.published ||
+    exercise.room.path.deletedAt != null
+  ) {
     throw new AppError(404, "EXERCISE_NOT_FOUND", "Không tìm thấy bài tập.");
   } else if (!(await canAccessRoom(userId, exercise.room.id))) {
     throw new AppError(403, "ROOM_LOCKED", "Bài học đang khóa.");

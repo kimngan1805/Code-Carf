@@ -11,6 +11,7 @@ beforeEach(() => {
     position: 5,
     path: {
       published: true,
+      deletedAt: null,
       sequentialUnlock: true,
       enrollments: [{ userId: "user-1" }],
     },
@@ -21,6 +22,9 @@ describe("canAccessRoom", () => {
   it("opens the first room even when its position is not 1", async () => {
     mocks.findFirst.mockResolvedValue(null);
     await expect(canAccessRoom("user-1", "room-1")).resolves.toBe(true);
+    expect(mocks.findUnique.mock.calls[0][0].select.path.select.deletedAt).toBe(
+      true,
+    );
   });
   it("locks a room until its preceding room is completed by the same learner", async () => {
     mocks.findFirst.mockResolvedValue({ progress: [] });
@@ -44,7 +48,12 @@ describe("canAccessRoom", () => {
     mocks.findUnique.mockResolvedValue({
       pathId: "path-1",
       position: 5,
-      path: { published: true, sequentialUnlock: false, enrollments: [{}] },
+      path: {
+        published: true,
+        deletedAt: null,
+        sequentialUnlock: false,
+        enrollments: [{}],
+      },
     });
     await expect(canAccessRoom("user-1", "room-1")).resolves.toBe(true);
     expect(mocks.findFirst).not.toHaveBeenCalled();
@@ -53,12 +62,28 @@ describe("canAccessRoom", () => {
     { label: "missing room", room: null },
     {
       label: "draft path",
-      room: { path: { published: false, enrollments: [{}] } },
+      room: { path: { published: false, deletedAt: null, enrollments: [{}] } },
+    },
+    {
+      label: "soft-deleted path",
+      room: {
+        path: {
+          published: true,
+          deletedAt: new Date("2026-11-22T00:00:00Z"),
+          sequentialUnlock: false,
+          enrollments: [{}],
+        },
+      },
     },
     {
       label: "unenrolled learner",
       room: {
-        path: { published: true, sequentialUnlock: false, enrollments: [] },
+        path: {
+          published: true,
+          deletedAt: null,
+          sequentialUnlock: false,
+          enrollments: [],
+        },
       },
     },
   ])("denies $label", async ({ room }) => {

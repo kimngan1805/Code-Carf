@@ -17,7 +17,12 @@ import { findExerciseForPractice } from "./repository";
 export async function getExercisePage(exerciseId: string) {
   const user = await requireRole([RoleName.STUDENT]);
   const exercise = await findExerciseForPractice(exerciseId);
-  if (!exercise || !exercise.room || !exercise.room.path.published)
+  if (
+    !exercise ||
+    !exercise.room ||
+    !exercise.room.path.published ||
+    exercise.room.path.deletedAt != null
+  )
     throw new AppError(404, "EXERCISE_NOT_FOUND", "Không tìm thấy bài tập.");
   if (!(await canAccessRoom(user.id, exercise.room.id)))
     return { accessible: false as const, roomId: exercise.room.id };

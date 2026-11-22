@@ -22,14 +22,14 @@ export async function findPublishedSearchResults(query: string) {
   const [paths, rooms, contests] = await Promise.all([
     db.$queryRaw<SearchRecord[]>(Prisma.sql`
       SELECT p.id, p.title, p.slug, NULL::text AS "pathTitle"
-      FROM "Path" p WHERE p.published = true
+      FROM "Path" p WHERE p.published = true AND p."deletedAt" IS NULL
       AND ${matchesTitle(Prisma.sql`p.title`, query)}
       ORDER BY p.title, p.id LIMIT ${SEARCH_GROUP_LIMIT}
     `),
     db.$queryRaw<SearchRecord[]>(Prisma.sql`
       SELECT r.id, r.title, p.slug, p.title AS "pathTitle"
       FROM "Room" r JOIN "Path" p ON p.id = r."pathId"
-      WHERE p.published = true
+      WHERE p.published = true AND p."deletedAt" IS NULL
       AND ${matchesTitle(Prisma.sql`r.title`, query)}
       ORDER BY r.title, r.id LIMIT ${SEARCH_GROUP_LIMIT}
     `),

@@ -50,7 +50,7 @@ const png = (size = 64) => {
 const exercise = {
   id: "ex-1",
   kind: "HANDWRITTEN",
-  room: { id: "room-1", path: { published: true } },
+  room: { id: "room-1", path: { published: true, deletedAt: null } },
 };
 const saved = {
   id: "sub-1",
@@ -136,7 +136,23 @@ describe("uploadHandwrittenImage (practice)", () => {
     ["a missing exercise", null],
     [
       "an unpublished path",
-      { ...exercise, room: { id: "r", path: { published: false } } },
+      {
+        ...exercise,
+        room: { id: "r", path: { published: false, deletedAt: null } },
+      },
+    ],
+    [
+      "a soft-deleted path",
+      {
+        ...exercise,
+        room: {
+          id: "r",
+          path: {
+            published: true,
+            deletedAt: new Date("2026-11-22T00:00:00Z"),
+          },
+        },
+      },
     ],
     ["an exercise without a room", { ...exercise, room: null }],
   ])("answers 404 for %s", async (_n, value) => {
@@ -226,6 +242,27 @@ describe("uploadHandwrittenImage (contest)", () => {
     expect(mocks.saveHandwrittenImage).toHaveBeenCalledWith(
       expect.objectContaining({ userId: "user-1", contestId: "contest-1" }),
     );
+  });
+
+  it("still allows contest uploads when the exercise's practice path is soft-deleted", async () => {
+    mocks.findExerciseForUpload.mockResolvedValue({
+      ...exercise,
+      room: {
+        id: "room-1",
+        path: {
+          published: false,
+          deletedAt: new Date("2026-11-22T00:00:00Z"),
+        },
+      },
+    });
+    await expect(
+      uploadHandwrittenImage({
+        exerciseId: "ex-1",
+        contestSlug: "cuoc-thi",
+        file: png(),
+      }),
+    ).resolves.toMatchObject({ id: "sub-1" });
+    expect(mocks.canAccessRoom).not.toHaveBeenCalled();
   });
 
   it("rejects when the attempt is over (deadline passed)", async () => {

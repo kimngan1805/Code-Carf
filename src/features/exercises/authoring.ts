@@ -20,6 +20,7 @@ async function findOwnedRoom(
       id: roomId,
       path: {
         slug: pathSlug,
+        deletedAt: null,
         ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
       },
     },
