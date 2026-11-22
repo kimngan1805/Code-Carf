@@ -14,7 +14,12 @@ export async function canAccessRoom(
   roomId: string,
 ): Promise<boolean> {
   const room = await findRoomAccess(roomId, userId);
-  if (!room || !room.path.published || room.path.enrollments.length === 0)
+  if (
+    !room ||
+    !room.path.published ||
+    room.path.deletedAt != null ||
+    room.path.enrollments.length === 0
+  )
     return false;
   if (!room.path.sequentialUnlock) return true;
   const previous = await findPreviousRoom(room.pathId, room.position, userId);

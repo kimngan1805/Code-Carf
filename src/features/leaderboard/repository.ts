@@ -20,7 +20,7 @@ export function listPublishedPathsForLeaderboard(): Promise<
   PublishedPathOption[]
 > {
   return db.path.findMany({
-    where: { published: true },
+    where: { published: true, deletedAt: null },
     orderBy: [{ title: "asc" }, { id: "asc" }],
     select: { id: true, slug: true, title: true },
   });
@@ -30,7 +30,7 @@ export function findPublishedPathForLeaderboard(
   slug: string,
 ): Promise<PublishedPathOption | null> {
   return db.path.findFirst({
-    where: { slug, published: true },
+    where: { slug, published: true, deletedAt: null },
     select: { id: true, slug: true, title: true },
   });
 }

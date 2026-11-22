@@ -30,7 +30,7 @@ const exercise = {
   room: {
     id: "room-1",
     title: "Room 1",
-    path: { slug: "python", title: "Python", published: true },
+    path: { slug: "python", title: "Python", published: true, deletedAt: null },
   },
   testCases: [{ id: "t1", input: "1 2", expected: "3" }],
 };
@@ -140,6 +140,19 @@ describe("getExercisePage", () => {
         room: {
           ...exercise.room,
           path: { ...exercise.room.path, published: false },
+        },
+      },
+    ],
+    [
+      "soft-deleted path",
+      {
+        ...exercise,
+        room: {
+          ...exercise.room,
+          path: {
+            ...exercise.room.path,
+            deletedAt: new Date("2026-11-22T00:00:00Z"),
+          },
         },
       },
     ],

@@ -20,7 +20,7 @@ export async function getDashboardRecords(
     profile,
   ] = await Promise.all([
     db.enrollment.findMany({
-      where: { userId, path: { published: true } },
+      where: { userId, path: { published: true, deletedAt: null } },
       orderBy: { enrolledAt: "asc" },
       select: {
         path: {
@@ -51,7 +51,11 @@ export async function getDashboardRecords(
       select: { createdAt: true },
     }),
     db.path.findMany({
-      where: { published: true, enrollments: { none: { userId } } },
+      where: {
+        published: true,
+        deletedAt: null,
+        enrollments: { none: { userId } },
+      },
       orderBy: { enrollments: { _count: "desc" } },
       take: 3,
       select: {
@@ -96,6 +100,7 @@ export async function getDashboardRecords(
         where: {
           slug: recommendPathSlug(profile),
           published: true,
+          deletedAt: null,
           enrollments: { none: { userId } },
         },
         select: {

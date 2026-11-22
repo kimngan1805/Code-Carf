@@ -13,6 +13,7 @@ export function findRoomAccess(roomId: string, userId: string) {
           slug: true,
           title: true,
           published: true,
+          deletedAt: true,
           sequentialUnlock: true,
           enrollments: { where: { userId }, select: { userId: true }, take: 1 },
         },
@@ -39,7 +40,7 @@ export function findPreviousRoom(
 
 export function findRoomContent(roomId: string) {
   return db.room.findFirst({
-    where: { id: roomId, path: { published: true } },
+    where: { id: roomId, path: { published: true, deletedAt: null } },
     select: {
       id: true,
       title: true,
@@ -69,6 +70,7 @@ export function findRoomExerciseStatuses(roomId: string, userId: string) {
 
 export function listRooms() {
   return db.room.findMany({
+    where: { path: { published: true, deletedAt: null } },
     select: {
       id: true,
       title: true,

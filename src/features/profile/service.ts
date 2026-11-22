@@ -58,6 +58,24 @@ export function getSubmissionLanguageLabel(language: string | null): string {
   return languages.find((entry) => entry.id === language)?.label ?? language;
 }
 
+function countCompletedPaths(
+  enrollments: ReadonlyArray<{
+    path: { id: string; rooms: ReadonlyArray<{ id: string }> };
+  }>,
+  completedRoomIds: ReadonlySet<string>,
+): number {
+  const completedPathIds = new Set<string>();
+  for (const { path } of enrollments) {
+    if (
+      path.rooms.length > 0 &&
+      path.rooms.every((room) => completedRoomIds.has(room.id))
+    ) {
+      completedPathIds.add(path.id);
+    }
+  }
+  return completedPathIds.size;
+}
+
 /**
  * Explicitly constructs the public student profile DTO by picking only allowed fields.
  * Never spreads raw records so sensitive fields cannot leak at runtime.
@@ -100,9 +118,10 @@ export function buildPublicStudentProfile(
         a.slug.localeCompare(b.slug),
     );
 
-  const completedPaths = paths.filter(
-    (path) => path.total > 0 && path.completed === path.total,
-  ).length;
+  const completedPaths = countCompletedPaths(
+    record.enrollments,
+    completedRoomIds,
+  );
   const streak = resolveEffectiveStreak(
     {
       currentStreak: record.user.currentStreak,
@@ -139,8 +158,12 @@ function presentSubmissionItem(
     contextLabel = `Cuộc thi: ${row.contest.title}`;
     contextHref = `/contests/${row.contest.slug}`;
   } else if (row.exercise.room?.path) {
-    contextLabel = `${row.exercise.room.path.title} · ${row.exercise.room.title}`;
-    contextHref = `/hv/paths/${row.exercise.room.path.slug}`;
+    const path = row.exercise.room.path;
+    contextLabel = `${path.title} · ${row.exercise.room.title}`;
+    contextHref =
+      path.published !== false && path.deletedAt == null
+        ? `/hv/paths/${path.slug}`
+        : null;
   } else if (row.exercise.room) {
     contextLabel = row.exercise.room.title;
   }
@@ -180,6 +203,11 @@ export async function getOwnProfile(): Promise<OwnStudentProfile> {
   }
 
   const publicProfile = buildPublicStudentProfile(record);
+  const completedRoomIds = new Set(record.completedRoomIds);
+  const completedPaths = countCompletedPaths(
+    [...record.enrollments, ...extras.softDeletedEnrollments],
+    completedRoomIds,
+  );
 
   return {
     id: publicProfile.id,
@@ -187,7 +215,10 @@ export async function getOwnProfile(): Promise<OwnStudentProfile> {
     joinedAt: publicProfile.joinedAt,
     level: publicProfile.level,
     streak: publicProfile.streak,
-    stats: publicProfile.stats,
+    stats: {
+      ...publicProfile.stats,
+      completedPaths,
+    },
     paths: publicProfile.paths,
     badges: publicProfile.badges,
     email: extras.email,

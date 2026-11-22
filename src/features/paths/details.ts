@@ -14,18 +14,26 @@ export async function updateManagedPathDetails(body: unknown) {
       parsed.error.issues[0]?.message ?? "Thông tin lộ trình không hợp lệ.",
     );
   const { pathId, ...data } = parsed.data;
-  const where = {
-    id: pathId,
-    ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
-  };
-  const path = await db.path.findFirst({ where, select: { slug: true } });
+  const path = await db.path.findFirst({
+    where: { id: pathId, deletedAt: null },
+    select: { slug: true, creatorId: true },
+  });
   if (!path)
+    throw new AppError(404, "PATH_NOT_FOUND", "Không tìm thấy lộ trình.");
+  if (user.role.name !== "ADMIN" && path.creatorId !== user.id)
     throw new AppError(
-      404,
-      "PATH_NOT_FOUND",
-      "Không tìm thấy lộ trình bạn được quản lý.",
+      403,
+      "FORBIDDEN",
+      "Bạn không có quyền chỉnh sửa lộ trình này.",
     );
-  const result = await db.path.updateMany({ where, data });
+  const result = await db.path.updateMany({
+    where: {
+      id: pathId,
+      deletedAt: null,
+      ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
+    },
+    data,
+  });
   if (!result.count)
     throw new AppError(
       409,

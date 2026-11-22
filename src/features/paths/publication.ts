@@ -4,19 +4,21 @@ import { AppError } from "@/lib/errors";
 
 export async function setPathPublication(pathId: string, published: boolean) {
   const user = await requireRole(["TEACHER", "ADMIN"]);
-  const where = {
-    id: pathId,
-    ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
-  };
   const path = await db.path.findFirst({
-    where,
-    select: { slug: true, rooms: { select: { content: true } } },
+    where: { id: pathId, deletedAt: null },
+    select: {
+      slug: true,
+      creatorId: true,
+      rooms: { select: { content: true } },
+    },
   });
   if (!path)
+    throw new AppError(404, "PATH_NOT_FOUND", "Không tìm thấy lộ trình.");
+  if (user.role.name !== "ADMIN" && path.creatorId !== user.id)
     throw new AppError(
-      404,
-      "PATH_NOT_FOUND",
-      "Không tìm thấy lộ trình bạn được quản lý.",
+      403,
+      "FORBIDDEN",
+      "Bạn không có quyền thay đổi trạng thái xuất bản của lộ trình này.",
     );
   if (
     published &&
@@ -29,7 +31,9 @@ export async function setPathPublication(pathId: string, published: boolean) {
     );
   const result = await db.path.updateMany({
     where: {
-      ...where,
+      id: pathId,
+      deletedAt: null,
+      ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
       ...(published ? { rooms: { some: {}, none: { content: "" } } } : {}),
     },
     data: published ? { published, publishedAt: new Date() } : { published },
