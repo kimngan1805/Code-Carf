@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getManagedExercise } from "@/features/paths/management";
 import { ExerciseEditor } from "@/features/exercises/components/exercise-editor";
+import { PathBreadcrumb } from "@/features/paths/components/path-badges";
+import { getManagedExercise } from "@/features/paths/management";
 import { AppError } from "@/lib/errors";
 
 export default async function EditExercisePage({
@@ -16,15 +16,31 @@ export default async function EditExercisePage({
       throw error;
     },
   );
+
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-6">
-      <Link
-        href={`/gv/paths/${exercise.room.path.slug}/rooms/${exercise.room.id}`}
-        className="text-sm font-semibold text-primary hover:underline"
-      >
-        ← {exercise.room.title}
-      </Link>
-      <h1 className="text-2xl font-bold text-primary">Chỉnh sửa bài tập</h1>
+    <div className="mx-auto w-full max-w-5xl space-y-6">
+      <PathBreadcrumb
+        items={[
+          { label: "Quản lý lộ trình", href: "/gv/paths" },
+          {
+            label: "Chi tiết lộ trình",
+            href: `/gv/paths/${exercise.room.path.slug}`,
+          },
+          {
+            label: exercise.room.title,
+            href: `/gv/paths/${exercise.room.path.slug}/rooms/${exercise.room.id}`,
+          },
+          { label: "Chỉnh sửa bài tập" },
+        ]}
+      />
+      <header className="space-y-1.5">
+        <p className="text-xs font-semibold tracking-wide text-primary uppercase">
+          Bài tập thực hành
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          Chỉnh sửa bài tập
+        </h1>
+      </header>
       <ExerciseEditor
         pathSlug={exercise.room.path.slug}
         roomId={exercise.room.id}
