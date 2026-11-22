@@ -6,7 +6,10 @@ import { AppError } from "@/lib/errors";
 export async function getManagedPaths() {
   const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
   return db.path.findMany({
-    where: user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id },
+    where: {
+      deletedAt: null,
+      ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
+    },
     orderBy: [{ createdAt: "desc" }, { id: "asc" }],
     select: {
       id: true,
@@ -24,19 +27,68 @@ export async function setPathSequentialUnlock(
   enabled: boolean,
 ) {
   const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
+  const path = await db.path.findFirst({
+    where: { id: pathId, deletedAt: null },
+    select: { creatorId: true },
+  });
+  if (!path)
+    throw new AppError(404, "PATH_NOT_FOUND", "Không tìm thấy lộ trình.");
+  if (user.role.name !== RoleName.ADMIN && path.creatorId !== user.id)
+    throw new AppError(
+      403,
+      "FORBIDDEN",
+      "Bạn không có quyền chỉnh lộ trình này.",
+    );
   const result = await db.path.updateMany({
     where: {
       id: pathId,
+      deletedAt: null,
       ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
     },
     data: { sequentialUnlock: enabled },
   });
   if (result.count === 0)
     throw new AppError(
+      409,
+      "PATH_CHANGED",
+      "Lộ trình đã thay đổi. Vui lòng tải lại và thử lại.",
+    );
+}
+
+/** Xóa mềm lộ trình (đánh dấu deletedAt và gỡ xuất bản) để bảo toàn toàn bộ dữ liệu học tập của học viên. */
+export async function deleteManagedPath(pathId: string) {
+  const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
+  const normalizedId = typeof pathId === "string" ? pathId.trim() : "";
+  if (!normalizedId || normalizedId.length > 200)
+    throw new AppError(400, "INVALID_PATH", "Lộ trình không hợp lệ.");
+  const path = await db.path.findFirst({
+    where: { id: normalizedId, deletedAt: null },
+    select: { id: true, slug: true, creatorId: true },
+  });
+  if (!path)
+    throw new AppError(404, "PATH_NOT_FOUND", "Không tìm thấy lộ trình.");
+  if (user.role.name !== RoleName.ADMIN && path.creatorId !== user.id)
+    throw new AppError(
       403,
       "FORBIDDEN",
-      "Bạn không có quyền chỉnh lộ trình này.",
+      "Bạn không có quyền xóa lộ trình này.",
     );
+  const deletedAt = new Date();
+  const result = await db.path.updateMany({
+    where: {
+      id: normalizedId,
+      deletedAt: null,
+      ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
+    },
+    data: { deletedAt, published: false },
+  });
+  if (result.count === 0)
+    throw new AppError(
+      409,
+      "PATH_CHANGED",
+      "Lộ trình đã thay đổi. Vui lòng tải lại và thử lại.",
+    );
+  return { id: path.id, slug: path.slug, deletedAt };
 }
 
 export async function getManagedPath(slug: string) {
@@ -44,6 +96,7 @@ export async function getManagedPath(slug: string) {
   const path = await db.path.findFirst({
     where: {
       slug,
+      deletedAt: null,
       ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
     },
     select: {
@@ -86,6 +139,7 @@ export async function getManagedRoom(slug: string, roomId: string) {
       id: roomId,
       path: {
         slug,
+        deletedAt: null,
         ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
       },
     },
@@ -129,6 +183,7 @@ export async function getManagedExercise(
       room: {
         path: {
           slug,
+          deletedAt: null,
           ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
         },
       },

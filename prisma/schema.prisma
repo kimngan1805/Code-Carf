@@ -234,12 +234,17 @@ model Path {
   coverTheme       String       @default("blue")
   /// Lúc xuất bản gần nhất; null khi còn là bản nháp.
   publishedAt      DateTime?
+  /// Thời điểm xóa mềm; null khi lộ trình đang hoạt động.
+  deletedAt        DateTime?
   creatorId        String
   creator          User         @relation("PathCreator", fields: [creatorId], references: [id])
   rooms            Room[]
   enrollments      Enrollment[]
   xpEvents         XpEvent[]
   createdAt        DateTime     @default(now())
+
+  @@index([deletedAt, published])
+  @@index([creatorId, deletedAt])
 }
 
 model Room {
