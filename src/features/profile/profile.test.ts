@@ -459,6 +459,110 @@ describe("getOwnProfile", () => {
     });
   });
 
+  it("preserves stats.completedPaths for soft-deleted completed paths without double counting or exposing links", async () => {
+    requireRoleMock.mockResolvedValue({
+      id: "student-1",
+      role: { name: RoleName.STUDENT },
+    });
+    mockPublicDbStudent();
+    enrollmentFindManyMock.mockImplementation(async (args) => {
+      if (args?.where?.path?.deletedAt === null) {
+        return [
+          {
+            path: {
+              id: "active-done",
+              slug: "active-done",
+              title: "Lộ trình đang mở (đã xong)",
+              rooms: [{ id: "r1", title: "Bài 1" }],
+            },
+          },
+          {
+            path: {
+              id: "active-in-progress",
+              slug: "active-in-progress",
+              title: "Lộ trình đang học",
+              rooms: [
+                { id: "r2", title: "Bài 2" },
+                { id: "r3", title: "Bài 3" },
+              ],
+            },
+          },
+        ];
+      }
+      return [
+        // Soft-deleted and completed -> MUST be preserved in stats.completedPaths.
+        {
+          path: {
+            id: "deleted-done",
+            rooms: [{ id: "r1" }, { id: "r2" }],
+          },
+        },
+        // Duplicate active path id -> MUST NOT be double-counted.
+        {
+          path: {
+            id: "active-done",
+            rooms: [{ id: "r1" }],
+          },
+        },
+        // Soft-deleted but incomplete -> MUST NOT be counted.
+        {
+          path: {
+            id: "deleted-incomplete",
+            rooms: [{ id: "r1" }, { id: "r-missing" }],
+          },
+        },
+        // Soft-deleted empty path -> MUST NOT be counted.
+        {
+          path: {
+            id: "deleted-empty",
+            rooms: [],
+          },
+        },
+      ];
+    });
+    roomProgressFindManyMock.mockResolvedValue([
+      { roomId: "r1" },
+      { roomId: "r2" },
+    ]);
+    userFindUniqueMock.mockResolvedValue({ email: "student@local.test" });
+    submissionFindManyMock.mockResolvedValue([]);
+
+    const profile = await getOwnProfile();
+
+    expect(enrollmentFindManyMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: "student-1",
+          path: { published: true, deletedAt: null },
+        },
+      }),
+    );
+    expect(enrollmentFindManyMock).toHaveBeenCalledWith({
+      where: {
+        userId: "student-1",
+        path: { deletedAt: { not: null } },
+      },
+      select: {
+        path: {
+          select: {
+            id: true,
+            rooms: { select: { id: true } },
+          },
+        },
+      },
+    });
+    expect(profile.paths.map((p) => p.id)).toEqual([
+      "active-done",
+      "active-in-progress",
+    ]);
+    expect(profile.stats).toEqual({
+      enrolledPaths: 2,
+      completedPaths: 2,
+      roomsDone: 2,
+      badgesCount: 2,
+    });
+  });
+
   it("handles empty submission history cleanly", async () => {
     requireRoleMock.mockResolvedValue({
       id: "student-1",
@@ -510,6 +614,7 @@ describe("getPublicProfile", () => {
       where: { id: "student-2", role: { name: RoleName.STUDENT } },
       select: publicStudentSelect,
     });
+    expect(enrollmentFindManyMock).toHaveBeenCalledTimes(1);
     expect(enrollmentFindManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {

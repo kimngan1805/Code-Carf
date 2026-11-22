@@ -73,7 +73,7 @@ export async function findPublicStudentRecord(targetUserId: string) {
 }
 
 export async function findOwnPrivateProfileExtras(userId: string) {
-  const [account, submissions] = await Promise.all([
+  const [account, submissions, softDeletedEnrollments] = await Promise.all([
     db.user.findUnique({
       where: { id: userId },
       select: { email: true },
@@ -119,6 +119,18 @@ export async function findOwnPrivateProfileExtras(userId: string) {
         },
       },
     }),
+    // Only IDs are selected so private completion stats stay accurate without exposing deleted path content.
+    db.enrollment.findMany({
+      where: { userId, path: { deletedAt: { not: null } } },
+      select: {
+        path: {
+          select: {
+            id: true,
+            rooms: { select: { id: true } },
+          },
+        },
+      },
+    }),
   ]);
 
   if (!account) return null;
@@ -126,6 +138,7 @@ export async function findOwnPrivateProfileExtras(userId: string) {
   return {
     email: account.email,
     submissions,
+    softDeletedEnrollments,
   };
 }
 

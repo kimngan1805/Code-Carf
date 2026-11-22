@@ -472,6 +472,12 @@ describe.skipIf(!hasDatabase)(
       });
       expect(subResult.status).toBe(SubmissionStatus.ACCEPTED);
 
+      // Snapshot profile stats BEFORE soft delete.
+      const ownBefore = await getOwnProfile();
+      const publicBefore = await getPublicProfile(completedLearner.id);
+      expect(ownBefore.stats.completedPaths).toBe(1);
+      expect(publicBefore.profile.stats.completedPaths).toBe(1);
+
       // lateLearner has roomProgress on a path that gets soft-deleted before badge evaluation.
       await db.enrollment.create({
         data: { userId: lateLearnerRow.id, pathId: completedPath.id },
@@ -530,17 +536,23 @@ describe.skipIf(!hasDatabase)(
       expect(
         publicView.profile.paths.some((p) => p.id === completedPath.id),
       ).toBe(false);
+      expect(publicView.profile.stats.enrolledPaths).toBe(0);
+      expect(publicView.profile.stats.completedPaths).toBe(0);
       expect(publicView.profile.level.xp).toBe(75);
       expect(publicView.profile.stats.roomsDone).toBe(1);
       expect(
         publicView.profile.badges.some((b) => b.slug === "path-completed"),
       ).toBe(true);
 
-      // 6. Private Profile preserves submission history (with null href) and earned badges.
+      // 6. Private Profile preserves stats.completedPaths, submission history (with null href), and earned badges.
       const ownProfile = await getOwnProfile();
       expect(ownProfile.paths.some((p) => p.id === completedPath.id)).toBe(
         false,
       );
+      expect(ownProfile.stats.enrolledPaths).toBe(0);
+      expect(ownProfile.stats.completedPaths).toBe(1);
+      expect(ownProfile.level.xp).toBe(75);
+      expect(ownProfile.stats.roomsDone).toBe(1);
       expect(ownProfile.badges.some((b) => b.slug === "path-completed")).toBe(
         true,
       );
