@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useId, useState } from "react";
+import Link from "next/link";
 import { Flag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { reportExerciseAction, type ReportState } from "../actions";
@@ -26,6 +27,12 @@ export function ExerciseReportForm({ exerciseId }: { exerciseId: string }) {
         aria-label="Báo lỗi bài tập"
         aria-busy={pending}
       >
+        <Link
+          href="/hv/reports"
+          className="inline-block text-sm text-primary underline"
+        >
+          Xem báo lỗi và phản hồi của tôi
+        </Link>
         <p className="text-sm text-muted-foreground">
           Chọn loại lỗi và mô tả vấn đề bạn gặp ở bài tập này.
         </p>
