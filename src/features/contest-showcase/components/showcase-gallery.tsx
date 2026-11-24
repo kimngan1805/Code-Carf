@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useState, type CSSProperties } from "react";
 import { ChevronDown, Search, Trophy } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -9,7 +9,7 @@ import {
   type ShowcaseContest,
 } from "../catalog";
 import { filterShowcase } from "../gallery";
-import { ShowcaseContestCard } from "./contest-kinds";
+import { formatTint, ShowcaseContestCard } from "./contest-kinds";
 
 function Grid({ contests }: { contests: ShowcaseContest[] }) {
   return (
@@ -122,13 +122,22 @@ export function ShowcaseGallery({
             type="button"
             aria-pressed={format === tab.key}
             onClick={() => setFormat(tab.key)}
+            style={
+              tab.key === "all"
+                ? ({ "--tint": "var(--primary)" } as CSSProperties)
+                : formatTint(tab.key)
+            }
             className={cn(
               "-mb-px shrink-0 border-b-2 px-3 py-2.5 text-sm font-semibold whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-ring",
+              "inline-flex items-center gap-2",
               format === tab.key
-                ? "border-primary text-primary"
+                ? "border-(--tint) text-(--tint)"
                 : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
+            {tab.key !== "all" && (
+              <span aria-hidden className="size-2 rounded-full bg-(--tint)" />
+            )}
             {tab.label}
             <span className="ml-1.5 text-xs font-normal text-muted-foreground">
               {tab.count}

@@ -17,6 +17,8 @@ All colors, fonts, and radii are defined once in `src/app/globals.css` and expos
 
 The `--map-*` variables are the illustration palette of the contest island map (sea, sand, grass, stone, wood...). SVG drawings reference them as `fill="var(--map-sand)"`; do not use them anywhere else.
 
+The `--format-*` variables give each contest format (solo, duel, team, ranked, friendly, tournament, daily, classroom) its own tint. Contest cards and the format tabs set `--tint` to one of them and use `text-(--tint)`, `bg-(--tint)/10` and so on.
+
 ## Semantic tokens
 
 | Class                                        | Value                  | When to use                                  |
