@@ -7,8 +7,8 @@ function searchable(text: string) {
     .replace(/đ/gi, "d")
     .toLowerCase();
 }
-export function filterShowcase(
-  contests: PublicContest[],
+export function filterShowcase<T extends PublicContest>(
+  contests: T[],
   phase: string,
   query: string,
 ) {
