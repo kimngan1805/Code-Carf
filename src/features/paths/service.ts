@@ -1,5 +1,5 @@
 import { RoleName } from "@prisma/client";
-import { requireRole } from "@/features/auth/service";
+import { getCurrentUser, requireRole } from "@/features/auth/service";
 import { AppError } from "@/lib/errors";
 import {
   CATALOG_PATHS_PAGE_SIZE,
@@ -80,6 +80,23 @@ export async function getCatalogPathsPage(
     RoleName.TEACHER,
     RoleName.ADMIN,
   ]);
+  return loadCatalogPage(user.id, filters, options);
+}
+
+/** Trang khám phá công khai: khách xem được; người đã đăng nhập thấy kèm tiến độ của mình. */
+export async function getPublicCatalogPathsPage(
+  filters?: CatalogFilters,
+  options?: { page?: unknown; pageSize?: number },
+) {
+  const user = await getCurrentUser();
+  return loadCatalogPage(user?.id ?? null, filters, options);
+}
+
+async function loadCatalogPage(
+  userId: string | null,
+  filters?: CatalogFilters,
+  options?: { page?: unknown; pageSize?: number },
+) {
   const pageSize = normalizePageSize(
     options?.pageSize,
     CATALOG_PATHS_PAGE_SIZE,
@@ -90,7 +107,7 @@ export async function getCatalogPathsPage(
     totalItems === 0
       ? []
       : await listPublishedPathsPage(
-          user.id,
+          userId,
           filters,
           pagination.skip,
           pagination.pageSize,
@@ -109,6 +126,11 @@ export async function getCatalogTags() {
   return listPopularTags();
 }
 
+/** Chủ đề trên lộ trình đã xuất bản là dữ liệu công khai. */
+export function getPublicCatalogTags() {
+  return listPopularTags();
+}
+
 export async function getPath(slug: string) {
   const user = await requireRole([
     RoleName.STUDENT,
@@ -122,6 +144,13 @@ export async function getPath(slug: string) {
     ...presentPath(path),
     canEnroll: user.role.name === RoleName.STUDENT,
   };
+}
+
+/** Trang chi tiết công khai: khách xem được; người đã đăng nhập thấy kèm tiến độ của mình. */
+export async function getPublicPath(slug: string) {
+  const user = await getCurrentUser();
+  const path = await findPublishedPath(slug, user?.id ?? null);
+  return path ? presentPath(path) : null;
 }
 
 export async function registerForPath(slug: string) {
