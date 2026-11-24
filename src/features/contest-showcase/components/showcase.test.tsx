@@ -3,8 +3,9 @@ import { expect, it, vi } from "vitest";
 vi.mock("@/features/auth/actions", () => ({ logoutAction: vi.fn() }));
 import { SiteHeader } from "@/components/site-header";
 import { Hero } from "@/features/landing/components/hero";
-import { ContestCard } from "./contest-card";
-import { ContestGallery } from "./contest-gallery";
+import { ShowcaseContestCard, ShowcaseHero } from "./contest-kinds";
+import { ShowcaseGallery } from "./showcase-gallery";
+import { withProfile } from "../catalog";
 import type { PublicContest } from "../service";
 
 const contest: PublicContest = {
@@ -32,16 +33,20 @@ it("links desktop/mobile landing navigation and hero to the public showcase", ()
   expect(html).not.toContain('href="/contests"');
 });
 it("links contest cards to public introductions and escapes authored descriptions", () => {
-  const html = renderToStaticMarkup(<ContestCard contest={contest} featured />);
+  const html = renderToStaticMarkup(
+    <>
+      <ShowcaseHero featured={withProfile(contest)} />
+      <ShowcaseContestCard contest={withProfile(contest)} />
+    </>,
+  );
   expect(html).toContain('href="/thi-dau/public-event"');
   expect(html).not.toContain('href="/contests');
   expect(html).not.toContain("<script>");
-  expect(html).toContain("60 phút / thí sinh");
   expect(html).toContain("Sắp diễn ra");
-  expect(html).toContain("Đang mở đăng ký");
+  expect(html).toContain("Nhiệm vụ cá nhân");
 });
 it("shows an informative empty gallery rather than a login prompt", () => {
-  const html = renderToStaticMarkup(<ContestGallery contests={[]} />);
+  const html = renderToStaticMarkup(<ShowcaseGallery contests={[]} />);
   expect(html).toContain("Thử thách mới đang được chuẩn bị");
   expect(html).not.toContain('href="/login"');
 });
