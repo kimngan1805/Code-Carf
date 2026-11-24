@@ -1,37 +1,43 @@
 import type { Metadata } from "next";
 import { connection } from "next/server";
-import { getPublicShowcase } from "@/features/contest-showcase/service";
-import { ContestCard } from "@/features/contest-showcase/components/contest-card";
-import { ContestGallery } from "@/features/contest-showcase/components/contest-gallery";
+import { getShowcaseContests } from "@/features/contest-showcase/service";
 import {
-  ShowcaseGuide,
-  ShowcaseIntro,
-} from "@/features/contest-showcase/components/showcase-intro";
+  CONTEST_FORMATS,
+  type ContestFormatKey,
+} from "@/features/contest-showcase/catalog";
+import { ShowcaseHero } from "@/features/contest-showcase/components/contest-kinds";
+import { ShowcaseGallery } from "@/features/contest-showcase/components/showcase-gallery";
+import { ShowcaseGuide } from "@/features/contest-showcase/components/showcase-intro";
 
 export const metadata: Metadata = {
   title: "Khám phá thi đấu · Code Carf",
   description:
     "Khám phá các cuộc thi lập trình, tìm thử thách phù hợp và sẵn sàng chinh phục cùng Code Carf.",
 };
-export default async function ShowcasePage() {
+
+export default async function ShowcasePage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   await connection();
-  const contests = await getPublicShowcase();
+  const format = (await searchParams)["hinh-thuc"];
+  const initialFormat =
+    typeof format === "string" && format in CONTEST_FORMATS
+      ? (format as ContestFormatKey)
+      : undefined;
+  const contests = await getShowcaseContests();
+  const open = contests.filter((contest) => contest.phase !== "ended");
+  const featured = open.find((contest) => contest.profile.journey) ?? open[0];
   return (
-    <main>
-      <ShowcaseIntro />
+    <main className="bg-gradient-to-b from-background via-secondary/10 to-background">
+      <ShowcaseHero featured={featured} />
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
-        {contests[0] && (
-          <section aria-labelledby="featured-title" className="pt-14 sm:pt-16">
-            <h2
-              id="featured-title"
-              className="mb-5 text-xs font-bold tracking-[0.2em] text-accent-strong uppercase"
-            >
-              CUỘC THI NỔI BẬT
-            </h2>
-            <ContestCard contest={contests[0]} featured />
-          </section>
-        )}
-        <ContestGallery contests={contests} />
+        <ShowcaseGallery
+          key={initialFormat ?? "all"}
+          contests={contests}
+          initialFormat={initialFormat}
+        />
         <ShowcaseGuide />
       </div>
     </main>

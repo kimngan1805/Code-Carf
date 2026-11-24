@@ -15,6 +15,8 @@ All colors, fonts, and radii are defined once in `src/app/globals.css` and expos
 
 `bg-brand-*` / `text-brand-*` classes exist for illustrations and marketing sections only. In app UI, use the semantic tokens below.
 
+The `--map-*` variables are the illustration palette of the contest island map (sea, sand, grass, stone, wood...). SVG drawings reference them as `fill="var(--map-sand)"`; do not use them anywhere else.
+
 ## Semantic tokens
 
 | Class                                        | Value                  | When to use                                  |

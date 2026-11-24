@@ -15,6 +15,51 @@
   --brand-gray: #737373;
   --brand-gray-light: #d9d9d9;
 
+  /* Layer 1: illustration palette for the contest island map (journey-art.tsx). Never use in app UI. */
+  --map-sea-deep: #0b8fd8;
+  --map-sea: #49bff2;
+  --map-water-deep: #2fa6e3;
+  --map-water: #47b9ef;
+  --map-island-shadow: #06598f;
+  --map-sand: #f3d98c;
+  --map-trail: #e7cf8a;
+  --map-grass-light: #86d46c;
+  --map-grass: #68bd58;
+  --map-hill: #5daf4f;
+  --map-tuft: #4fa94a;
+  --map-ground-shade: #3c8f3a;
+  --map-leaf: #3fb950;
+  --map-leaf-dark: #2f9e44;
+  --map-bush: #4caf50;
+  --map-bush-dark: #3d9a43;
+  --map-wood: #b07a45;
+  --map-wood-dark: #8b5a2b;
+  --map-bark: #6b3e1d;
+  --map-hull: #8b4a22;
+  --map-hull-light: #a65b2b;
+  --map-sail: #e9f2fb;
+  --map-stone-light: #eef1f5;
+  --map-stone-face: #d8dde3;
+  --map-stone: #cdd3db;
+  --map-stone-dark: #b8c0ca;
+  --map-rock: #9aa1aa;
+  --map-rock-dark: #848b94;
+  --map-cave: #2f333b;
+  --map-moai: #8d949c;
+  --map-moai-dark: #757c84;
+  --map-moai-nose: #6b7178;
+  --map-moai-line: #5f656c;
+  --map-gold: #f2c45a;
+  --map-gold-dark: #d39a2f;
+  --map-gold-line: #c08425;
+  --map-door: #7a4f12;
+  --map-volcano: #a8693f;
+  --map-volcano-dark: #8a512d;
+  --map-crater: #5a2e18;
+  --map-lava: #f97316;
+  --map-smoke: #d5dde6;
+  --map-lotus: #f9a8d4;
+
   /* Layer 2: semantic tokens */
   --background: #ffffff;
   --foreground: #1a1a1a;

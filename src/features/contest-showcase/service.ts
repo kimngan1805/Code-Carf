@@ -4,6 +4,7 @@ import {
   getExamPhase,
   type ContestPhase,
 } from "@/features/contests/time";
+import { sampleContests, withProfile, type ShowcaseContest } from "./catalog";
 import {
   findPublicContest,
   listPublicContests,
@@ -36,18 +37,34 @@ const priority: Record<ContestPhase, number> = {
   unscheduled: 2,
   ended: 3,
 };
+function byPriority(a: PublicContest, b: PublicContest) {
+  if (a.phase !== b.phase) return priority[a.phase] - priority[b.phase];
+  const aTime = a.examStartsAt ? Date.parse(a.examStartsAt) : 0;
+  const bTime = b.examStartsAt ? Date.parse(b.examStartsAt) : 0;
+  return (
+    (a.phase === "ended" ? bTime - aTime : aTime - bTime) ||
+    a.slug.localeCompare(b.slug)
+  );
+}
 export async function getPublicShowcase(now = Date.now()) {
   return (await listPublicContests())
     .map((contest) => presentPublicContest(contest, now))
-    .sort((a, b) => {
-      if (a.phase !== b.phase) return priority[a.phase] - priority[b.phase];
-      const aTime = a.examStartsAt ? Date.parse(a.examStartsAt) : 0;
-      const bTime = b.examStartsAt ? Date.parse(b.examStartsAt) : 0;
-      return (
-        (a.phase === "ended" ? bTime - aTime : aTime - bTime) ||
-        a.slug.localeCompare(b.slug)
-      );
-    });
+    .sort(byPriority);
+}
+/** Cuộc thi thật kèm hồ sơ mặc định, cộng các cuộc thi mẫu để duyệt giao diện. */
+export async function getShowcaseContests(
+  now = Date.now(),
+): Promise<ShowcaseContest[]> {
+  const real = (await getPublicShowcase(now)).map(withProfile);
+  return [...real, ...sampleContests(now)].sort(byPriority);
+}
+export async function getShowcaseContest(
+  slug: string,
+  now = Date.now(),
+): Promise<ShowcaseContest> {
+  const sample = sampleContests(now).find((contest) => contest.slug === slug);
+  if (sample) return sample;
+  return withProfile(await getPublicContest(slug, now));
 }
 export async function getPublicContest(slug: string, now = Date.now()) {
   const contest = await findPublicContest(slug);
