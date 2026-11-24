@@ -3,7 +3,7 @@ import { CodeXml, Menu, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const navItems = [
-  { href: "/hv/paths", label: "Học tập" },
+  { href: "/lo-trinh", label: "Khám phá lộ trình" },
   { href: "/thi-dau", label: "Thi đấu" },
   { href: "/leaderboard", label: "Bảng xếp hạng" },
   { href: "/hv/profile", label: "Hồ sơ" },
