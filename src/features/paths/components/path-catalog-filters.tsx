@@ -13,9 +13,11 @@ const fieldClass =
 export function PathCatalogFilters({
   filters,
   tags,
+  basePath = "/hv/paths",
 }: {
   filters: CatalogFilters;
   tags: string[];
+  basePath?: string;
 }) {
   const href = (tag?: string) => {
     const params = new URLSearchParams();
@@ -24,13 +26,13 @@ export function PathCatalogFilters({
     if (filters.sort === "popular") params.set("sort", "popular");
     if (tag) params.set("tag", tag);
     const query = params.toString();
-    return query ? `/hv/paths?${query}` : "/hv/paths";
+    return query ? `${basePath}?${query}` : basePath;
   };
   return (
     <section aria-label="Tìm và lọc lộ trình" className="mt-6 space-y-4">
       <form
         method="get"
-        action="/hv/paths"
+        action={basePath}
         className="flex flex-wrap items-end gap-3"
       >
         {filters.tag && <input type="hidden" name="tag" value={filters.tag} />}
@@ -89,7 +91,7 @@ export function PathCatalogFilters({
         <Button type="submit">Áp dụng</Button>
         {hasActiveFilters(filters) && (
           <Button asChild variant="ghost">
-            <Link href="/hv/paths">Xóa bộ lọc</Link>
+            <Link href={basePath}>Xóa bộ lọc</Link>
           </Button>
         )}
       </form>

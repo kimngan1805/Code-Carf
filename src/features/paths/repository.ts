@@ -8,7 +8,9 @@ export type CatalogFilters = {
   sort: "newest" | "popular";
 };
 
-function learnerSelection(userId: string) {
+/** `userId` null là khách chưa đăng nhập: không lấy đăng ký hay tiến độ của ai cả. */
+function learnerSelection(userId: string | null) {
+  const own = userId ? { where: { userId } } : { take: 0 };
   return {
     id: true,
     slug: true,
@@ -33,7 +35,7 @@ function learnerSelection(userId: string) {
       },
     },
     _count: { select: { enrollments: true } },
-    enrollments: { where: { userId }, select: { userId: true }, take: 1 },
+    enrollments: { ...own, select: { userId: true }, take: userId ? 1 : 0 },
     rooms: {
       orderBy: { position: "asc" as const },
       select: {
@@ -41,7 +43,7 @@ function learnerSelection(userId: string) {
         title: true,
         description: true,
         position: true,
-        progress: { where: { userId }, select: { roomId: true } },
+        progress: { ...own, select: { roomId: true } },
         _count: { select: { exercises: true } },
       },
     },
@@ -90,7 +92,7 @@ export function countPublishedPaths(filters?: CatalogFilters) {
 }
 
 export function listPublishedPathsPage(
-  userId: string,
+  userId: string | null,
   filters: CatalogFilters | undefined,
   skip: number,
   take: number,
@@ -119,7 +121,7 @@ export async function listPopularTags(limit = 12) {
     .map(([tag]) => tag);
 }
 
-export function findPublishedPath(slug: string, userId: string) {
+export function findPublishedPath(slug: string, userId: string | null) {
   return db.path.findFirst({
     where: { slug, published: true, deletedAt: null },
     select: learnerSelection(userId),
