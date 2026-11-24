@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +40,10 @@ const FORMAT_ICONS: Record<ContestFormatKey, LucideIcon> = {
   classroom: GraduationCap,
 };
 
+/** Gán `--tint` theo hình thức để thẻ, chip và tab cùng một màu. */
+export const formatTint = (format: ContestFormatKey) =>
+  ({ "--tint": `var(--format-${format})` }) as CSSProperties;
+
 export const contestHref = (slug: string) =>
   `/thi-dau/${encodeURIComponent(slug)}`;
 
@@ -73,7 +78,10 @@ export function ContestArt({
 export function FormatChip({ format }: { format: ContestFormatKey }) {
   const Icon = FORMAT_ICONS[format];
   return (
-    <span className="inline-flex items-center gap-1 rounded-md border border-primary/20 bg-background px-2 py-0.5 text-xs font-semibold text-primary">
+    <span
+      style={formatTint(format)}
+      className="inline-flex items-center gap-1 rounded-md border border-(--tint)/25 bg-(--tint)/10 px-2 py-0.5 text-xs font-semibold text-(--tint)"
+    >
       <Icon aria-hidden className="size-3.5" />
       {CONTEST_FORMATS[format].label}
     </span>
@@ -235,11 +243,20 @@ export function ShowcaseContestCard({ contest }: { contest: ShowcaseContest }) {
   const format = CONTEST_FORMATS[contest.profile.format];
   const type = CONTEST_TYPES[contest.profile.type];
   return (
-    <article className="group relative flex h-full flex-col gap-3 rounded-2xl border-2 border-primary/15 bg-background p-5 transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-[4px_4px_0_0_var(--brand-blue)]">
+    <article
+      style={formatTint(contest.profile.format)}
+      className="group relative flex h-full flex-col gap-3 overflow-hidden rounded-2xl border-2 border-(--tint)/20 bg-background p-5 pt-6 transition-all hover:-translate-y-0.5 hover:border-(--tint) hover:shadow-[4px_4px_0_0_var(--tint)]"
+    >
+      <span
+        aria-hidden
+        className="absolute inset-x-0 top-0 h-1.5 bg-(--tint)"
+      />
       <div className="flex items-center justify-between gap-2">
-        <p className="truncate text-xs">
-          <span className="font-semibold text-primary">{format.name}</span>
-          <span className="text-muted-foreground"> · {type.label}</span>
+        <p className="flex min-w-0 items-center gap-2 text-xs">
+          <span className="shrink-0 rounded-md bg-(--tint)/10 px-2 py-0.5 font-semibold text-(--tint)">
+            {format.name}
+          </span>
+          <span className="truncate text-muted-foreground">{type.label}</span>
         </p>
         {contest.sample && <SampleBadge />}
       </div>

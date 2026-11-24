@@ -15,6 +15,16 @@
   --brand-gray: #737373;
   --brand-gray-light: #d9d9d9;
 
+  /* Layer 1: one tint per contest format (contest cards, tabs). Dark enough for text on white. */
+  --format-solo: #004da9;
+  --format-duel: #b91c1c;
+  --format-team: #7c3aed;
+  --format-ranked: #4338ca;
+  --format-friendly: #15803d;
+  --format-tournament: #0f766e;
+  --format-daily: #c4501a;
+  --format-classroom: #be185d;
+
   /* Layer 1: illustration palette for the contest island map (journey-art.tsx). Never use in app UI. */
   --map-sea-deep: #0b8fd8;
   --map-sea: #49bff2;
