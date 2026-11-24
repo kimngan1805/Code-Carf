@@ -26,6 +26,7 @@ export function PublicSiteLayout({ children }: { children: React.ReactNode }) {
           >
             <Link href="/lo-trinh">Khám phá lộ trình</Link>
             <Link href="/thi-dau">Khám phá thi đấu</Link>
+            <Link href="/bang-xep-hang">Bảng xếp hạng</Link>
             <Link href="/login">Đăng nhập</Link>
           </nav>
         </div>

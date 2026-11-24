@@ -5,8 +5,7 @@ import { Button } from "@/components/ui/button";
 const navItems = [
   { href: "/lo-trinh", label: "Khám phá lộ trình" },
   { href: "/thi-dau", label: "Thi đấu" },
-  { href: "/leaderboard", label: "Bảng xếp hạng" },
-  { href: "/hv/profile", label: "Hồ sơ" },
+  { href: "/bang-xep-hang", label: "Bảng xếp hạng" },
 ];
 
 export function SiteHeader() {
