@@ -53,6 +53,31 @@ DATABASE_URL="<supabase session pooler url>" SEED_TEACHER_EMAIL="<teacher email>
 
 It is safe to run again: the path, rooms, exercises and test cases are updated in place.
 
+## 5. Contest reminders scheduler (Issue #48)
+
+Upcoming contest reminders are triggered by the GitHub Actions workflow `.github/workflows/contest-reminders.yml` (`*/30 * * * *` UTC and `workflow_dispatch`), which sends `POST {APP_URL}/api/cron/contest-reminders`.
+
+> **Important:** Scheduled (`schedule`) workflows only run automatically on the repository's default branch (`main`) after the workflow is merged. They do not run on a schedule from feature branches.
+
+### GitHub Repository configuration
+
+1. Open **Settings → Secrets and variables → Actions**.
+2. Under **Variables**, create `APP_URL` with the deployed base URL (for example, `https://code-carf.onrender.com`; trailing slashes are handled automatically). You may also store `APP_URL` as a Secret if preferred.
+3. Under **Secrets**, create `CRON_SECRET` with a strong random secret.
+
+### Render configuration
+
+1. In the Render dashboard for the web service, set Environment Variable `CRON_SECRET` to the **exact same value** as the GitHub Secret `CRON_SECRET`.
+2. Ensure PostgreSQL has applied the Issue #48 migration (`prisma/migrations/20261117000000_in_app_notifications`, run automatically on container start via `prisma migrate deploy`).
+
+### Verification after merging to `main`
+
+1. Confirm the Render deployment succeeds.
+2. Open **GitHub Actions → Contest Reminders**.
+3. Click **Run workflow** to trigger a manual run.
+4. Verify the workflow completes with HTTP `200` and logs the JSON summary (`contestsScanned`, `notificationsCreated`).
+5. Verify the expected `CONTEST_UPCOMING` notifications appear in PostgreSQL (`Notification` table) or in the bell UI for registered participants.
+
 ## Notes
 
 - Email is not sent yet (the console mailer only logs). Tracked in #109.
