@@ -142,6 +142,15 @@ describe("notifications service", () => {
         readAt: null,
         createdAt: now,
       },
+      {
+        id: "n-2",
+        type: "REPORT_RESOLVED",
+        title: "Báo lỗi đã xử lý: Two Sum",
+        body: "Đã cập nhật bộ test.",
+        href: "/hv/reports?report=rep-1#rep-1",
+        readAt: null,
+        createdAt: now,
+      },
     ]);
     mocks.count.mockResolvedValue(3);
 
@@ -165,6 +174,15 @@ describe("notifications service", () => {
           title: "Bài học mới",
           body: "Vừa thêm bài mới",
           href: "/hv/rooms/r-1",
+          readAt: null,
+          createdAt: now.toISOString(),
+        },
+        {
+          id: "n-2",
+          type: "REPORT_RESOLVED",
+          title: "Báo lỗi đã xử lý: Two Sum",
+          body: "Đã cập nhật bộ test.",
+          href: "/hv/reports?report=rep-1#rep-1",
           readAt: null,
           createdAt: now.toISOString(),
         },

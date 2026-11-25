@@ -107,12 +107,6 @@ enum ProctoringEventType {
   MULTIPLE_FACES
 }
 
-enum NotificationType {
-  NEW_LESSON
-  CONTEST_UPCOMING
-  SUBMISSION_RESULT
-}
-
 model Role {
   id    String   @id @default(cuid())
   name  RoleName @unique
@@ -153,7 +147,6 @@ model User {
   handledReports       ExerciseReport[]     @relation("ReportHandler")
   notifications        Notification[]
   passwordResetToken   PasswordResetToken?
-  notifications        Notification[]
 
   @@index([xp])
 }
@@ -565,21 +558,4 @@ model UserBadge {
   awardedAt DateTime @default(now())
 
   @@id([userId, badgeId])
-}
-
-model Notification {
-  id        String           @id @default(cuid())
-  userId    String
-  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  type      NotificationType
-  title     String
-  body      String
-  href      String?
-  readAt    DateTime?
-  dedupeKey String?
-  createdAt DateTime         @default(now())
-
-  @@unique([userId, dedupeKey])
-  @@index([userId, createdAt(sort: Desc)])
-  @@index([userId, readAt, createdAt(sort: Desc)])
 }

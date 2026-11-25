@@ -7,6 +7,7 @@ import {
   BookOpen,
   CalendarClock,
   CheckCheck,
+  CheckCircle2,
   Loader2,
   Trophy,
 } from "lucide-react";
@@ -45,6 +46,9 @@ function NotificationTypeIcon({ type }: { type: NotificationKind }) {
   if (type === "CONTEST_UPCOMING") {
     return <CalendarClock className="size-4 shrink-0" aria-hidden />;
   }
+  if (type === "REPORT_RESOLVED") {
+    return <CheckCircle2 className="size-4 shrink-0" aria-hidden />;
+  }
   return <Trophy className="size-4 shrink-0" aria-hidden />;
 }
 
@@ -52,6 +56,7 @@ const ICON_TONE_CLASS: Record<NotificationKind, string> = {
   NEW_LESSON: "bg-secondary text-secondary-foreground",
   CONTEST_UPCOMING: "bg-accent/15 text-accent-strong",
   SUBMISSION_RESULT: "bg-primary/10 text-primary",
+  REPORT_RESOLVED: "bg-success/15 text-success",
 };
 
 export function NotificationBell() {
@@ -383,8 +388,8 @@ export function NotificationBell() {
                   Chưa có thông báo nào
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Bài học mới, lịch thi sắp diễn ra và kết quả chấm bài sẽ hiển
-                  thị tại đây.
+                  Bài học mới, lịch thi sắp diễn ra, kết quả chấm bài và phản
+                  hồi báo lỗi sẽ hiển thị tại đây.
                 </p>
               </div>
             ) : (
