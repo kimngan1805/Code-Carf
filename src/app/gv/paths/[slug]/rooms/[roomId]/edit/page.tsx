@@ -37,8 +37,13 @@ export default async function EditLessonPage({
           Chỉnh sửa bài học
         </h1>
       </header>
-      <LessonEditor pathSlug={room.path.slug} room={room} />
-      <LessonAttachments roomId={room.id} initial={room.attachments} />
+      <LessonEditor
+        pathSlug={room.path.slug}
+        room={room}
+        attachments={
+          <LessonAttachments roomId={room.id} initial={room.attachments} />
+        }
+      />
     </div>
   );
 }

@@ -83,11 +83,13 @@ export function RoomAttachments({
                   <summary className="cursor-pointer rounded text-sm font-semibold text-primary focus-visible:outline-2 focus-visible:outline-ring">
                     Xem tài liệu
                   </summary>
+                  {/* Gọn cho học viên: ẩn thanh công cụ và cột ảnh thu nhỏ của trình xem PDF,
+                      vừa chiều ngang để trang đầu hiện trọn. Khung theo tỉ lệ A4 dọc. */}
                   <iframe
-                    src={href}
+                    src={`${href}#toolbar=0&navpanes=0&view=FitH`}
                     title={`Tài liệu: ${file.fileName}`}
                     loading="lazy"
-                    className="mt-4 h-[75vh] min-h-96 w-full rounded-xl border bg-muted/20"
+                    className="mt-4 aspect-[210/297] max-h-[90vh] w-full rounded-xl border bg-muted/20"
                   />
                 </details>
               )}

@@ -11,10 +11,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { getRoomPage } from "../service";
+import { stripLessonTemplate } from "@/features/paths/lesson-structure";
 import { RoomMarkdown } from "./room-markdown";
 import { RefreshRoom } from "./refresh-room";
 import { RoomAttachments } from "./room-attachments";
 import { ExerciseReportForm } from "@/features/exercise-reports/components/report-form";
+
+const EXERCISE_KIND_LABELS = {
+  CODE: "Lập trình",
+  HANDWRITTEN: "Tự luận",
+  QUIZ: "Trắc nghiệm",
+} as const;
 
 const states = {
   not_started: {
@@ -42,11 +49,14 @@ export function RoomView({
   preview?: {
     backHref: string;
     editHref: string;
-    roomPublished: boolean;
     pathPublished: boolean;
   };
 }) {
   const isPreview = Boolean(preview);
+  // Nội dung chữ không bắt buộc: bài có thể chỉ có slide/PDF hoặc bài tập.
+  // Khung mẫu chưa điền không hiện cho học viên.
+  const theory = room.accessible ? stripLessonTemplate(room.content) : "";
+  const hasTheory = theory !== "";
   const backHref = preview ? preview.backHref : `/hv/paths/${room.path.slug}`;
   const backLabel = preview ? "Quay lại quản lý bài học" : room.path.title;
   return (
@@ -65,19 +75,21 @@ export function RoomView({
               </span>
               <span
                 className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                  preview.roomPublished
+                  preview.pathPublished
                     ? "bg-success/15 text-success"
                     : "bg-warning/15 text-warning"
                 }`}
               >
-                {preview.roomPublished ? "Đã xuất bản" : "Bản nháp"}
+                {preview.pathPublished
+                  ? "Lộ trình đã xuất bản"
+                  : "Lộ trình bản nháp"}
               </span>
             </div>
             <p className="text-xs text-muted-foreground">
               Hiển thị giao diện như học viên nhìn thấy (tiến độ mô phỏng, không
               lưu bài nộp thật).
               {!preview.pathPublished &&
-                " Lộ trình chứa bài học này hiện đang ở bản nháp."}
+                " Học viên chỉ thấy bài này sau khi lộ trình được xuất bản."}
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -141,21 +153,31 @@ export function RoomView({
             {!isPreview && <RefreshRoom />}
           </header>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_18rem]">
-            <section
-              className="min-w-0 space-y-5 rounded-2xl border bg-background p-4 sm:p-6"
-              aria-labelledby="theory-title"
-            >
-              <h2 id="theory-title" className="text-xl font-semibold">
-                Lý thuyết
-              </h2>
-              {room.content.trim() ? (
-                <RoomMarkdown content={room.content} />
-              ) : (
+            {hasTheory ? (
+              <section
+                className="min-w-0 space-y-5 rounded-2xl border bg-background p-4 sm:p-6"
+                aria-labelledby="theory-title"
+              >
+                <h2 id="theory-title" className="text-xl font-semibold">
+                  Lý thuyết
+                </h2>
+                <RoomMarkdown content={theory} />
+              </section>
+            ) : room.attachments.length ? (
+              // Bài chỉ có slide/PDF: tài liệu chiếm chỗ phần lý thuyết.
+              <div className="min-w-0">
+                <RoomAttachments
+                  roomId={room.id}
+                  attachments={room.attachments}
+                />
+              </div>
+            ) : (
+              <section className="min-w-0 rounded-2xl border bg-background p-4 sm:p-6">
                 <p className="text-muted-foreground">
-                  Bài học chưa có nội dung lý thuyết.
+                  Bài học này gồm các bài tập thực hành bên dưới.
                 </p>
-              )}
-            </section>
+              </section>
+            )}
             <aside className="h-fit space-y-4 rounded-2xl border bg-background p-5">
               <h2 className="font-semibold">Tiến độ bài tập</h2>
               <p className="text-3xl font-bold text-primary">
@@ -189,7 +211,9 @@ export function RoomView({
               </ul>
             </aside>
           </div>
-          <RoomAttachments roomId={room.id} attachments={room.attachments} />
+          {hasTheory && (
+            <RoomAttachments roomId={room.id} attachments={room.attachments} />
+          )}
           <section className="space-y-4" aria-labelledby="exercises-title">
             <h2 id="exercises-title" className="text-xl font-semibold">
               Bài tập ({room.exercises.length})
@@ -213,7 +237,7 @@ export function RoomView({
                           {index + 1}. {exercise.title}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          {exercise.kind === "CODE" ? "Lập trình" : "Tự luận"} ·{" "}
+                          {EXERCISE_KIND_LABELS[exercise.kind]} ·{" "}
                           {exercise.points} điểm
                         </p>
                       </div>
@@ -227,9 +251,9 @@ export function RoomView({
                     {isPreview ? (
                       <div className="mt-4 flex flex-wrap items-center gap-2">
                         <Button type="button" size="sm" disabled>
-                          {exercise.kind === "CODE"
-                            ? "Làm bài"
-                            : "Nộp ảnh bài làm"}
+                          {exercise.kind === "HANDWRITTEN"
+                            ? "Nộp ảnh bài làm"
+                            : "Làm bài"}
                         </Button>
                         <span className="text-xs text-muted-foreground">
                           Chế độ xem trước — chỉ học viên mới nộp bài.
@@ -238,9 +262,9 @@ export function RoomView({
                     ) : (
                       <Button asChild size="sm" className="mt-4">
                         <Link href={`/hv/exercises/${exercise.id}`}>
-                          {exercise.kind === "CODE"
-                            ? "Làm bài"
-                            : "Nộp ảnh bài làm"}
+                          {exercise.kind === "HANDWRITTEN"
+                            ? "Nộp ảnh bài làm"
+                            : "Làm bài"}
                         </Link>
                       </Button>
                     )}

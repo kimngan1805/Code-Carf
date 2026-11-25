@@ -67,6 +67,13 @@ it("creates a lesson at the end of the owned path and preserves Markdown", async
     isolationLevel: "Serializable",
   });
 });
+it.each([{ content: "" }, { content: " \n " }, { content: undefined }])(
+  "accepts a lesson without text (slide/PDF or exercises only) and stores it as empty: %j",
+  async (fields) => {
+    await saveManagedLesson({ ...input, ...fields });
+    expect(mocks.create.mock.calls[0][0].data.content).toBe("");
+  },
+);
 it("starts the first lesson at position one", async () => {
   mocks.aggregate.mockResolvedValue({ _max: { position: null } });
   await saveManagedLesson(input);
@@ -74,7 +81,6 @@ it("starts the first lesson at position one", async () => {
 });
 it.each([
   { title: " " },
-  { content: " \n " },
   { title: "x".repeat(101) },
   { description: "x".repeat(5001) },
   { content: "x".repeat(100001) },
@@ -179,18 +185,31 @@ it("bounds conflict retries and does not hide other database errors", async () =
   await expect(saveManagedLesson(input)).rejects.toThrow("Database offline");
 });
 
-it("does not notify enrolled learners when creating a new draft lesson, even inside a published path", async () => {
+it("publishes a lesson added to a published path right away and tells enrolled learners", async () => {
   mocks.path.mockResolvedValue({
     id: "path-1",
     slug: "my-path",
     title: "Lộ trình TS",
     published: true,
   });
+  mocks.create.mockImplementation(async ({ data }) => ({
+    id: data.id,
+    title: data.title,
+  }));
 
-  await saveManagedLesson(input);
-  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
+  const room = await saveManagedLesson(input);
+  expect(mocks.create.mock.calls[0][0].data.published).toBe(true);
+  expect(mocks.notifyNewLessonPublished).toHaveBeenCalledTimes(1);
+  expect(mocks.notifyNewLessonPublished).toHaveBeenCalledWith({
+    pathId: "path-1",
+    pathTitle: "Lộ trình TS",
+    roomId: room.id,
+    roomTitle: "Lesson",
+    actorUserId: "teacher-1",
+  });
 
-  // Updating an existing room must not notify either.
+  // Updating an existing room must not notify.
+  mocks.notifyNewLessonPublished.mockClear();
   await saveManagedLesson({
     pathSlug: input.pathSlug,
     title: input.title,
@@ -198,5 +217,17 @@ it("does not notify enrolled learners when creating a new draft lesson, even ins
     content: input.content,
     roomId: "room-1",
   });
+  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
+});
+
+it("keeps a lesson in a draft path hidden and silent until the path is published", async () => {
+  mocks.path.mockResolvedValue({
+    id: "path-1",
+    slug: "my-path",
+    title: "Lộ trình TS",
+    published: false,
+  });
+  await saveManagedLesson(input);
+  expect(mocks.create.mock.calls[0][0].data.published).toBe(false);
   expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
 });
