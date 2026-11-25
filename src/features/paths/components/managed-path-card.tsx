@@ -27,6 +27,7 @@ import { changePathUnlock, deletePathAction } from "../management-actions";
 import { changePathPublication } from "../publication-actions";
 import { DeletePathDialog, runDeletePath } from "./delete-path-button";
 import { PathDifficultyBadge, PathStatusBadge } from "./path-badges";
+import { PathArt } from "./path-showcase";
 
 export interface ManagedPathCardData {
   id: string;
@@ -232,30 +233,57 @@ export function ManagedPathCard({
   const remainingTags = path.tags.length - visibleTags.length;
 
   return (
-    <li className="group flex min-w-0 flex-col rounded-2xl border border-border/70 bg-background transition-[border-color,box-shadow] hover:border-primary/35 hover:shadow-md hover:shadow-primary/5">
-      {/* Compact cover header */}
+    <li className="group relative flex min-w-0 flex-col overflow-hidden rounded-3xl border-2 border-primary/15 bg-background transition-all duration-200 hover:-translate-y-0.5 hover:border-primary hover:shadow-[5px_5px_0_0_var(--brand-blue)]">
       <div
         className={cn(
-          "relative flex h-20 items-start justify-between gap-2 overflow-hidden rounded-t-2xl bg-gradient-to-br p-3.5",
+          "relative h-24 bg-gradient-to-br",
           coverThemeClass(path.coverTheme),
         )}
       >
         <span
           aria-hidden
-          className="pointer-events-none absolute -right-5 -bottom-8 size-24 rounded-full bg-primary-foreground/15"
+          className="pointer-events-none absolute -right-6 -bottom-10 size-28 rounded-full bg-primary-foreground/15"
         />
         <span
           aria-hidden
-          className="pointer-events-none absolute -top-6 right-12 size-16 rounded-full bg-primary-foreground/10"
+          className="pointer-events-none absolute -top-8 right-20 size-20 rounded-full bg-primary-foreground/10"
         />
-        <PathStatusBadge published={path.published} surface="elevated" />
-        <PathDifficultyBadge difficulty={path.difficulty} surface="elevated" />
+        <div className="absolute top-3 right-3 flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 rounded-full bg-background/95 px-2.5 py-0.5 text-xs font-semibold text-foreground shadow-xs">
+            {path.published ? (
+              <Globe aria-hidden className="size-3.5 text-primary" />
+            ) : (
+              <EyeOff aria-hidden className="size-3.5 text-muted-foreground" />
+            )}
+            {path.published ? "Trang khám phá" : "Cá nhân"}
+          </span>
+          <PathStatusBadge published={path.published} surface="elevated" />
+        </div>
+        <div className="absolute -bottom-8 left-5 scale-[0.7] origin-bottom-left">
+          <PathArt path={path} />
+        </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex flex-1 flex-col gap-3 p-4 sm:p-5">
+      <div className="flex flex-1 flex-col gap-3 px-5 pt-12 pb-4">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <PathDifficultyBadge difficulty={path.difficulty} />
+          {visibleTags.map((tag) => (
+            <span
+              key={tag}
+              className="rounded-full border-2 border-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary"
+            >
+              #{tag}
+            </span>
+          ))}
+          {remainingTags > 0 && (
+            <span className="rounded-full border-2 border-primary/15 px-2 py-0.5 text-[11px] font-semibold text-primary tabular-nums">
+              +{remainingTags}
+            </span>
+          )}
+        </div>
+
         <div className="space-y-1.5">
-          <h2 className="line-clamp-2 text-base font-bold tracking-tight text-foreground break-words">
+          <h2 className="line-clamp-2 text-lg leading-snug font-bold text-foreground break-words">
             <Link
               href={`/gv/paths/${path.slug}`}
               className="rounded transition-colors hover:text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
@@ -268,67 +296,57 @@ export function ManagedPathCard({
               {path.description}
             </p>
           ) : (
-            <p className="text-xs italic text-muted-foreground/80">
+            <p className="text-xs text-muted-foreground/80 italic">
               Chưa có mô tả lộ trình.
             </p>
           )}
         </div>
 
-        {visibleTags.length > 0 && (
-          <ul className="flex flex-wrap gap-1.5" aria-label="Chủ đề">
-            {visibleTags.map((tag) => (
-              <li
-                key={tag}
-                className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground"
-              >
-                #{tag}
-              </li>
-            ))}
-            {remainingTags > 0 && (
-              <li className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground tabular-nums">
-                +{remainingTags}
-              </li>
-            )}
-          </ul>
-        )}
-
-        {/* Compact metadata row */}
-        <dl className="mt-auto flex flex-wrap items-center gap-x-3.5 gap-y-1.5 pt-1 text-xs text-muted-foreground tabular-nums">
-          <div className="inline-flex items-center gap-1">
-            <BookOpen className="size-3.5 text-primary/70" aria-hidden />
-            <dt className="sr-only">Số bài học</dt>
-            <dd className="font-medium text-foreground/85">
-              {path._count.rooms} bài học
+        <dl className="mt-auto grid grid-cols-3 gap-2 rounded-2xl bg-muted/40 p-3 text-center tabular-nums">
+          <div>
+            <dt className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+              <BookOpen className="size-3.5 text-primary" aria-hidden />
+              Bài học
+            </dt>
+            <dd className="mt-0.5 text-sm font-bold">
+              {path._count.rooms}
+              <span className="sr-only"> bài học</span>
             </dd>
           </div>
-          <div className="inline-flex items-center gap-1">
-            <Users className="size-3.5" aria-hidden />
-            <dt className="sr-only">Học viên</dt>
-            <dd>{path._count.enrollments} học viên</dd>
+          <div>
+            <dt className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+              <Users className="size-3.5 text-primary" aria-hidden />
+              Học viên
+            </dt>
+            <dd className="mt-0.5 text-sm font-bold">
+              {path._count.enrollments}
+              <span className="sr-only"> học viên</span>
+            </dd>
           </div>
-          {duration && (
-            <div className="inline-flex items-center gap-1">
-              <Clock className="size-3.5" aria-hidden />
-              <dt className="sr-only">Thời lượng</dt>
-              <dd>{duration}</dd>
-            </div>
-          )}
-          <div className="inline-flex items-center gap-1">
-            {sequentialUnlock ? (
-              <Lock className="size-3.5" aria-hidden />
-            ) : (
-              <Unlock className="size-3.5" aria-hidden />
-            )}
-            <dt className="sr-only">Cách mở bài</dt>
-            <dd>{sequentialUnlock ? "Tuần tự" : "Mở tự do"}</dd>
+          <div>
+            <dt className="flex items-center justify-center gap-1 text-[11px] text-muted-foreground">
+              <Clock className="size-3.5 text-primary" aria-hidden />
+              Thời lượng
+            </dt>
+            <dd className="mt-0.5 text-sm font-bold">{duration || "—"}</dd>
           </div>
         </dl>
 
-        {postedLabel && (
-          <p className="text-[11px] text-muted-foreground/80">
-            {path.published ? "Xuất bản" : "Tạo"} {postedLabel.toLowerCase()}
-          </p>
-        )}
+        <p className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground">
+          <span className="inline-flex items-center gap-1">
+            {sequentialUnlock ? (
+              <Lock className="size-3" aria-hidden />
+            ) : (
+              <Unlock className="size-3" aria-hidden />
+            )}
+            {sequentialUnlock ? "Tuần tự" : "Mở tự do"}
+          </span>
+          {postedLabel && (
+            <span>
+              {path.published ? "Xuất bản lúc" : "Tạo lúc"} {postedLabel}
+            </span>
+          )}
+        </p>
 
         {feedback && (
           <p
@@ -351,8 +369,8 @@ export function ManagedPathCard({
       </div>
 
       {/* Action footer: Primary action + Overflow Menu */}
-      <div className="flex items-center justify-between gap-2 rounded-b-2xl border-t border-border/60 bg-muted/20 px-4 py-3 sm:px-5">
-        <Button asChild size="sm" variant="secondary" className="rounded-lg">
+      <div className="flex items-center justify-between gap-2 border-t-2 border-dashed border-primary/15 px-5 py-3">
+        <Button asChild size="sm" className="rounded-full px-4">
           <Link href={`/gv/paths/${path.slug}`}>
             Quản lý
             <ArrowRight className="size-3.5" aria-hidden />

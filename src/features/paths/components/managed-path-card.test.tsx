@@ -59,8 +59,9 @@ describe("ManagedPathCard", () => {
     expect(html).toContain("Lập trình C++ cơ bản");
     expect(html).toContain("Đã xuất bản");
     expect(html).toContain("Trung bình");
-    expect(html).toContain("6 bài học");
-    expect(html).toContain("42 học viên");
+    expect(html).toMatch(/>6<span[^>]*> bài học/);
+    expect(html).toMatch(/>42<span[^>]*> học viên/);
+    expect(html).toContain("Trang khám phá");
     expect(html).toContain("2.5 giờ");
     expect(html).toContain("Tuần tự");
     expect(html).toContain("+1");
@@ -88,6 +89,7 @@ describe("ManagedPathCard", () => {
 
     expect(html).toContain("Bản nháp");
     expect(html).toContain("Mở tự do");
+    expect(html).toContain("Cá nhân");
     expect(html).toContain("Chưa có mô tả lộ trình.");
     expect(html).toContain('role="menu"');
     expect(html).toContain("Xuất bản lộ trình");

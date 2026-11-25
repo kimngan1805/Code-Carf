@@ -4,7 +4,7 @@ import { BookOpen, CheckCircle2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ManagedPathCard } from "@/features/paths/components/managed-path-card";
 import { PathPagination } from "@/features/paths/components/path-pagination";
-import { formatPostedAt } from "@/features/paths/format";
+import { formatDateTime } from "@/features/paths/format";
 import { getManagedPaths } from "@/features/paths/management";
 import { AppError } from "@/lib/errors";
 
@@ -52,7 +52,7 @@ export default async function ManagedPathsPage({
         <Button
           asChild
           size="default"
-          className="shrink-0 rounded-xl shadow-xs"
+          className="shrink-0 rounded-full px-5 shadow-[3px_3px_0_0_var(--brand-blue)]"
         >
           <Link href="/gv/paths/new">
             <Plus aria-hidden className="size-4" />
@@ -115,8 +115,8 @@ export default async function ManagedPathsPage({
                 estimatedMinutes: path.estimatedMinutes,
                 coverTheme: path.coverTheme,
                 postedLabel: path.published
-                  ? formatPostedAt(path.publishedAt)
-                  : formatPostedAt(path.createdAt),
+                  ? formatDateTime(path.publishedAt)
+                  : formatDateTime(path.createdAt),
                 _count: path._count,
               }}
             />
