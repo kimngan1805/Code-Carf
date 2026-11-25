@@ -31,7 +31,6 @@ export default async function ManagedRoomPreviewPage({
       preview={{
         backHref: `/gv/paths/${previewRoom.path.slug}/rooms/${previewRoom.id}`,
         editHref: `/gv/paths/${previewRoom.path.slug}/rooms/${previewRoom.id}/edit`,
-        roomPublished: previewRoom.published,
         pathPublished: previewRoom.path.published,
       }}
     />

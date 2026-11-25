@@ -110,10 +110,52 @@ it("clamps out-of-range pages, defaults invalid pages to 1, and skips findMany w
 });
 
 it("lets teachers preview only owned active paths, including drafts", async () => {
-  mocks.find.mockResolvedValue({ id: "path-1", published: false });
-  await expect(getManagedPath("draft")).resolves.toMatchObject({
+  mocks.find.mockResolvedValue({
+    id: "path-1",
     published: false,
+    rooms: [
+      {
+        id: "r1",
+        content: "",
+        attachments: [{ id: "f1", fileName: "a.pdf", contentType: "x" }],
+        exercises: [],
+        _count: { exercises: 0, attachments: 1 },
+      },
+      {
+        id: "r2",
+        content: "## Mục\n\nhttps://youtu.be/ubPxYhz1wvU\n\n_Bài 42_",
+        attachments: [],
+        exercises: [],
+        _count: { exercises: 0, attachments: 0 },
+      },
+      {
+        id: "r3",
+        content: " ",
+        attachments: [],
+        exercises: [],
+        _count: { exercises: 0, attachments: 0 },
+      },
+    ],
   });
+  const path = await getManagedPath("draft");
+  expect(path).toMatchObject({ published: false });
+  // Không gửi cả nội dung bài xuống trang: chỉ cờ, tóm tắt và danh sách video.
+  expect(path.rooms.map((room) => "content" in room)).toEqual([
+    false,
+    false,
+    false,
+  ]);
+  expect(path.rooms[0]).toMatchObject({
+    hasMaterial: true,
+    contentSummary: null,
+    videos: [],
+  });
+  expect(path.rooms[1]).toMatchObject({
+    hasMaterial: true,
+    videos: [{ id: "ubPxYhz1wvU", caption: "Bài 42" }],
+  });
+  expect(path.rooms[1].contentSummary).toMatch(/^1 mục · 1 video · /);
+  expect(path.rooms[2]).toMatchObject({ hasMaterial: false });
   expect(mocks.find.mock.calls[0][0].where).toEqual({
     slug: "draft",
     deletedAt: null,

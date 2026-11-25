@@ -17,11 +17,14 @@ export function PathPublication({
   pathId,
   published,
   roomCount,
+  emptyLessonCount = 0,
 }: {
   pathId: string;
   published: boolean;
   /** Thông tin gợi ý sẵn sàng xuất bản (chỉ hiển thị, backend vẫn xác thực đầy đủ). */
   roomCount?: number;
+  /** Số bài chưa có nội dung, tài liệu hay bài tập. */
+  emptyLessonCount?: number;
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -58,6 +61,7 @@ export function PathPublication({
   }
 
   const missingLessons = !published && roomCount === 0;
+  const hasEmptyLessons = !published && emptyLessonCount > 0;
 
   return (
     <div className="space-y-4">
@@ -72,14 +76,16 @@ export function PathPublication({
         {published
           ? "Lộ trình đang hiển thị công khai trên danh mục. Học viên có thể tìm kiếm và đăng ký học."
           : missingLessons
-            ? "Lộ trình đang ở dạng bản nháp. Thêm ít nhất 1 bài học có nội dung trước khi xuất bản."
-            : "Bản nháp chỉ hiển thị trong không gian giảng viên. Xuất bản khi bạn sẵn sàng mở cho học viên."}
+            ? "Lộ trình đang ở dạng bản nháp. Thêm ít nhất 1 bài học trước khi xuất bản."
+            : hasEmptyLessons
+              ? `Còn ${emptyLessonCount} bài học chưa có nội dung, tài liệu hay bài tập. Bổ sung rồi mới xuất bản được.`
+              : "Bản nháp chỉ hiển thị trong không gian giảng viên. Xuất bản khi bạn sẵn sàng mở cho học viên."}
       </p>
 
       <Button
         type="button"
         variant={published ? "outline" : "default"}
-        disabled={pending}
+        disabled={pending || missingLessons || hasEmptyLessons}
         onClick={change}
         className="w-full"
       >

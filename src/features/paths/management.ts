@@ -2,6 +2,12 @@ import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
+import { lessonHasMaterial } from "@/features/rooms/lesson-readiness";
+import { stripLessonTemplate } from "./lesson-structure";
+import {
+  listLessonVideos,
+  summarizeContent,
+} from "@/features/rooms/lesson-summary";
 import {
   computePagination,
   MANAGED_PATHS_PAGE_SIZE,
@@ -155,7 +161,16 @@ export async function getManagedPath(slug: string) {
           description: true,
           position: true,
           published: true,
-          _count: { select: { exercises: true } },
+          content: true,
+          _count: { select: { exercises: true, attachments: true } },
+          attachments: {
+            orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+            select: { id: true, fileName: true, contentType: true },
+          },
+          exercises: {
+            orderBy: { id: "asc" },
+            select: { id: true, title: true, kind: true },
+          },
         },
       },
     },
@@ -166,7 +181,24 @@ export async function getManagedPath(slug: string) {
       "PATH_NOT_FOUND",
       "Không tìm thấy lộ trình bạn được quản lý.",
     );
-  return path;
+  const { rooms, ...rest } = path;
+  return {
+    ...rest,
+    // Nội dung chỉ cần để biết bài có trống không; không gửi cả bài xuống trang danh sách.
+    rooms: rooms.map(({ content, ...room }) => ({
+      ...room,
+      hasMaterial: lessonHasMaterial({
+        content,
+        attachmentCount: room._count.attachments,
+        exerciseCount: room._count.exercises,
+      }),
+      // Phần chữ chỉ gửi bản tóm tắt và danh sách video để liệt kê trên trang quản lý.
+      contentSummary: stripLessonTemplate(content)
+        ? summarizeContent(content)
+        : null,
+      videos: listLessonVideos(content),
+    })),
+  };
 }
 
 export async function getManagedRoom(slug: string, roomId: string) {
@@ -198,6 +230,22 @@ export async function getManagedRoom(slug: string, roomId: string) {
           title: true,
           difficulty: true,
           points: true,
+          kind: true,
+          prompt: true,
+          rubric: true,
+          testCases: {
+            orderBy: { id: "asc" },
+            select: { input: true, expected: true, isHidden: true },
+          },
+          quizQuestions: {
+            orderBy: { position: "asc" },
+            select: {
+              prompt: true,
+              options: true,
+              answer: true,
+              explanation: true,
+            },
+          },
           _count: { select: { testCases: true } },
         },
       },
@@ -300,9 +348,20 @@ export async function getManagedExercise(
       points: true,
       timeLimitMs: true,
       memoryLimitKb: true,
+      kind: true,
+      rubric: true,
       testCases: {
         orderBy: { id: "asc" },
         select: { input: true, expected: true, isHidden: true, weight: true },
+      },
+      quizQuestions: {
+        orderBy: { position: "asc" },
+        select: {
+          prompt: true,
+          options: true,
+          answer: true,
+          explanation: true,
+        },
       },
       room: {
         select: { id: true, title: true, path: { select: { slug: true } } },
