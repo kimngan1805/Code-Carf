@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
-import { notifyNewLessonPublished } from "@/features/notifications/writer";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { saveLessonSchema } from "./authoring-schema";
@@ -89,24 +88,13 @@ export async function saveManagedLesson(body: unknown) {
             id: room.id,
             slug: path.slug,
             created: true as const,
-            pathId: path.id,
-            pathTitle: path.title,
-            pathPublished: Boolean(path.published),
           };
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
       );
 
-      if (outcome.created && outcome.pathPublished) {
-        await notifyNewLessonPublished({
-          pathId: outcome.pathId,
-          pathTitle: outcome.pathTitle,
-          roomId: outcome.id,
-          roomTitle: fields.title,
-          actorUserId: user.id,
-        });
-      }
-
+      // Bài học mới luôn khởi tạo ở trạng thái Bản nháp (published = false),
+      // nên thông báo NEW_LESSON chỉ được gửi khi bài học thực sự được xuất bản.
       return { id: outcome.id, slug: outcome.slug };
     } catch (error) {
       if (

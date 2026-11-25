@@ -9,6 +9,7 @@ beforeEach(() => {
   mocks.findUnique.mockResolvedValue({
     pathId: "path-1",
     position: 5,
+    published: true,
     path: {
       published: true,
       deletedAt: null,
@@ -30,7 +31,11 @@ describe("canAccessRoom", () => {
     mocks.findFirst.mockResolvedValue({ progress: [] });
     await expect(canAccessRoom("user-1", "room-1")).resolves.toBe(false);
     const query = mocks.findFirst.mock.calls[0][0];
-    expect(query.where).toEqual({ pathId: "path-1", position: { lt: 5 } });
+    expect(query.where).toEqual({
+      pathId: "path-1",
+      published: true,
+      position: { lt: 5 },
+    });
     expect(query.orderBy).toEqual({ position: "desc" });
     expect(query.select.progress.where).toEqual({ userId: "user-1" });
     expect(
@@ -48,6 +53,7 @@ describe("canAccessRoom", () => {
     mocks.findUnique.mockResolvedValue({
       pathId: "path-1",
       position: 5,
+      published: true,
       path: {
         published: true,
         deletedAt: null,
@@ -61,12 +67,23 @@ describe("canAccessRoom", () => {
   it.each([
     { label: "missing room", room: null },
     {
+      label: "draft room",
+      room: {
+        published: false,
+        path: { published: true, deletedAt: null, enrollments: [{}] },
+      },
+    },
+    {
       label: "draft path",
-      room: { path: { published: false, deletedAt: null, enrollments: [{}] } },
+      room: {
+        published: true,
+        path: { published: false, deletedAt: null, enrollments: [{}] },
+      },
     },
     {
       label: "soft-deleted path",
       room: {
+        published: true,
         path: {
           published: true,
           deletedAt: new Date("2026-11-22T00:00:00Z"),
@@ -78,6 +95,7 @@ describe("canAccessRoom", () => {
     {
       label: "unenrolled learner",
       room: {
+        published: true,
         path: {
           published: true,
           deletedAt: null,

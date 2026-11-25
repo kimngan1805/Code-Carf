@@ -38,7 +38,12 @@ async function loadRoom(roomId: string, userId: string) {
 export async function getRoomPage(roomId: string) {
   const user = await requireRole([RoleName.STUDENT]);
   const room = await findRoomAccess(roomId, user.id);
-  if (!room || !room.path.published || room.path.deletedAt != null)
+  if (
+    !room ||
+    !room.published ||
+    !room.path.published ||
+    room.path.deletedAt != null
+  )
     throw new AppError(404, "ROOM_NOT_FOUND", "Không tìm thấy bài học.");
   if (!(await canAccessRoom(user.id, roomId))) {
     const enrolled = room.path.enrollments.length > 0;
@@ -62,7 +67,12 @@ export async function getRoomPage(roomId: string) {
 export async function getRoom(roomId: string) {
   const user = await requireRole([RoleName.STUDENT]);
   const room = await findRoomAccess(roomId, user.id);
-  if (!room || !room.path.published || room.path.deletedAt != null)
+  if (
+    !room ||
+    !room.published ||
+    !room.path.published ||
+    room.path.deletedAt != null
+  )
     throw new AppError(404, "ROOM_NOT_FOUND", "Không tìm thấy bài học.");
   if (!(await canAccessRoom(user.id, roomId)))
     throw new AppError(

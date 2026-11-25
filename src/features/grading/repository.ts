@@ -196,6 +196,7 @@ export function findExerciseForPractice(exerciseId: string) {
         select: {
           id: true,
           title: true,
+          published: true,
           path: {
             select: {
               slug: true,

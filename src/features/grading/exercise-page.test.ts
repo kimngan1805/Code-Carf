@@ -30,6 +30,7 @@ const exercise = {
   room: {
     id: "room-1",
     title: "Room 1",
+    published: true,
     path: { slug: "python", title: "Python", published: true, deletedAt: null },
   },
   testCases: [{ id: "t1", input: "1 2", expected: "3" }],
@@ -133,6 +134,16 @@ describe("getExercisePage", () => {
   it.each([
     ["missing exercise", null],
     ["exercise without a room", { ...exercise, room: null, roomId: null }],
+    [
+      "unpublished room",
+      {
+        ...exercise,
+        room: {
+          ...exercise.room,
+          published: false,
+        },
+      },
+    ],
     [
       "unpublished path",
       {

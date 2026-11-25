@@ -16,6 +16,7 @@ export async function canAccessRoom(
   const room = await findRoomAccess(roomId, userId);
   if (
     !room ||
+    !room.published ||
     !room.path.published ||
     room.path.deletedAt != null ||
     room.path.enrollments.length === 0

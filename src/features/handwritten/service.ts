@@ -57,6 +57,7 @@ async function resolveTarget(exerciseId: string, contestSlug: string | null) {
       );
   } else if (
     !exercise.room ||
+    !exercise.room.published ||
     !exercise.room.path.published ||
     exercise.room.path.deletedAt != null
   ) {

@@ -15,6 +15,7 @@ export async function reportExercise(exerciseId: string, input: unknown) {
   const exercise = await findReportExercise(exerciseId);
   if (
     !exercise?.room ||
+    !exercise.room.published ||
     !exercise.room.path.published ||
     exercise.room.path.deletedAt != null
   )

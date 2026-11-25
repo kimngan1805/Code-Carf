@@ -117,7 +117,9 @@ describe.skipIf(!hasDatabase)(
           title: "Handwritten path",
           published: true,
           creatorId: alice.id,
-          rooms: { create: [{ title: "Room 1", position: 1 }] },
+          rooms: {
+            create: [{ title: "Room 1", position: 1, published: true }],
+          },
           enrollments: { create: [{ userId: alice.id }, { userId: bob.id }] },
         },
         include: { rooms: true },

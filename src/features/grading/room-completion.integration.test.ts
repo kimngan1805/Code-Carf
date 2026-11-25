@@ -103,9 +103,10 @@ describe.skipIf(!hasDatabase)(
               {
                 title: "Room 1",
                 position: 1,
+                published: true,
                 xpReward: options.xpReward ?? 50,
               },
-              { title: "Room 2", position: 2 },
+              { title: "Room 2", position: 2, published: true },
             ],
           },
         },

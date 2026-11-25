@@ -36,6 +36,7 @@ export async function findPublicStudentRecord(targetUserId: string) {
             slug: true,
             title: true,
             rooms: {
+              where: { published: true },
               orderBy: { position: "asc" },
               select: { id: true, title: true },
             },
@@ -126,7 +127,7 @@ export async function findOwnPrivateProfileExtras(userId: string) {
         path: {
           select: {
             id: true,
-            rooms: { select: { id: true } },
+            rooms: { where: { published: true }, select: { id: true } },
           },
         },
       },

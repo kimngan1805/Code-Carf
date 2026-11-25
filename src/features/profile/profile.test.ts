@@ -529,6 +529,7 @@ describe("getOwnProfile", () => {
 
     const profile = await getOwnProfile();
 
+    expect(enrollmentFindManyMock).toHaveBeenCalledTimes(2);
     expect(enrollmentFindManyMock).toHaveBeenCalledWith(
       expect.objectContaining({
         where: {
@@ -546,7 +547,7 @@ describe("getOwnProfile", () => {
         path: {
           select: {
             id: true,
-            rooms: { select: { id: true } },
+            rooms: { where: { published: true }, select: { id: true } },
           },
         },
       },

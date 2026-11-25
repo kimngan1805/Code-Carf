@@ -190,8 +190,15 @@ describe("recordLearningActivity", () => {
       deletedAt: null,
       OR: [
         { enrollments: { some: { userId: "user-1" } } },
-        { rooms: { some: { progress: { some: { userId: "user-1" } } } } },
+        {
+          rooms: {
+            some: { published: true, progress: { some: { userId: "user-1" } } },
+          },
+        },
       ],
+    });
+    expect(mockTx.path.findMany.mock.calls[0][0].select.rooms.where).toEqual({
+      published: true,
     });
     expect(mockTx.submission.findMany).toHaveBeenCalledWith({
       where: { userId: "user-1", status: "ACCEPTED" },
