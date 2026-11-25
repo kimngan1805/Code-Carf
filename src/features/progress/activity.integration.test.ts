@@ -10,6 +10,7 @@ import { canConnectToDatabase } from "../../test-utils/database";
 import { recordLearningActivity, recordStreakActivity } from "./activity";
 import { awardCompletedWeekTopBadge } from "./badge-awarding";
 import { MILESTONE_BADGES } from "./badges";
+import { runWeeklyTopBadgeJob } from "./weekly-top-job";
 
 const hasDatabase = await canConnectToDatabase();
 
@@ -559,6 +560,79 @@ describe.skipIf(!hasDatabase)(
         where: { userId: user.id, badge: { slug: "streak-7" } },
       });
       expect(streakBadges).toHaveLength(1);
+    });
+
+    it("catches up on missed weeks and prevents duplicate weekly-top-1 awards across concurrent job runs", async () => {
+      await ensureMilestoneAndLegacyBadges();
+      const [missedWeekWinner, tiedA, tiedB, ongoingLeader] = await Promise.all(
+        [
+          createStudentUser(),
+          createStudentUser(),
+          createStudentUser(),
+          createStudentUser(),
+        ],
+      );
+
+      // Week 1 (missed): Mon 2021-01-04 00:00+07:00 .. Mon 2021-01-11 00:00+07:00
+      // Week 2 (latest closed): Mon 2021-01-11 00:00+07:00 .. Mon 2021-01-18 00:00+07:00
+      // Ongoing week starts Mon 2021-01-18 00:00+07:00; running late on Wed 2021-01-20 10:00+07:00.
+      const lateReference = new Date("2021-01-20T10:00:00+07:00");
+      await db.xpEvent.createMany({
+        data: [
+          {
+            userId: missedWeekWinner.id,
+            amount: 250,
+            source: XpSource.ROOM_COMPLETED,
+            createdAt: new Date("2021-01-06T12:00:00+07:00"),
+          },
+          {
+            userId: tiedA.id,
+            amount: 300,
+            source: XpSource.ROOM_COMPLETED,
+            createdAt: new Date("2021-01-13T12:00:00+07:00"),
+          },
+          {
+            userId: tiedB.id,
+            amount: 300,
+            source: XpSource.ROOM_COMPLETED,
+            createdAt: new Date("2021-01-17T23:59:59+07:00"),
+          },
+          {
+            userId: missedWeekWinner.id,
+            amount: 100,
+            source: XpSource.ROOM_COMPLETED,
+            createdAt: new Date("2021-01-14T12:00:00+07:00"),
+          },
+          // Ongoing week XP must NOT award ongoingLeader
+          {
+            userId: ongoingLeader.id,
+            amount: 999,
+            source: XpSource.ROOM_COMPLETED,
+            createdAt: new Date("2021-01-18T00:00:00+07:00"),
+          },
+        ],
+      });
+
+      await Promise.all([
+        runWeeklyTopBadgeJob(lateReference, { catchUpWeeks: 3 }),
+        runWeeklyTopBadgeJob(lateReference, { catchUpWeeks: 3 }),
+      ]);
+
+      const weeklyBadge = await db.badge.findUniqueOrThrow({
+        where: { slug: "weekly-top-1" },
+      });
+      const rows = await db.userBadge.findMany({
+        where: {
+          badgeId: weeklyBadge.id,
+          userId: {
+            in: [missedWeekWinner.id, tiedA.id, tiedB.id, ongoingLeader.id],
+          },
+        },
+      });
+
+      expect(rows.map((row) => row.userId).sort()).toEqual(
+        [missedWeekWinner.id, tiedA.id, tiedB.id].sort(),
+      );
     });
   },
 );
