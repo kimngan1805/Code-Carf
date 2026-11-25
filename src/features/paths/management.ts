@@ -215,6 +215,7 @@ export async function getManagedRoomPreview(slug: string, roomId: string) {
       id: roomId,
       path: {
         slug,
+        deletedAt: null,
         ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
       },
     },

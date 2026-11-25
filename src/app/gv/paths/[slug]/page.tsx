@@ -2,13 +2,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
   AlertTriangle,
-  ArrowRight,
   BookOpen,
   Calendar,
   CheckCircle2,
   Clock,
   CodeXml,
-  Eye,
   Pencil,
   Plus,
   Settings2,
@@ -17,6 +15,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeletePathButton } from "@/features/paths/components/delete-path-button";
+import { EnrolledStudentsSection } from "@/features/paths/components/enrolled-students-section";
+import { ManagedPathRoomItem } from "@/features/paths/components/managed-path-room-item";
 import {
   PathBreadcrumb,
   PathDifficultyBadge,
@@ -25,6 +25,7 @@ import {
 import { PathPublication } from "@/features/paths/components/path-publication";
 import { PathUnlockSetting } from "@/features/paths/components/path-unlock-setting";
 import { coverThemeClass } from "@/features/paths/cover-themes";
+import { getManagedPathEnrolledStudents } from "@/features/paths/enrolled-students";
 import { formatDuration, formatPostedAt } from "@/features/paths/format";
 import { getManagedPath } from "@/features/paths/management";
 import { AppError } from "@/lib/errors";
@@ -35,7 +36,11 @@ export default async function ManagedPathPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ created?: string; saved?: string }>;
+  searchParams: Promise<{
+    created?: string;
+    saved?: string;
+    studentsPage?: string | string[];
+  }>;
 }) {
   const { slug } = await params;
   const query = await searchParams;
@@ -43,6 +48,13 @@ export default async function ManagedPathPage({
   const saved = query.saved === "1";
 
   const path = await getManagedPath(slug).catch((error) => {
+    if (error instanceof AppError && error.status === 404) notFound();
+    throw error;
+  });
+
+  const enrolledStudents = await getManagedPathEnrolledStudents(slug, {
+    page: query.studentsPage,
+  }).catch((error) => {
     if (error instanceof AppError && error.status === 404) notFound();
     throw error;
   });
@@ -211,7 +223,10 @@ export default async function ManagedPathPage({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <a
+            href="#hoc-vien"
+            className="group -m-1.5 flex items-center gap-3 rounded-xl p-1.5 transition-colors hover:bg-muted/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
             <span
               aria-hidden
               className="grid size-10 shrink-0 place-items-center rounded-xl bg-success/15 text-success"
@@ -219,12 +234,14 @@ export default async function ManagedPathPage({
               <Users className="size-4" />
             </span>
             <div>
-              <dt className="text-xs text-muted-foreground">Học viên</dt>
+              <dt className="text-xs text-muted-foreground transition-colors group-hover:text-primary">
+                Học viên
+              </dt>
               <dd className="text-base font-bold text-foreground tabular-nums">
                 {path._count.enrollments}
               </dd>
             </div>
-          </div>
+          </a>
 
           <div className="flex items-center gap-3">
             <span
@@ -343,114 +360,24 @@ export default async function ManagedPathPage({
                 </Button>
               </div>
             ) : (
-              <ol className="mt-5 space-y-3">
-                {path.rooms.map((room) => {
-                  const hasExercises = room._count.exercises > 0;
-                  return (
-                    <li
-                      key={room.id}
-                      className="rounded-2xl border border-border/70 bg-background p-4 transition-[border-color,box-shadow] hover:border-primary/35 hover:shadow-sm"
-                    >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="flex min-w-0 flex-1 items-start gap-3.5">
-                          <span
-                            aria-hidden
-                            className="grid size-9 shrink-0 place-items-center rounded-xl bg-secondary/70 text-sm font-bold text-primary tabular-nums"
-                          >
-                            {room.position}
-                          </span>
-                          <div className="min-w-0 flex-1 space-y-1.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <h3 className="text-base font-semibold text-foreground break-words">
-                                <Link
-                                  href={`/gv/paths/${path.slug}/rooms/${room.id}`}
-                                  className="rounded transition-colors hover:text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                                >
-                                  {room.title}
-                                </Link>
-                              </h3>
-                              <PathStatusBadge published={room.published} />
-                            </div>
-                            {room.description.trim() && (
-                              <p className="line-clamp-2 text-xs leading-5 text-muted-foreground break-words">
-                                {room.description}
-                              </p>
-                            )}
-                            <div className="flex flex-wrap items-center gap-2 pt-0.5">
-                              {hasExercises ? (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground tabular-nums">
-                                  <CodeXml
-                                    className="size-3.5 text-primary"
-                                    aria-hidden
-                                  />
-                                  {room._count.exercises} bài tập
-                                </span>
-                              ) : (
-                                <>
-                                  <span className="inline-flex items-center gap-1 rounded-full border border-warning/25 bg-warning/10 px-2.5 py-0.5 text-xs font-medium text-warning">
-                                    Chưa có bài tập
-                                  </span>
-                                  <Link
-                                    href={`/gv/paths/${path.slug}/rooms/${room.id}/exercises/new`}
-                                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                                  >
-                                    <Plus className="size-3" aria-hidden />
-                                    Thêm bài tập
-                                  </Link>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex shrink-0 flex-wrap items-center gap-1.5 sm:pt-0.5">
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="rounded-lg text-muted-foreground hover:text-primary"
-                          >
-                            <Link
-                              href={`/gv/paths/${path.slug}/rooms/${room.id}/preview`}
-                            >
-                              <Eye className="size-3.5" aria-hidden />
-                              Xem như học viên
-                            </Link>
-                          </Button>
-                          <Button
-                            asChild
-                            variant="ghost"
-                            size="sm"
-                            className="rounded-lg text-muted-foreground hover:text-primary"
-                          >
-                            <Link
-                              href={`/gv/paths/${path.slug}/rooms/${room.id}/edit`}
-                            >
-                              <Pencil className="size-3.5" aria-hidden />
-                              Sửa
-                            </Link>
-                          </Button>
-                          <Button
-                            asChild
-                            variant="secondary"
-                            size="sm"
-                            className="rounded-lg"
-                          >
-                            <Link
-                              href={`/gv/paths/${path.slug}/rooms/${room.id}`}
-                            >
-                              Chi tiết
-                              <ArrowRight className="size-3.5" aria-hidden />
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </li>
-                  );
-                })}
+              <ol className="mt-4 space-y-2.5">
+                {path.rooms.map((room) => (
+                  <ManagedPathRoomItem
+                    key={room.id}
+                    pathSlug={path.slug}
+                    room={room}
+                  />
+                ))}
               </ol>
             )}
           </section>
+
+          {/* Enrolled Students Section */}
+          <EnrolledStudentsSection
+            pathSlug={path.slug}
+            pathPublished={path.published}
+            data={enrolledStudents}
+          />
         </div>
 
         {/* Right Sticky Settings Sidebar */}

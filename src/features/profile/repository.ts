@@ -127,7 +127,7 @@ export async function findOwnPrivateProfileExtras(userId: string) {
         path: {
           select: {
             id: true,
-            rooms: { select: { id: true } },
+            rooms: { where: { published: true }, select: { id: true } },
           },
         },
       },

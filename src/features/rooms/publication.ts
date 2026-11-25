@@ -1,5 +1,6 @@
 import { RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
+import { notifyNewLessonPublished } from "@/features/notifications/writer";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 
@@ -7,17 +8,20 @@ export async function setRoomPublication(roomId: string, published: boolean) {
   const user = await requireRole([RoleName.TEACHER, RoleName.ADMIN]);
   const where = {
     id: roomId,
-    ...(user.role.name === RoleName.ADMIN
-      ? {}
-      : { path: { creatorId: user.id } }),
+    path: {
+      deletedAt: null,
+      ...(user.role.name === RoleName.ADMIN ? {} : { creatorId: user.id }),
+    },
   };
 
   const room = await db.room.findFirst({
     where,
     select: {
       id: true,
+      title: true,
       content: true,
-      path: { select: { slug: true } },
+      published: true,
+      path: { select: { id: true, slug: true, title: true, published: true } },
     },
   });
 
@@ -51,6 +55,18 @@ export async function setRoomPublication(roomId: string, published: boolean) {
       "ROOM_CHANGED",
       "Bài học đã thay đổi. Vui lòng tải lại và thử lại.",
     );
+  }
+
+  // Chỉ gửi NEW_LESSON khi Room chuyển sang Published trong một Path đang Published (chưa soft delete).
+  // Deduplication theo (userId, dedupeKey) trong Notifications đảm bảo unpublish rồi publish lại không tạo trùng.
+  if (published && !room.published && room.path.published) {
+    await notifyNewLessonPublished({
+      pathId: room.path.id,
+      pathTitle: room.path.title,
+      roomId: room.id,
+      roomTitle: room.title,
+      actorUserId: user.id,
+    });
   }
 
   return {

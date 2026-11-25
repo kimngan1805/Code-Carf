@@ -50,7 +50,11 @@ const png = (size = 64) => {
 const exercise = {
   id: "ex-1",
   kind: "HANDWRITTEN",
-  room: { id: "room-1", path: { published: true, deletedAt: null } },
+  room: {
+    id: "room-1",
+    published: true,
+    path: { published: true, deletedAt: null },
+  },
 };
 const saved = {
   id: "sub-1",
@@ -135,10 +139,25 @@ describe("uploadHandwrittenImage (practice)", () => {
   it.each([
     ["a missing exercise", null],
     [
+      "a draft room",
+      {
+        ...exercise,
+        room: {
+          id: "r",
+          published: false,
+          path: { published: true, deletedAt: null },
+        },
+      },
+    ],
+    [
       "an unpublished path",
       {
         ...exercise,
-        room: { id: "r", path: { published: false, deletedAt: null } },
+        room: {
+          id: "r",
+          published: true,
+          path: { published: false, deletedAt: null },
+        },
       },
     ],
     [
@@ -147,6 +166,7 @@ describe("uploadHandwrittenImage (practice)", () => {
         ...exercise,
         room: {
           id: "r",
+          published: true,
           path: {
             published: true,
             deletedAt: new Date("2026-11-22T00:00:00Z"),

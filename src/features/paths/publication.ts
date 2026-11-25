@@ -1,4 +1,5 @@
 import { requireRole } from "@/features/auth/service";
+import { notifyNewLessonPublished } from "@/features/notifications/writer";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 
@@ -7,9 +8,15 @@ export async function setPathPublication(pathId: string, published: boolean) {
   const path = await db.path.findFirst({
     where: { id: pathId, deletedAt: null },
     select: {
+      id: true,
       slug: true,
+      title: true,
+      published: true,
       creatorId: true,
-      rooms: { select: { content: true } },
+      rooms: {
+        orderBy: { position: "asc" },
+        select: { id: true, title: true, content: true, published: true },
+      },
     },
   });
   if (!path)
@@ -44,5 +51,21 @@ export async function setPathPublication(pathId: string, published: boolean) {
       "PATH_CHANGED",
       "Lộ trình đã thay đổi. Vui lòng tải lại và thử lại.",
     );
+
+  // Khi Path chuyển từ Draft sang Published, gửi NEW_LESSON cho các Room đã Published bên trong.
+  // Cơ chế dedupeKey ("new-lesson:<roomId>") ngăn gửi trùng khi unpublish rồi publish lại Path.
+  if (published && !path.published) {
+    const publishedRooms = path.rooms.filter((room) => room.published);
+    for (const room of publishedRooms) {
+      await notifyNewLessonPublished({
+        pathId: path.id ?? pathId,
+        pathTitle: path.title,
+        roomId: room.id,
+        roomTitle: room.title,
+        actorUserId: user.id,
+      });
+    }
+  }
+
   return path.slug;
 }

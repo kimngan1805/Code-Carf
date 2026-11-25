@@ -6,10 +6,15 @@ const mocks = vi.hoisted(() => ({
   requireRole: vi.fn(),
   roomFindFirst: vi.fn(),
   roomUpdateMany: vi.fn(),
+  notifyNewLessonPublished: vi.fn(),
 }));
 
 vi.mock("@/features/auth/service", () => ({
   requireRole: mocks.requireRole,
+}));
+
+vi.mock("@/features/notifications/writer", () => ({
+  notifyNewLessonPublished: mocks.notifyNewLessonPublished,
 }));
 
 vi.mock("@/lib/db", () => ({
@@ -33,13 +38,21 @@ describe("room publication & teacher preview", () => {
     });
     mocks.roomFindFirst.mockResolvedValue({
       id: "room-1",
+      title: "Biến & Kiểu",
       content: "## Lý thuyết",
-      path: { slug: "ts-basics" },
+      published: false,
+      path: {
+        id: "path-1",
+        slug: "ts-basics",
+        title: "TS Basics",
+        published: true,
+      },
     });
     mocks.roomUpdateMany.mockResolvedValue({ count: 1 });
+    mocks.notifyNewLessonPublished.mockResolvedValue(2);
   });
 
-  it("publishes an owned room that has theory content", async () => {
+  it("publishes an owned room on an active published path and sends NEW_LESSON notification", async () => {
     await expect(setRoomPublication("room-1", true)).resolves.toEqual({
       id: "room-1",
       pathSlug: "ts-basics",
@@ -52,19 +65,61 @@ describe("room publication & teacher preview", () => {
     ]);
     expect(mocks.roomFindFirst.mock.calls[0][0].where).toEqual({
       id: "room-1",
-      path: { creatorId: "teacher-1" },
+      path: { deletedAt: null, creatorId: "teacher-1" },
     });
     expect(mocks.roomUpdateMany).toHaveBeenCalledWith({
       where: {
         id: "room-1",
-        path: { creatorId: "teacher-1" },
+        path: { deletedAt: null, creatorId: "teacher-1" },
         content: { not: "" },
       },
       data: { published: true },
     });
+    expect(mocks.notifyNewLessonPublished).toHaveBeenCalledTimes(1);
+    expect(mocks.notifyNewLessonPublished).toHaveBeenCalledWith({
+      pathId: "path-1",
+      pathTitle: "TS Basics",
+      roomId: "room-1",
+      roomTitle: "Biến & Kiểu",
+      actorUserId: "teacher-1",
+    });
   });
 
-  it("allows admins to publish/unpublish another creator's room", async () => {
+  it("does not notify when publishing a room inside a draft path or when room is already published", async () => {
+    mocks.roomFindFirst.mockResolvedValueOnce({
+      id: "room-1",
+      title: "Biến & Kiểu",
+      content: "## Lý thuyết",
+      published: false,
+      path: {
+        id: "path-1",
+        slug: "ts-basics",
+        title: "TS Basics",
+        published: false,
+      },
+    });
+
+    await setRoomPublication("room-1", true);
+    expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
+
+    mocks.roomFindFirst.mockResolvedValueOnce({
+      id: "room-1",
+      title: "Biến & Kiểu",
+      content: "## Lý thuyết",
+      published: true,
+      path: {
+        id: "path-1",
+        slug: "ts-basics",
+        title: "TS Basics",
+        published: true,
+      },
+    });
+
+    await setRoomPublication("room-1", true);
+    expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
+  });
+
+  it("allows admins to publish/unpublish another creator's room while excluding soft-deleted paths", async () => {
     mocks.requireRole.mockResolvedValue({
       id: "admin-1",
       role: { name: RoleName.ADMIN },
@@ -74,17 +129,27 @@ describe("room publication & teacher preview", () => {
 
     expect(mocks.roomFindFirst.mock.calls[0][0].where).toEqual({
       id: "room-1",
+      path: { deletedAt: null },
     });
-    expect(mocks.roomUpdateMany.mock.calls[0][0].where).not.toHaveProperty(
-      "path",
-    );
+    expect(mocks.roomUpdateMany.mock.calls[0][0].where).toEqual({
+      id: "room-1",
+      path: { deletedAt: null },
+      content: { not: "" },
+    });
   });
 
   it("rejects publishing rooms with empty or whitespace-only content", async () => {
     mocks.roomFindFirst.mockResolvedValue({
       id: "room-1",
+      title: "Empty",
       content: "  \n ",
-      path: { slug: "ts-basics" },
+      published: false,
+      path: {
+        id: "path-1",
+        slug: "ts-basics",
+        title: "TS Basics",
+        published: true,
+      },
     });
 
     await expect(setRoomPublication("room-1", true)).rejects.toMatchObject({
@@ -92,13 +157,21 @@ describe("room publication & teacher preview", () => {
       code: "ROOM_NOT_READY",
     });
     expect(mocks.roomUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
   });
 
-  it("allows moving a room back to draft even when content is empty", async () => {
+  it("allows moving a room back to draft without sending notifications", async () => {
     mocks.roomFindFirst.mockResolvedValue({
       id: "room-1",
+      title: "Biến & Kiểu",
       content: "",
-      path: { slug: "ts-basics" },
+      published: true,
+      path: {
+        id: "path-1",
+        slug: "ts-basics",
+        title: "TS Basics",
+        published: true,
+      },
     });
 
     await expect(setRoomPublication("room-1", false)).resolves.toEqual({
@@ -107,12 +180,16 @@ describe("room publication & teacher preview", () => {
       published: false,
     });
     expect(mocks.roomUpdateMany).toHaveBeenCalledWith({
-      where: { id: "room-1", path: { creatorId: "teacher-1" } },
+      where: {
+        id: "room-1",
+        path: { deletedAt: null, creatorId: "teacher-1" },
+      },
       data: { published: false },
     });
+    expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
   });
 
-  it("denies foreign teachers from publishing or previewing", async () => {
+  it("denies foreign teachers and soft-deleted paths from publishing or previewing", async () => {
     mocks.roomFindFirst.mockResolvedValue(null);
 
     await expect(
@@ -122,12 +199,17 @@ describe("room publication & teacher preview", () => {
       code: "ROOM_NOT_FOUND",
     });
     await expect(
-      getManagedRoomPreview("foreign-path", "foreign-room"),
+      getManagedRoomPreview("deleted-path", "deleted-room"),
     ).rejects.toMatchObject({
       status: 404,
       code: "ROOM_NOT_FOUND",
     });
+    expect(mocks.roomFindFirst.mock.calls[1][0].where).toEqual({
+      id: "deleted-room",
+      path: { slug: "deleted-path", deletedAt: null, creatorId: "teacher-1" },
+    });
     expect(mocks.roomUpdateMany).not.toHaveBeenCalled();
+    expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
   });
 
   it("stops unauthorized roles before querying the database", async () => {
@@ -146,7 +228,7 @@ describe("room publication & teacher preview", () => {
     expect(mocks.roomFindFirst).not.toHaveBeenCalled();
   });
 
-  it("returns student-compatible preview payload with simulated exercise progress", async () => {
+  it("returns student-compatible preview payload without selecting hidden test cases or rubrics", async () => {
     mocks.roomFindFirst.mockResolvedValue({
       id: "room-1",
       title: "Biến & Kiểu",
@@ -166,6 +248,18 @@ describe("room publication & teacher preview", () => {
     });
 
     const preview = await getManagedRoomPreview("ts-basics", "room-1");
+
+    const exerciseSelect =
+      mocks.roomFindFirst.mock.calls[0][0].select.exercises.select;
+    expect(exerciseSelect).toEqual({
+      id: true,
+      title: true,
+      prompt: true,
+      kind: true,
+      points: true,
+    });
+    expect(exerciseSelect).not.toHaveProperty("testCases");
+    expect(exerciseSelect).not.toHaveProperty("rubric");
 
     expect(preview).toEqual({
       accessible: true,

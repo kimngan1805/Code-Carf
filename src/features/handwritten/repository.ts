@@ -13,6 +13,7 @@ export function findExerciseForUpload(exerciseId: string) {
       room: {
         select: {
           id: true,
+          published: true,
           path: { select: { published: true, deletedAt: true } },
         },
       },

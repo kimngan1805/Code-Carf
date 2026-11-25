@@ -179,7 +179,7 @@ it("bounds conflict retries and does not hide other database errors", async () =
   await expect(saveManagedLesson(input)).rejects.toThrow("Database offline");
 });
 
-it("notifies enrolled learners only when creating a new lesson in a published path", async () => {
+it("does not notify enrolled learners when creating a new draft lesson, even inside a published path", async () => {
   mocks.path.mockResolvedValue({
     id: "path-1",
     slug: "my-path",
@@ -187,18 +187,10 @@ it("notifies enrolled learners only when creating a new lesson in a published pa
     published: true,
   });
 
-  const created = await saveManagedLesson(input);
-  expect(mocks.notifyNewLessonPublished).toHaveBeenCalledTimes(1);
-  expect(mocks.notifyNewLessonPublished).toHaveBeenCalledWith({
-    pathId: "path-1",
-    pathTitle: "Lộ trình TS",
-    roomId: created.id,
-    roomTitle: "Lesson",
-    actorUserId: "teacher-1",
-  });
+  await saveManagedLesson(input);
+  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
 
-  // Updating an existing room must not notify.
-  mocks.notifyNewLessonPublished.mockClear();
+  // Updating an existing room must not notify either.
   await saveManagedLesson({
     pathSlug: input.pathSlug,
     title: input.title,
@@ -206,26 +198,5 @@ it("notifies enrolled learners only when creating a new lesson in a published pa
     content: input.content,
     roomId: "room-1",
   });
-  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
-
-  // Replaying the same requestId must not notify.
-  mocks.find.mockResolvedValue({
-    pathId: "path-1",
-    title: "Lesson",
-    description: "Intro",
-    content: input.content,
-  });
-  await saveManagedLesson(input);
-  expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
-
-  // Creating a room inside an unpublished draft path must not notify.
-  mocks.find.mockResolvedValue(null);
-  mocks.path.mockResolvedValue({
-    id: "path-1",
-    slug: "my-path",
-    title: "Lộ trình TS",
-    published: false,
-  });
-  await saveManagedLesson(input);
   expect(mocks.notifyNewLessonPublished).not.toHaveBeenCalled();
 });

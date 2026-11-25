@@ -28,7 +28,11 @@ vi.mock("@/features/grading/service", () => ({
 import { reportExercise } from "@/features/exercise-reports/service";
 import { getExercisePage } from "@/features/grading/exercise-page";
 import { submitSolution } from "@/features/grading/submit";
-import { getManagedRoomPreview } from "@/features/paths/management";
+import {
+  deleteManagedPath,
+  getManagedRoomPreview,
+} from "@/features/paths/management";
+import { setPathPublication } from "@/features/paths/publication";
 import { getPath } from "@/features/paths/service";
 import { awardActivityBadgesInTx } from "@/features/progress/badge-awarding";
 import { canAccessRoom } from "./access";
@@ -376,6 +380,179 @@ describe.skipIf(!hasDatabase)(
       );
       expect(migrationSql).toContain('UPDATE "Room"');
       expect(migrationSql).toContain('WHERE "published" = true');
+    });
+
+    it("enforces NEW_LESSON notification rules across draft/published rooms, path publication, deduplication, and soft delete", async () => {
+      const studentRole = await db.role.findUniqueOrThrow({
+        where: { name: RoleName.STUDENT },
+      });
+      const [enrolledRow, unenrolledRow] = await Promise.all([
+        db.user.create({
+          data: {
+            email: `${prefix}-notif-enrolled-${randomUUID()}@local.test`,
+            name: "Enrolled Notif Learner",
+            passwordHash: "unused",
+            roleId: studentRole.id,
+          },
+        }),
+        db.user.create({
+          data: {
+            email: `${prefix}-notif-unenrolled-${randomUUID()}@local.test`,
+            name: "Unenrolled Notif Learner",
+            passwordHash: "unused",
+            roleId: studentRole.id,
+          },
+        }),
+      ]);
+      userIds.push(enrolledRow.id, unenrolledRow.id);
+
+      // A. Published Path: Draft Room creation -> 0 notifications; Publish Room -> 1 notification; Unpublish + Republish -> still 1 (deduped).
+      const publishedPath = await db.path.create({
+        data: {
+          slug: `${prefix}-notif-pub-path`,
+          title: "Published Path Notif",
+          published: true,
+          creatorId: ownerTeacher.id,
+          enrollments: {
+            create: [{ userId: enrolledRow.id }, { userId: ownerTeacher.id }],
+          },
+        },
+      });
+      pathIds.push(publishedPath.id);
+
+      mocks.requireRole.mockResolvedValue(ownerTeacher);
+      const draftRoom = await saveManagedLesson({
+        pathSlug: publishedPath.slug,
+        title: "Bài học mới 1",
+        description: "Mô tả",
+        content: "# Nội dung 1",
+        requestId: randomUUID(),
+      });
+
+      // Rule 1: Creating a Draft Room does not notify.
+      expect(
+        await db.notification.count({
+          where: { userId: enrolledRow.id, type: "NEW_LESSON" },
+        }),
+      ).toBe(0);
+
+      // Rule 2 & 7: Publishing Room in Published Path notifies enrolled learner only (not unenrolled, not actor teacher).
+      await setRoomPublication(draftRoom.id, true);
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            type: "NEW_LESSON",
+            dedupeKey: `new-lesson:${draftRoom.id}`,
+          },
+        }),
+      ).toBe(1);
+      expect(
+        await db.notification.count({ where: { userId: unenrolledRow.id } }),
+      ).toBe(0);
+      expect(
+        await db.notification.count({ where: { userId: ownerTeacher.id } }),
+      ).toBe(0);
+
+      // Rule 5: Unpublish then republish Room does not create duplicate notifications.
+      await setRoomPublication(draftRoom.id, false);
+      await setRoomPublication(draftRoom.id, true);
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            type: "NEW_LESSON",
+            dedupeKey: `new-lesson:${draftRoom.id}`,
+          },
+        }),
+      ).toBe(1);
+
+      // B. Draft Path: Publishing Room inside Draft Path -> 0 notifications; Publishing Path -> notifies Published Room only (skips Draft Room); Unpublish + Republish Path -> no duplicates.
+      const draftPath = await db.path.create({
+        data: {
+          slug: `${prefix}-notif-draft-path`,
+          title: "Draft Path Notif",
+          published: false,
+          creatorId: ownerTeacher.id,
+          enrollments: { create: [{ userId: enrolledRow.id }] },
+        },
+      });
+      pathIds.push(draftPath.id);
+
+      const readyRoom = await saveManagedLesson({
+        pathSlug: draftPath.slug,
+        title: "Bài sẵn sàng",
+        description: "",
+        content: "# Sẵn sàng",
+        requestId: randomUUID(),
+      });
+      const stillDraftRoom = await saveManagedLesson({
+        pathSlug: draftPath.slug,
+        title: "Bài còn nháp",
+        description: "",
+        content: "# Còn nháp",
+        requestId: randomUUID(),
+      });
+
+      // Rule 3: Publish Room while Path is still Draft -> no notification yet.
+      await setRoomPublication(readyRoom.id, true);
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            dedupeKey: `new-lesson:${readyRoom.id}`,
+          },
+        }),
+      ).toBe(0);
+
+      // Rule 4: Publish Path -> notifies readyRoom (published), skips stillDraftRoom (draft).
+      await setPathPublication(draftPath.id, true);
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            type: "NEW_LESSON",
+            dedupeKey: `new-lesson:${readyRoom.id}`,
+          },
+        }),
+      ).toBe(1);
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            dedupeKey: `new-lesson:${stillDraftRoom.id}`,
+          },
+        }),
+      ).toBe(0);
+
+      // Rule 5 (Path): Unpublish then republish Path -> still 1 notification, no duplicate.
+      await setPathPublication(draftPath.id, false);
+      await setPathPublication(draftPath.id, true);
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            dedupeKey: `new-lesson:${readyRoom.id}`,
+          },
+        }),
+      ).toBe(1);
+
+      // Rule 6 & Soft Delete Protection: Soft-deleting Path blocks Preview & Room Publication and sends no notifications.
+      await deleteManagedPath(draftPath.id);
+      await expect(
+        getManagedRoomPreview(draftPath.slug, stillDraftRoom.id),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(
+        setRoomPublication(stillDraftRoom.id, true),
+      ).rejects.toMatchObject({ status: 404 });
+      expect(
+        await db.notification.count({
+          where: {
+            userId: enrolledRow.id,
+            dedupeKey: `new-lesson:${stillDraftRoom.id}`,
+          },
+        }),
+      ).toBe(0);
     });
   },
 );
