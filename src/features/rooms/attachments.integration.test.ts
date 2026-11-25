@@ -338,5 +338,77 @@ describe.skipIf(!hasDatabase)(
         (await readRoomAttachment(room.id, open.attachment.id)).fileName,
       ).toBe("bai-giang.pdf");
     });
+
+    it("opens a locked room's files once the previous room is completed, or when the path is not sequential", async () => {
+      const { owner, learner, path, room, lockedRoom } = await setup();
+      current = owner;
+      const { attachment } = await uploadRoomAttachment({
+        roomId: lockedRoom.id,
+        file: pdf(),
+      });
+      current = learner;
+      expect(
+        await errorOf(readRoomAttachment(lockedRoom.id, attachment.id)),
+      ).toMatchObject({ status: 404 });
+
+      await db.path.update({
+        where: { id: path.id },
+        data: { sequentialUnlock: false },
+      });
+      expect(
+        (await readRoomAttachment(lockedRoom.id, attachment.id)).fileName,
+      ).toBe("bai-giang.pdf");
+
+      await db.path.update({
+        where: { id: path.id },
+        data: { sequentialUnlock: true },
+      });
+      await db.roomProgress.create({
+        data: { userId: learner.id, roomId: room.id },
+      });
+      expect(
+        (await readRoomAttachment(lockedRoom.id, attachment.id)).fileName,
+      ).toBe("bai-giang.pdf");
+    });
+
+    it("hides and freezes the files of a soft-deleted path, keeping them in storage", async () => {
+      const { owner, admin, learner, path, room } = await setup();
+      current = owner;
+      const { attachment } = await uploadRoomAttachment({
+        roomId: room.id,
+        file: pdf(),
+      });
+      // Same effect as deleteManagedPath: the path is soft-deleted and unpublished.
+      await db.path.update({
+        where: { id: path.id },
+        data: { deletedAt: new Date(), published: false },
+      });
+
+      for (const user of [learner, owner, admin]) {
+        current = user;
+        expect(
+          await errorOf(readRoomAttachment(room.id, attachment.id)),
+        ).toMatchObject({ status: 404 });
+      }
+      for (const user of [owner, admin]) {
+        current = user;
+        expect(
+          await errorOf(uploadRoomAttachment({ roomId: room.id, file: pdf() })),
+        ).toMatchObject({ status: 404, code: "ROOM_NOT_FOUND" });
+        expect(
+          await errorOf(
+            deleteRoomAttachment({
+              roomId: room.id,
+              attachmentId: attachment.id,
+            }),
+          ),
+        ).toMatchObject({ status: 404 });
+      }
+      // Soft delete keeps learning data, so the file and its row stay.
+      expect(await storedFiles()).toBe(1);
+      expect(
+        await db.roomAttachment.count({ where: { roomId: room.id } }),
+      ).toBe(1);
+    });
   },
 );

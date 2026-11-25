@@ -134,9 +134,10 @@ export function LessonAttachments({
 
   return (
     <section
+      id="tai-lieu-dinh-kem"
       aria-labelledby="lesson-attachments-title"
       aria-busy={busy !== null}
-      className="space-y-4 rounded-2xl border bg-background p-4 sm:p-6"
+      className="scroll-mt-24 space-y-4 rounded-2xl border bg-background p-4 sm:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-1">
