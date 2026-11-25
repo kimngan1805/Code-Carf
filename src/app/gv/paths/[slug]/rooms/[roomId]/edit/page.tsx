@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PathBreadcrumb } from "@/features/paths/components/path-badges";
 import { getManagedRoom } from "@/features/paths/management";
+import { LessonAttachments } from "@/features/rooms/components/lesson-attachments";
 import { LessonEditor } from "@/features/rooms/components/lesson-editor";
 import { AppError } from "@/lib/errors";
 
@@ -37,6 +38,7 @@ export default async function EditLessonPage({
         </h1>
       </header>
       <LessonEditor pathSlug={room.path.slug} room={room} />
+      <LessonAttachments roomId={room.id} initial={room.attachments} />
     </div>
   );
 }

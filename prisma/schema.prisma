@@ -278,9 +278,28 @@ model Room {
   progress        RoomProgress[]
   xpEvents        XpEvent[]
   exerciseReports ExerciseReport[]
+  attachments     RoomAttachment[]
 
   @@unique([pathId, position])
   @@index([pathId, published, position])
+}
+
+/// Tài liệu bài giảng (PDF, PPTX, DOCX) giảng viên đính kèm vào bài học.
+/// File nằm trong storage private, chỉ phục vụ qua route có kiểm tra quyền.
+model RoomAttachment {
+  id          String   @id @default(cuid())
+  roomId      String
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  /// Tên file gốc (đã làm sạch) để hiển thị và đặt tên khi tải về.
+  fileName    String
+  /// MIME chuẩn theo loại file đã kiểm tra, không lấy từ trình duyệt.
+  contentType String
+  size        Int
+  storageKey  String   @unique
+  position    Int
+  createdAt   DateTime @default(now())
+
+  @@index([roomId, position])
 }
 
 /// Một dòng = người học đã hoàn thành room, dùng cho mở khóa tuần tự.
