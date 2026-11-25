@@ -50,10 +50,12 @@ describe("exerciseFieldsSchema", () => {
   });
 
   it("defaults a test to hidden with weight 1", () => {
-    const [test] = exerciseFieldsSchema.parse({
+    const parsed = exerciseFieldsSchema.parse({
       ...valid,
       testCases: [{ input: "1", expected: "1" }],
-    }).testCases;
+    });
+    if (parsed.kind !== "CODE") throw new Error("expected a code exercise");
+    const [test] = parsed.testCases;
     expect(test).toMatchObject({ isHidden: true, weight: 1 });
   });
 

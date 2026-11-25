@@ -2,6 +2,7 @@ import { ExerciseKind, RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { canAccessRoom } from "@/features/rooms/access";
 import { getOwnHandwrittenUpload } from "@/features/handwritten/service";
+import { getLastQuizAttempt } from "@/features/quiz/service";
 import { AppError } from "@/lib/errors";
 import { findExerciseForPractice } from "./repository";
 
@@ -32,6 +33,20 @@ export async function getExercisePage(exerciseId: string) {
     title: exercise.room.path.title,
   };
   const room = { id: exercise.room.id, title: exercise.room.title };
+  if (exercise.kind === ExerciseKind.QUIZ)
+    return {
+      accessible: true as const,
+      kind: "QUIZ" as const,
+      userId: user.id,
+      id: exercise.id,
+      title: exercise.title,
+      prompt: exercise.prompt,
+      points: exercise.points,
+      room,
+      path,
+      questions: exercise.quizQuestions,
+      lastAttempt: await getLastQuizAttempt(user.id, exercise.id),
+    };
   if (exercise.kind === ExerciseKind.HANDWRITTEN)
     return {
       accessible: true as const,
@@ -74,3 +89,4 @@ export type HandwrittenExercisePage = Extract<
   AccessiblePage,
   { kind: "HANDWRITTEN" }
 >;
+export type QuizExercisePage = Extract<AccessiblePage, { kind: "QUIZ" }>;

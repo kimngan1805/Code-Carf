@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   remove: vi.fn(),
   deleteTests: vi.fn(),
   createTests: vi.fn(),
+  deleteQuestions: vi.fn(),
+  createQuestions: vi.fn(),
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.role }));
 vi.mock("@/lib/db", () => ({ db: { $transaction: mocks.transaction } }));
@@ -51,6 +53,10 @@ beforeEach(() => {
       testCase: {
         deleteMany: mocks.deleteTests,
         createMany: mocks.createTests,
+      },
+      quizQuestion: {
+        deleteMany: mocks.deleteQuestions,
+        createMany: mocks.createQuestions,
       },
     }),
   );
@@ -202,4 +208,64 @@ it("refuses to delete an exercise that has submissions", async () => {
     }),
   ).rejects.toMatchObject({ status: 409, code: "EXERCISE_IN_USE" });
   expect(mocks.remove).not.toHaveBeenCalled();
+});
+
+it("creates a QUIZ exercise with ordered questions and no test cases", async () => {
+  const { timeLimitMs: _t, memoryMb: _m, testCases: _c, ...rest } = input;
+  void _t;
+  void _m;
+  void _c;
+  await saveManagedExercise({
+    ...rest,
+    kind: "QUIZ",
+    questions: [
+      { prompt: "1 + 1?", options: ["1", "2"], answer: 1 },
+      { prompt: "Kiểu của 1.5?", options: ["int", "float", "str"], answer: 1 },
+    ],
+  });
+  const data = mocks.create.mock.calls[0][0].data;
+  expect(data).toMatchObject({ kind: "QUIZ", rubric: null });
+  expect(data.testCases.create).toEqual([]);
+  expect(data.quizQuestions.create).toEqual([
+    {
+      position: 0,
+      prompt: "1 + 1?",
+      options: ["1", "2"],
+      answer: 1,
+      explanation: "",
+    },
+    {
+      position: 1,
+      prompt: "Kiểu của 1.5?",
+      options: ["int", "float", "str"],
+      answer: 1,
+      explanation: "",
+    },
+  ]);
+});
+
+it("refuses a quiz question whose answer is out of range", async () => {
+  const { timeLimitMs: _t, memoryMb: _m, testCases: _c, ...rest } = input;
+  void _t;
+  void _m;
+  void _c;
+  await expect(
+    saveManagedExercise({
+      ...rest,
+      kind: "QUIZ",
+      questions: [{ prompt: "?", options: ["a", "b"], answer: 3 }],
+    }),
+  ).rejects.toMatchObject({ message: "Vui lòng chọn đáp án đúng." });
+});
+
+it("requires a rubric for a handwritten exercise", async () => {
+  const { timeLimitMs: _t, memoryMb: _m, testCases: _c, ...rest } = input;
+  void _t;
+  void _m;
+  void _c;
+  await expect(
+    saveManagedExercise({ ...rest, kind: "HANDWRITTEN", rubric: " " }),
+  ).rejects.toMatchObject({
+    message: "Vui lòng nhập đáp án mẫu hoặc tiêu chí chấm.",
+  });
 });
