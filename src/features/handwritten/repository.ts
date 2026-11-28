@@ -48,7 +48,18 @@ export function findOwnUpload(
 export function findSubmissionImage(id: string) {
   return db.submission.findUnique({
     where: { id },
-    select: { userId: true, imageUrl: true },
+    select: {
+      userId: true,
+      imageUrl: true,
+      contestId: true,
+      exercise: {
+        select: {
+          room: {
+            select: { path: { select: { creatorId: true, deletedAt: true } } },
+          },
+        },
+      },
+    },
   });
 }
 

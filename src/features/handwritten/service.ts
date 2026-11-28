@@ -136,14 +136,28 @@ async function removeQuietly(key: string) {
 }
 
 /**
- * The image bytes of one handwritten submission, for its owner only. Someone
- * else's submission answers exactly like a missing one, so the response never
- * confirms that another learner's image exists.
+ * The image bytes of one handwritten submission: for its owner, for the teacher
+ * who manages the lesson (practice submissions only, to grade them) and for
+ * admins. Anyone else gets the same answer as for a missing image, so the
+ * response never confirms that another learner's image exists.
  */
 export async function readHandwrittenImage(submissionId: string) {
-  const user = await requireRole([RoleName.STUDENT]);
+  const user = await requireRole([
+    RoleName.STUDENT,
+    RoleName.TEACHER,
+    RoleName.ADMIN,
+  ]);
   const row = await findSubmissionImage(submissionId);
-  if (!row || row.userId !== user.id || !row.imageUrl) throw NOT_FOUND();
+  if (!row || !row.imageUrl) throw NOT_FOUND();
+  const path = row.exercise.room?.path;
+  const allowed =
+    row.userId === user.id ||
+    user.role.name === RoleName.ADMIN ||
+    (user.role.name === RoleName.TEACHER &&
+      row.contestId === null &&
+      path?.deletedAt === null &&
+      path.creatorId === user.id);
+  if (!allowed) throw NOT_FOUND();
   const bytes = await getStorage().get(row.imageUrl);
   return { bytes, mime: mimeFromStorageKey(row.imageUrl) };
 }
