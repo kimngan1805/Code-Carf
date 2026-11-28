@@ -3,6 +3,7 @@ import {
   CONTEST_FORMATS,
   defaultProfile,
   formatDuration,
+  sampleContestSeeds,
   sampleContests,
   withProfile,
 } from "./catalog";
@@ -37,6 +38,28 @@ describe("contest showcase catalog", () => {
     expect(contest.sample).toBe(false);
     expect(contest.people).toEqual([]);
     expect(defaultProfile(real).sections).toEqual([
+      { title: "Bài lập trình", questionType: "coding", count: 3 },
+    ]);
+  });
+
+  it("seeds every sample with the same schedule the showcase displays", () => {
+    const now = Date.UTC(2026, 10, 24);
+    const seeds = sampleContestSeeds(now);
+    const samples = sampleContests(now);
+    expect(seeds.map((seed) => seed.slug)).toEqual(
+      samples.map((sample) => sample.slug),
+    );
+    for (const [index, seed] of seeds.entries()) {
+      expect(seed.examStartsAt.toISOString()).toBe(samples[index].examStartsAt);
+      expect(+seed.endsAt).toBeLessThan(+seed.examStartsAt);
+    }
+  });
+
+  it("keeps a seeded sample's introduction but counts its real exercises", () => {
+    const contest = withProfile({ ...real, slug: "giao-huu-python" });
+    expect(contest.sample).toBe(false);
+    expect(contest.profile.format).toBe("friendly");
+    expect(contest.profile.sections).toEqual([
       { title: "Bài lập trình", questionType: "coding", count: 3 },
     ]);
   });

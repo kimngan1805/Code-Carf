@@ -15,6 +15,8 @@ vi.mock("@/features/auth/service", () => ({ requireRole: mocks.auth }));
 vi.mock("next/server", () => ({ connection: mocks.connection }));
 vi.mock("next/navigation", () => ({ notFound: mocks.notFound }));
 import {
+  getShowcaseContest,
+  getShowcaseContests,
   getPublicShowcase,
   getPublicContest,
   presentPublicContest,
@@ -155,4 +157,19 @@ it("filters by exam status and searches Vietnamese titles without accents", () =
   expect(filterShowcase(contests, "all", "đấu trường")).toHaveLength(3);
   expect(filterShowcase(contests, "all", "missing")).toEqual([]);
   expect(filterShowcase(contests, "ended", "")).toEqual([]);
+});
+it("shows a seeded sample once, as the real registrable contest", async () => {
+  mocks.many.mockResolvedValue([record("giao-huu-python", 1000)]);
+  const contests = await getShowcaseContests(now);
+  const matches = contests.filter((c) => c.slug === "giao-huu-python");
+  expect(matches).toHaveLength(1);
+  expect(matches[0].sample).toBe(false);
+  expect(matches[0].participants).toBe(5);
+});
+it("prefers the database contest over a sample with the same slug", async () => {
+  mocks.first.mockResolvedValue(record("giao-huu-python", 1000));
+  const contest = await getShowcaseContest("giao-huu-python", now);
+  expect(contest.sample).toBe(false);
+  mocks.first.mockResolvedValue(null);
+  expect((await getShowcaseContest("giao-huu-python", now)).sample).toBe(true);
 });
