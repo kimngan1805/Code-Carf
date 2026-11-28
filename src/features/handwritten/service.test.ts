@@ -455,11 +455,50 @@ describe("getOwnHandwrittenUpload", () => {
       id: "sub-1",
       status: "PENDING",
       submittedAt: saved.createdAt,
+      score: null,
+      feedback: null,
+      reviewedAt: undefined,
     });
   });
 
   it("returns null before the first upload", async () => {
     mocks.findOwnUpload.mockResolvedValue(null);
     expect(await getOwnHandwrittenUpload("user-1", "ex-1")).toBeNull();
+  });
+});
+
+describe("getOwnHandwrittenUpload (grading result)", () => {
+  it("shows the teacher's score and feedback once graded", async () => {
+    const reviewedAt = new Date("2026-11-29T09:00:00Z");
+    mocks.findOwnUpload.mockResolvedValue({
+      id: "sub-1",
+      status: "ACCEPTED",
+      createdAt: saved.createdAt,
+      score: 85,
+      feedback: "Đúng ý chính, thiếu ví dụ.",
+      reviewedAt,
+    });
+    await expect(getOwnHandwrittenUpload("user-1", "ex-1")).resolves.toEqual({
+      id: "sub-1",
+      status: "ACCEPTED",
+      submittedAt: saved.createdAt,
+      score: 85,
+      feedback: "Đúng ý chính, thiếu ví dụ.",
+      reviewedAt,
+    });
+  });
+
+  it("does not show a score before a teacher has reviewed it", async () => {
+    mocks.findOwnUpload.mockResolvedValue({
+      id: "sub-1",
+      status: "NEEDS_REVIEW",
+      createdAt: saved.createdAt,
+      score: 40,
+      feedback: "gợi ý tự động",
+      reviewedAt: null,
+    });
+    await expect(
+      getOwnHandwrittenUpload("user-1", "ex-1"),
+    ).resolves.toMatchObject({ score: null, feedback: null });
   });
 });

@@ -40,7 +40,14 @@ export function findOwnUpload(
 ) {
   return db.submission.findFirst({
     where: { userId, exerciseId, contestId, imageUrl: { not: null } },
-    select: { id: true, status: true, createdAt: true },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      score: true,
+      feedback: true,
+      reviewedAt: true,
+    },
   });
 }
 

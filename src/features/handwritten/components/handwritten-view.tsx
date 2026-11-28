@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Clock3, MessageSquareText } from "lucide-react";
 import type { HandwrittenExercisePage } from "@/features/grading/exercise-page";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
 import { isFinalStatus } from "../rules";
@@ -42,6 +42,46 @@ export function HandwrittenView({
           </p>
         )}
       </section>
+      {upload?.reviewedAt && upload.score !== null ? (
+        <section
+          aria-labelledby="grade-result-title"
+          className="space-y-3 rounded-2xl border bg-background p-5"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 id="grade-result-title" className="text-lg font-semibold">
+              Kết quả chấm
+            </h2>
+            <span
+              className={`rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${
+                upload.status === "ACCEPTED"
+                  ? "bg-success/15 text-success"
+                  : "bg-destructive/10 text-destructive"
+              }`}
+            >
+              {(upload.score / 10).toLocaleString("vi-VN")}/10 ·{" "}
+              {upload.status === "ACCEPTED" ? "Đạt" : "Chưa đạt"}
+            </span>
+          </div>
+          {upload.feedback ? (
+            <p className="flex gap-2 rounded-xl bg-muted/40 p-3 text-sm leading-6 whitespace-pre-line">
+              <MessageSquareText
+                className="mt-0.5 size-4 shrink-0 text-primary"
+                aria-hidden
+              />
+              {upload.feedback}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Giảng viên không để lại nhận xét.
+            </p>
+          )}
+        </section>
+      ) : upload ? (
+        <p className="flex items-center gap-2 rounded-2xl border bg-background p-4 text-sm text-muted-foreground">
+          <Clock3 className="size-4 text-warning" aria-hidden />
+          Đã nộp bài, đang chờ giảng viên chấm. Bạn vẫn học tiếp được bài sau.
+        </p>
+      ) : null}
       <HandwrittenUpload
         key={upload?.id ?? "new"}
         exerciseId={exercise.id}

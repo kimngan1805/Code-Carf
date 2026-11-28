@@ -169,7 +169,15 @@ export async function getOwnHandwrittenUpload(
 ) {
   const row = await findOwnUpload(userId, exerciseId, null);
   return row
-    ? { id: row.id, status: row.status, submittedAt: row.createdAt }
+    ? {
+        id: row.id,
+        status: row.status,
+        submittedAt: row.createdAt,
+        // Điểm (0-100) và nhận xét giảng viên, chỉ có khi đã chấm.
+        score: row.reviewedAt ? row.score : null,
+        feedback: row.reviewedAt ? row.feedback : null,
+        reviewedAt: row.reviewedAt,
+      }
     : null;
 }
 
