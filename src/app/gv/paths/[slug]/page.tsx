@@ -390,11 +390,13 @@ export default async function ManagedPathPage({
               </div>
             ) : (
               <ol className="mt-4 space-y-2.5">
-                {path.rooms.map((room) => (
+                {path.rooms.map((room, index) => (
                   <ManagedPathRoomItem
                     key={room.id}
                     pathSlug={path.slug}
                     room={room}
+                    first={index === 0}
+                    last={index === path.rooms.length - 1}
                   />
                 ))}
               </ol>
