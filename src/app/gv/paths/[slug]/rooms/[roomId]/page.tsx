@@ -4,6 +4,7 @@ import { BookOpen, CheckCircle2, CodeXml, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteExerciseButton } from "@/features/exercises/components/delete-exercise-button";
 import { ExerciseItem } from "@/features/exercises/components/exercise-item";
+import { MoveExercise } from "@/features/exercises/components/move-exercise";
 import { ExercisePreview } from "@/features/exercises/components/exercise-preview";
 import { PathBreadcrumb } from "@/features/paths/components/path-badges";
 import { stripLessonTemplate } from "@/features/paths/lesson-structure";
@@ -168,7 +169,7 @@ export default async function ManagedRoomPage({
           </div>
         ) : (
           <ul className="space-y-2.5">
-            {room.exercises.map((exercise) => (
+            {room.exercises.map((exercise, index) => (
               <ExerciseItem
                 key={exercise.id}
                 summary={
@@ -202,6 +203,14 @@ export default async function ManagedRoomPage({
                 }
                 actions={
                   <>
+                    <MoveExercise
+                      pathSlug={room.path.slug}
+                      roomId={room.id}
+                      exerciseId={exercise.id}
+                      title={exercise.title}
+                      first={index === 0}
+                      last={index === room.exercises.length - 1}
+                    />
                     <Button
                       asChild
                       variant="outline"

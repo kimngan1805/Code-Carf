@@ -2,7 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors";
-import { deleteManagedExercise, saveManagedExercise } from "./authoring";
+import {
+  deleteManagedExercise,
+  moveManagedExercise,
+  saveManagedExercise,
+} from "./authoring";
 
 function revalidateRoom(slug: string, roomId: string) {
   revalidatePath(`/gv/paths/${slug}`);
@@ -38,6 +42,21 @@ export async function deleteExerciseAction(input: unknown) {
         error instanceof AppError
           ? error.message
           : "Chưa thể xóa bài tập. Vui lòng thử lại.",
+    };
+  }
+}
+
+export async function moveExerciseAction(input: unknown) {
+  try {
+    const result = await moveManagedExercise(input);
+    revalidateRoom(result.slug, result.roomId);
+    return { error: null };
+  } catch (error) {
+    return {
+      error:
+        error instanceof AppError
+          ? error.message
+          : "Chưa thể đổi thứ tự. Vui lòng thử lại.",
     };
   }
 }

@@ -39,6 +39,15 @@ export function findPreviousRoom(
   });
 }
 
+/** Bài học kế tiếp (đã xuất bản) trong cùng lộ trình, để mời học viên học tiếp. */
+export function findNextRoom(pathId: string, position: number) {
+  return db.room.findFirst({
+    where: { pathId, published: true, position: { gt: position } },
+    orderBy: { position: "asc" },
+    select: { id: true, title: true },
+  });
+}
+
 export function findRoomContent(roomId: string) {
   return db.room.findFirst({
     where: {
@@ -52,7 +61,7 @@ export function findRoomContent(roomId: string) {
       description: true,
       content: true,
       exercises: {
-        orderBy: { id: "asc" },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
         select: {
           id: true,
           title: true,
@@ -88,4 +97,13 @@ export function listRooms() {
     },
     orderBy: [{ pathId: "asc" }, { position: "asc" }],
   });
+}
+
+/** Học viên đã hoàn thành bài học này chưa (có dòng RoomProgress). */
+export async function isRoomCompleted(roomId: string, userId: string) {
+  const row = await db.roomProgress.findUnique({
+    where: { userId_roomId: { userId, roomId } },
+    select: { roomId: true },
+  });
+  return row !== null;
 }

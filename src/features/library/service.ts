@@ -661,9 +661,14 @@ export async function copyExerciseToRoom(input: {
     select: exerciseCopySelect,
   });
   if (!source) throw EXERCISE_NOT_FOUND();
+  const last = await db.exercise.aggregate({
+    where: { roomId: room.id },
+    _max: { position: true },
+  });
   const copy = await db.exercise.create({
     data: {
       roomId: room.id,
+      position: (last._max.position ?? 0) + 1,
       creatorId: user.id,
       sourceId: input.exerciseId,
       librarySynced: true,

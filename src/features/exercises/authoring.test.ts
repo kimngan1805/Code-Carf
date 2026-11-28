@@ -1,4 +1,4 @@
-import { beforeEach, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppError } from "@/lib/errors";
 
 const mocks = vi.hoisted(() => ({
@@ -14,10 +14,16 @@ const mocks = vi.hoisted(() => ({
   createTests: vi.fn(),
   deleteQuestions: vi.fn(),
   createQuestions: vi.fn(),
+  list: vi.fn(),
+  setPosition: vi.fn(),
 }));
 vi.mock("@/features/auth/service", () => ({ requireRole: mocks.role }));
 vi.mock("@/lib/db", () => ({ db: { $transaction: mocks.transaction } }));
-import { deleteManagedExercise, saveManagedExercise } from "./authoring";
+import {
+  deleteManagedExercise,
+  moveManagedExercise,
+  saveManagedExercise,
+} from "./authoring";
 
 const input = {
   pathSlug: "cpp",
@@ -50,9 +56,12 @@ beforeEach(() => {
       exercise: {
         findUnique: mocks.findExisting,
         findFirst: mocks.find,
+        aggregate: vi.fn().mockResolvedValue({ _max: { position: 2 } }),
         create: mocks.create,
         updateMany: mocks.update,
         delete: mocks.remove,
+        findMany: mocks.list,
+        update: mocks.setPosition,
       },
       testCase: {
         deleteMany: mocks.deleteTests,
@@ -89,6 +98,8 @@ it("creates a CODE exercise with its tests inside an owned room", async () => {
   expect(library.roomId).toBeUndefined();
   const data = mocks.create.mock.calls[1][0].data;
   expect(data).toMatchObject({
+    position: 3,
+    librarySynced: true,
     creatorId: "teacher-1",
     sourceId: "library-copy",
     roomId: "room-1",
@@ -284,5 +295,83 @@ it("requires a rubric for a handwritten exercise", async () => {
     saveManagedExercise({ ...rest, kind: "HANDWRITTEN", rubric: " " }),
   ).rejects.toMatchObject({
     message: "Vui lòng nhập đáp án mẫu hoặc tiêu chí chấm.",
+  });
+});
+
+describe("moveManagedExercise", () => {
+  const move = (exerciseId: string, direction: "up" | "down") =>
+    moveManagedExercise({
+      pathSlug: "cpp",
+      roomId: "room-1",
+      exerciseId,
+      direction,
+    });
+  const order = () =>
+    mocks.setPosition.mock.calls.map(([call]) => [
+      call.where.id,
+      call.data.position,
+    ]);
+
+  beforeEach(() => {
+    mocks.list.mockResolvedValue([
+      { id: "quiz" },
+      { id: "code" },
+      { id: "essay" },
+    ]);
+  });
+
+  it("swaps an exercise with the one above and renumbers 1..n", async () => {
+    await expect(move("code", "up")).resolves.toEqual({
+      roomId: "room-1",
+      slug: "cpp",
+    });
+    expect(mocks.list.mock.calls[0][0]).toMatchObject({
+      where: { roomId: "room-1" },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+    });
+    expect(order()).toEqual([
+      ["code", 1],
+      ["quiz", 2],
+      ["essay", 3],
+    ]);
+  });
+
+  it("moves down and leaves the order as is at the edges", async () => {
+    await move("code", "down");
+    expect(order()).toEqual([
+      ["quiz", 1],
+      ["essay", 2],
+      ["code", 3],
+    ]);
+    mocks.setPosition.mockClear();
+    await move("quiz", "up");
+    expect(order()).toEqual([
+      ["quiz", 1],
+      ["code", 2],
+      ["essay", 3],
+    ]);
+  });
+
+  it("only works in a lesson the teacher manages and on its own exercises", async () => {
+    mocks.room.mockResolvedValue(null);
+    await expect(move("code", "up")).rejects.toMatchObject({ status: 404 });
+    mocks.room.mockResolvedValue({ id: "room-1", path: { slug: "cpp" } });
+    await expect(move("other-room-exercise", "up")).rejects.toMatchObject({
+      status: 404,
+      code: "EXERCISE_NOT_FOUND",
+    });
+    expect(mocks.setPosition).not.toHaveBeenCalled();
+  });
+
+  it("rejects unknown directions and extra fields", async () => {
+    await expect(
+      moveManagedExercise({
+        pathSlug: "cpp",
+        roomId: "room-1",
+        exerciseId: "code",
+        direction: "left",
+      }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(mocks.transaction).not.toHaveBeenCalled();
   });
 });

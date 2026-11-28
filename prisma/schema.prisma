@@ -418,6 +418,8 @@ model Exercise {
   libraryVisibility LibraryVisibility @default(PRIVATE)
   /// Bài trong bài học đã có bản trong kho (chép đúng một lần, xóa bản trong kho không chép lại).
   librarySynced     Boolean           @default(false)
+  /// Thứ tự trong bài học (nhỏ hiện trước).
+  position          Int               @default(0)
   testCases         TestCase[]
   quizQuestions     QuizQuestion[]
   submissions       Submission[]
@@ -426,6 +428,7 @@ model Exercise {
   reports           ExerciseReport[]
 
   @@index([creatorId, sourceId])
+  @@index([roomId, position])
 }
 
 model ExerciseReport {

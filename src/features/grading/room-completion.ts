@@ -1,4 +1,4 @@
-import { SubmissionStatus, XpSource } from "@prisma/client";
+import { ExerciseKind, SubmissionStatus, XpSource } from "@prisma/client";
 import { db } from "../../lib/db";
 import { getLevel } from "../progress/levels";
 import {
@@ -37,6 +37,8 @@ export interface RoomCompletion {
 export async function completeRoomIfDone(
   userId: string,
   roomId: string,
+  /** Bài học chỉ có nội dung (không có bài tập): học viên tự bấm "Đã học xong". */
+  options: { markRead?: boolean } = {},
 ): Promise<RoomCompletion | null> {
   return db.$transaction(async (tx) => {
     const room = await tx.room.findUnique({
@@ -50,19 +52,31 @@ export async function completeRoomIfDone(
         exercises: { select: { id: true } },
       },
     });
-    if (!room || room.exercises.length === 0) return null;
+    if (!room) return null;
+    // Bài không có bài tập chỉ hoàn thành khi học viên tự đánh dấu đã học xong.
+    if (room.exercises.length === 0 && !options.markRead) return null;
 
     const exerciseIds = room.exercises.map((exercise) => exercise.id);
-    const passed = await tx.submission.findMany({
-      where: {
-        userId,
-        contestId: null,
-        status: SubmissionStatus.ACCEPTED,
-        exerciseId: { in: exerciseIds },
-      },
-      select: { exerciseId: true },
-      distinct: ["exerciseId"],
-    });
+    const passed = exerciseIds.length
+      ? await tx.submission.findMany({
+          where: {
+            userId,
+            contestId: null,
+            exerciseId: { in: exerciseIds },
+            OR: [
+              { status: SubmissionStatus.ACCEPTED },
+              // Bài tự luận: nộp ảnh là đã làm. Điểm do giảng viên chấm sau,
+              // không chặn việc mở bài tiếp theo.
+              {
+                exercise: { kind: ExerciseKind.HANDWRITTEN },
+                status: { not: SubmissionStatus.ERROR },
+              },
+            ],
+          },
+          select: { exerciseId: true },
+          distinct: ["exerciseId"],
+        })
+      : [];
     if (passed.length < exerciseIds.length) return null;
 
     // ON CONFLICT DO NOTHING: a repeat or concurrent completion inserts nothing

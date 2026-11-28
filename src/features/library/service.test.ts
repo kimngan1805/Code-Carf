@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   room: vi.fn(),
   findExercise: vi.fn(),
   createExercise: vi.fn(),
+  aggregate: vi.fn(),
   findFile: vi.fn(),
   deleteFile: vi.fn(),
   storageDelete: vi.fn(),
@@ -20,6 +21,7 @@ vi.mock("@/lib/db", () => ({
     exercise: {
       findFirst: mocks.findExercise,
       create: mocks.createExercise,
+      aggregate: mocks.aggregate,
       findUnique: vi.fn().mockResolvedValue(null),
     },
     libraryLecture: { findFirst: mocks.findFile, delete: mocks.deleteFile },
@@ -54,6 +56,7 @@ beforeEach(() => {
     path: { slug: "python" },
   });
   mocks.createExercise.mockResolvedValue({ id: "copy-1" });
+  mocks.aggregate.mockResolvedValue({ _max: { position: 3 } });
 });
 
 it("copies a library exercise into a lesson the teacher manages", async () => {
@@ -76,6 +79,8 @@ it("copies a library exercise into a lesson the teacher manages", async () => {
     sourceId: "lib-1",
     title: "Tổng hai số",
     testCases: { create: source.testCases },
+    // Bài lấy từ kho xếp xuống cuối bài học.
+    position: 4,
   });
 });
 

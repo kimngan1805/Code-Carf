@@ -348,6 +348,60 @@ describe.skipIf(!hasDatabase)(
       expect(await completeRoomIfDone(user.id, second.id)).toBeNull();
     });
 
+    it("counts a handwritten answer as done once submitted, before it is graded", async () => {
+      const { user, first, second, exercises } = await setup();
+      await db.exercise.update({
+        where: { id: exercises[1].id },
+        data: { kind: ExerciseKind.HANDWRITTEN },
+      });
+      await submit(user.id, exercises[0].id);
+      // Ảnh tự luận vừa nộp, chưa chấm: không chặn việc qua bài.
+      await submit(user.id, exercises[1].id, SubmissionStatus.PENDING);
+
+      expect(await completeRoomIfDone(user.id, first.id)).toMatchObject({
+        roomId: first.id,
+      });
+      expect(await canAccessRoom(user.id, second.id)).toBe(true);
+    });
+
+    it("does not count a handwritten submission that failed to save, nor a pending code run", async () => {
+      const { user, first, exercises } = await setup();
+      await db.exercise.update({
+        where: { id: exercises[1].id },
+        data: { kind: ExerciseKind.HANDWRITTEN },
+      });
+      await submit(user.id, exercises[0].id, SubmissionStatus.PENDING);
+      await submit(user.id, exercises[1].id, SubmissionStatus.ERROR);
+
+      expect(await completeRoomIfDone(user.id, first.id)).toBeNull();
+    });
+
+    it("completes a lesson without exercises only when the learner marks it as learned", async () => {
+      const { user, first, second, exercises } = await setup();
+      await db.exercise.deleteMany({
+        where: { id: { in: exercises.map((exercise) => exercise.id) } },
+      });
+
+      expect(await completeRoomIfDone(user.id, first.id)).toBeNull();
+      expect(await canAccessRoom(user.id, second.id)).toBe(false);
+
+      const result = await completeRoomIfDone(user.id, first.id, {
+        markRead: true,
+      });
+      expect(result).toMatchObject({ roomId: first.id, xpAwarded: 50 });
+      expect(await canAccessRoom(user.id, second.id)).toBe(true);
+      // Bấm lại không cộng XP lần nữa.
+      await completeRoomIfDone(user.id, first.id, { markRead: true });
+      expect(await userXp(user.id)).toBe(50);
+    });
+
+    it("never completes a lesson with exercises just because it is marked as learned", async () => {
+      const { user, first } = await setup();
+      expect(
+        await completeRoomIfDone(user.id, first.id, { markRead: true }),
+      ).toBeNull();
+    });
+
     it("submitSolution completes the room on the last accepted exercise and pays XP once", async () => {
       const { user, first, second, exercises } = await setup({ xpReward: 80 });
       for (const exercise of exercises)

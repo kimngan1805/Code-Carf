@@ -168,7 +168,7 @@ export async function getManagedPath(slug: string) {
             select: { id: true, fileName: true, contentType: true },
           },
           exercises: {
-            orderBy: { id: "asc" },
+            orderBy: [{ position: "asc" }, { id: "asc" }],
             select: { id: true, title: true, kind: true },
           },
         },
@@ -224,7 +224,7 @@ export async function getManagedRoom(slug: string, roomId: string) {
         select: { id: true, fileName: true, contentType: true, size: true },
       },
       exercises: {
-        orderBy: { id: "asc" },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
         select: {
           id: true,
           title: true,
@@ -283,7 +283,7 @@ export async function getManagedRoomPreview(slug: string, roomId: string) {
         select: { id: true, fileName: true, contentType: true, size: true },
       },
       exercises: {
-        orderBy: { id: "asc" },
+        orderBy: [{ position: "asc" }, { id: "asc" }],
         select: {
           id: true,
           title: true,
@@ -319,6 +319,9 @@ export async function getManagedRoomPreview(slug: string, roomId: string) {
       state: "not_started" as const,
     })),
     passedExercises: 0,
+    completed: false,
+    // Xem trước không ghi tiến độ nên không có bài kế tiếp để mời học tiếp.
+    nextRoom: null,
   };
 }
 

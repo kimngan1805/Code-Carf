@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { createHash } from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
@@ -147,10 +148,15 @@ export async function saveManagedExercise(body: unknown) {
               },
               select: { id: true },
             });
+            const last = await tx.exercise.aggregate({
+              where: { roomId: room.id },
+              _max: { position: true },
+            });
             await tx.exercise.create({
               data: {
                 id,
                 roomId: room.id,
+                position: (last._max.position ?? 0) + 1,
                 creatorId: user.id,
                 sourceId: library.id,
                 librarySynced: true,
@@ -204,6 +210,48 @@ export async function deleteManagedExercise(body: unknown) {
         "Bài tập đã có bài nộp hoặc nằm trong cuộc thi nên không thể xóa.",
       );
     await tx.exercise.delete({ where: { id: exercise.id } });
+    return { roomId: room.id, slug: input.pathSlug };
+  });
+}
+
+const moveSchema = z
+  .object({
+    pathSlug: z.string().min(1).max(200),
+    roomId: z.string().min(1).max(200),
+    exerciseId: z.string().min(1).max(200),
+    direction: z.enum(["up", "down"]),
+  })
+  .strict();
+
+/** Đổi chỗ bài tập với bài liền trên hoặc liền dưới, rồi đánh số lại 1..n cho gọn. */
+export async function moveManagedExercise(body: unknown) {
+  const user = await requireRole(["TEACHER", "ADMIN"]);
+  const parsed = moveSchema.safeParse(body);
+  if (!parsed.success)
+    throw new AppError(400, "INVALID_MOVE", "Yêu cầu đổi thứ tự không hợp lệ.");
+  const input = parsed.data;
+  return db.$transaction(async (tx) => {
+    const room = await findOwnedRoom(tx, user, input.pathSlug, input.roomId);
+    const exercises = await tx.exercise.findMany({
+      where: { roomId: room.id },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+      select: { id: true },
+    });
+    const ids = exercises.map((exercise) => exercise.id);
+    const from = ids.indexOf(input.exerciseId);
+    if (from < 0)
+      throw new AppError(
+        404,
+        "EXERCISE_NOT_FOUND",
+        "Không tìm thấy bài tập trong bài học này.",
+      );
+    const to = input.direction === "up" ? from - 1 : from + 1;
+    if (to >= 0 && to < ids.length) [ids[from], ids[to]] = [ids[to], ids[from]];
+    for (const [index, id] of ids.entries())
+      await tx.exercise.update({
+        where: { id },
+        data: { position: index + 1 },
+      });
     return { roomId: room.id, slug: input.pathSlug };
   });
 }
