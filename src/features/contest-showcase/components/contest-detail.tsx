@@ -91,7 +91,14 @@ function Empty({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ContestDetailHero({ contest }: { contest: ShowcaseContest }) {
+export function ContestDetailHero({
+  contest,
+  back = { href: "/thi-dau#kham-pha", label: "Khám phá thi đấu" },
+}: {
+  contest: ShowcaseContest;
+  /** Liên kết quay lại ở đường dẫn phía trên tiêu đề. */
+  back?: { href: string; label: string };
+}) {
   const { profile } = contest;
   const type = CONTEST_TYPES[profile.type];
   const facts: { icon: LucideIcon; label: string; value: string }[] = [
@@ -137,8 +144,8 @@ export function ContestDetailHero({ contest }: { contest: ShowcaseContest }) {
       <nav aria-label="Đường dẫn" className="text-sm">
         <ol className="flex flex-wrap items-center gap-1.5 text-muted-foreground">
           <li>
-            <Link href="/thi-dau#kham-pha" className="hover:text-primary">
-              Khám phá thi đấu
+            <Link href={back.href} className="hover:text-primary">
+              {back.label}
             </Link>
           </li>
           <li aria-hidden>
@@ -223,7 +230,14 @@ function RegisterAction({ contest }: { contest: ShowcaseContest }) {
   );
 }
 
-export function ContestDetailAside({ contest }: { contest: ShowcaseContest }) {
+export function ContestDetailAside({
+  contest,
+  action,
+}: {
+  contest: ShowcaseContest;
+  /** Khu vực thí sinh truyền nút đăng ký/vào thi thật; bỏ trống thì dùng nút dẫn vào khu vực thí sinh. */
+  action?: React.ReactNode;
+}) {
   // Mốc đã qua suy ra từ trạng thái, không đọc giờ hệ thống lúc render.
   const reg = contest.registrationPhase;
   const exam = contest.phase;
@@ -292,13 +306,14 @@ export function ContestDetailAside({ contest }: { contest: ShowcaseContest }) {
           })}
         </ol>
         <div className="mt-6">
-          {contest.phase === "ended" ? (
-            <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
-              Cuộc thi đã kết thúc. Hẹn bạn ở thử thách tiếp theo!
-            </p>
-          ) : (
-            <RegisterAction contest={contest} />
-          )}
+          {action ??
+            (contest.phase === "ended" ? (
+              <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
+                Cuộc thi đã kết thúc. Hẹn bạn ở thử thách tiếp theo!
+              </p>
+            ) : (
+              <RegisterAction contest={contest} />
+            ))}
         </div>
       </div>
       <div className="flex items-center gap-3 rounded-3xl border-2 border-primary/20 bg-background p-5">
@@ -598,41 +613,49 @@ function RewardsTab({ contest }: { contest: ShowcaseContest }) {
   );
 }
 
-export function ContestDetailTabs({ contest }: { contest: ShowcaseContest }) {
+export function ContestDetailTabs({
+  contest,
+  signedIn = false,
+}: {
+  contest: ShowcaseContest;
+  /** Khu vực thí sinh có tab bảng xếp hạng trực tiếp riêng nên ẩn tab giới thiệu này. */
+  signedIn?: boolean;
+}) {
+  const tabs = [
+    {
+      id: "tong-quan",
+      label: "Tổng quan",
+      content: <OverviewTab contest={contest} />,
+    },
+    {
+      id: "noi-dung",
+      label: "Nội dung thi",
+      content: <ContentTab contest={contest} />,
+    },
+    {
+      id: "the-le",
+      label: "Thể lệ",
+      content: <RulesTab contest={contest} />,
+    },
+    {
+      id: "nguoi-tham-gia",
+      label: "Người tham gia",
+      content: <ParticipantsTab contest={contest} />,
+    },
+    {
+      id: "xep-hang",
+      label: "Bảng xếp hạng",
+      content: <LeaderboardTab contest={contest} />,
+    },
+    {
+      id: "phan-thuong",
+      label: "Phần thưởng",
+      content: <RewardsTab contest={contest} />,
+    },
+  ];
   return (
     <ContestTabs
-      tabs={[
-        {
-          id: "tong-quan",
-          label: "Tổng quan",
-          content: <OverviewTab contest={contest} />,
-        },
-        {
-          id: "noi-dung",
-          label: "Nội dung thi",
-          content: <ContentTab contest={contest} />,
-        },
-        {
-          id: "the-le",
-          label: "Thể lệ",
-          content: <RulesTab contest={contest} />,
-        },
-        {
-          id: "nguoi-tham-gia",
-          label: "Người tham gia",
-          content: <ParticipantsTab contest={contest} />,
-        },
-        {
-          id: "xep-hang",
-          label: "Bảng xếp hạng",
-          content: <LeaderboardTab contest={contest} />,
-        },
-        {
-          id: "phan-thuong",
-          label: "Phần thưởng",
-          content: <RewardsTab contest={contest} />,
-        },
-      ]}
+      tabs={signedIn ? tabs.filter((tab) => tab.id !== "xep-hang") : tabs}
     />
   );
 }
