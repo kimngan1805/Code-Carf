@@ -16,6 +16,11 @@ vi.mock("next/navigation", () => ({
 }));
 
 // Nút "Thêm nội dung" gọi server action; bài test chỉ kiểm tra phần hiển thị.
+vi.mock("@/features/library/actions", () => ({
+  addLibraryItemToRoomAction: vi.fn(),
+  getLibraryPickerAction: vi.fn(),
+}));
+
 vi.mock("@/features/rooms/authoring-actions", () => ({
   addLessonVideoAction: vi.fn(),
 }));

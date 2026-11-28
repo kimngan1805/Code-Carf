@@ -17,6 +17,7 @@
     "db:seed:cpp": "tsx prisma/seed-cpp-path.ts",
     "db:seed:python": "tsx prisma/seed-python-path.ts",
     "db:seed:dsa": "tsx prisma/seed-dsa-path.ts",
+    "db:seed:library": "tsx prisma/seed-library.ts",
     "demo:contest": "node scripts/create-contest-demo.mjs",
     "prepare": "husky"
   },

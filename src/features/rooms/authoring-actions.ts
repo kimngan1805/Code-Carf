@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors";
+import { addLessonVideoToLibrary } from "@/features/library/service";
 import { addLessonVideo, saveManagedLesson } from "./authoring";
 
 function revalidateLesson(room: { id: string; slug: string }) {
@@ -31,6 +32,8 @@ export async function saveLessonAction(input: unknown) {
 export async function addLessonVideoAction(input: unknown) {
   try {
     const room = await addLessonVideo(input);
+    // Video thêm vào bài học cũng có trong kho tài liệu của giảng viên.
+    await addLessonVideoToLibrary(input);
     revalidateLesson(room);
     return { data: room, error: null };
   } catch (error) {

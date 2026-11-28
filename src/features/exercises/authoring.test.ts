@@ -37,9 +37,13 @@ const input = {
 beforeEach(() => {
   vi.resetAllMocks();
   mocks.role.mockResolvedValue({ id: "teacher-1", role: { name: "TEACHER" } });
-  mocks.room.mockResolvedValue({ id: "room-1", path: { slug: "cpp" } });
+  mocks.room.mockResolvedValue({
+    id: "room-1",
+    path: { slug: "cpp", title: "Lập trình C++" },
+  });
   mocks.findExisting.mockResolvedValue(null);
   mocks.update.mockResolvedValue({ count: 1 });
+  mocks.create.mockResolvedValue({ id: "library-copy" });
   mocks.transaction.mockImplementation(async (run) =>
     run({
       room: { findFirst: mocks.room },
@@ -58,6 +62,9 @@ beforeEach(() => {
         deleteMany: mocks.deleteQuestions,
         createMany: mocks.createQuestions,
       },
+      libraryCategory: {
+        upsert: vi.fn().mockResolvedValue({ id: "category-1" }),
+      },
     }),
   );
 });
@@ -72,8 +79,18 @@ it("creates a CODE exercise with its tests inside an owned room", async () => {
     id: "room-1",
     path: { slug: "cpp", deletedAt: null, creatorId: "teacher-1" },
   });
-  const data = mocks.create.mock.calls[0][0].data;
+  // The first row is the teacher's library copy, the second the lesson's own exercise.
+  const library = mocks.create.mock.calls[0][0].data;
+  expect(library).toMatchObject({
+    creatorId: "teacher-1",
+    libraryCategoryId: "category-1",
+    title: "Tổng",
+  });
+  expect(library.roomId).toBeUndefined();
+  const data = mocks.create.mock.calls[1][0].data;
   expect(data).toMatchObject({
+    creatorId: "teacher-1",
+    sourceId: "library-copy",
     roomId: "room-1",
     title: "Tổng",
     kind: "CODE",
@@ -223,7 +240,7 @@ it("creates a QUIZ exercise with ordered questions and no test cases", async () 
       { prompt: "Kiểu của 1.5?", options: ["int", "float", "str"], answer: 1 },
     ],
   });
-  const data = mocks.create.mock.calls[0][0].data;
+  const data = mocks.create.mock.calls[1][0].data;
   expect(data).toMatchObject({ kind: "QUIZ", rubric: null });
   expect(data.testCases.create).toEqual([]);
   expect(data.quizQuestions.create).toEqual([

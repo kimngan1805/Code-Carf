@@ -4,6 +4,7 @@ import { requireRole } from "@/features/auth/service";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { deleteExerciseSchema, parseSaveExercise } from "./authoring-schema";
+import { exerciseRows } from "./rows";
 
 type Tx = Prisma.TransactionClient;
 type Teacher = Awaited<ReturnType<typeof requireRole>>;
@@ -24,7 +25,7 @@ async function findOwnedRoom(
         ...(user.role.name === "ADMIN" ? {} : { creatorId: user.id }),
       },
     },
-    select: { id: true, path: { select: { slug: true } } },
+    select: { id: true, path: { select: { slug: true, title: true } } },
   });
   if (!room)
     throw new AppError(
@@ -48,39 +49,7 @@ export async function saveManagedExercise(body: unknown) {
   if (!parsed.success)
     throw new AppError(400, "INVALID_EXERCISE", parsed.message);
   const input = parsed.data;
-  const fields = {
-    title: input.title,
-    prompt: input.prompt,
-    kind: input.kind,
-    difficulty: input.difficulty,
-    points: input.points,
-    ...(input.kind === "CODE"
-      ? {
-          timeLimitMs: input.timeLimitMs,
-          memoryLimitKb: input.memoryMb * 1024,
-          rubric: null,
-        }
-      : { rubric: input.kind === "HANDWRITTEN" ? input.rubric : null }),
-  };
-  const testCases =
-    input.kind === "CODE"
-      ? input.testCases.map((test) => ({
-          input: test.input,
-          expected: test.expected,
-          isHidden: test.isHidden,
-          weight: test.weight,
-        }))
-      : [];
-  const questions =
-    input.kind === "QUIZ"
-      ? input.questions.map((question, position) => ({
-          position,
-          prompt: question.prompt,
-          options: question.options,
-          answer: question.answer,
-          explanation: question.explanation,
-        }))
-      : [];
+  const { fields, testCases, questions } = exerciseRows(input);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await db
@@ -158,10 +127,33 @@ export async function saveManagedExercise(body: unknown) {
                 );
               return { id, roomId: room.id };
             }
+            // Mọi bài tạo trong bài học cũng có một bản riêng trong kho tài liệu của giảng viên,
+            // xếp vào danh mục mang tên lộ trình.
+            const category = await tx.libraryCategory.upsert({
+              where: {
+                ownerId_name: { ownerId: user.id, name: room.path.title },
+              },
+              create: { ownerId: user.id, name: room.path.title },
+              update: {},
+              select: { id: true },
+            });
+            const library = await tx.exercise.create({
+              data: {
+                creatorId: user.id,
+                libraryCategoryId: category.id,
+                ...fields,
+                testCases: { create: testCases },
+                quizQuestions: { create: questions },
+              },
+              select: { id: true },
+            });
             await tx.exercise.create({
               data: {
                 id,
                 roomId: room.id,
+                creatorId: user.id,
+                sourceId: library.id,
+                librarySynced: true,
                 ...fields,
                 testCases: { create: testCases },
                 quizQuestions: { create: questions },

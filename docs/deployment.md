@@ -68,6 +68,22 @@ DATABASE_URL="<supabase session pooler url>" SEED_TEACHER_EMAIL="<teacher email>
 
 It is safe to run again: the path, rooms, exercises and test cases are updated in place.
 
+## 6. Teacher library
+
+Nothing to run: each teacher's library (`/gv/library`) fills itself from their paths the
+first times they open it (one category per path, a copy of every exercise, every YouTube
+video in the lessons, a copy of every attached file). Each item is brought in once, so
+deleting it from the library does not bring it back. The migrations it needs run on deploy.
+
+To fill every library in one go instead (for example right after seeding new paths):
+
+```bash
+DATABASE_URL="<supabase session pooler url>" STORAGE_DRIVER=supabase SUPABASE_URL="<project url>" SUPABASE_SERVICE_ROLE_KEY="<service role key>" npm run db:seed:library
+```
+
+Add `-- --no-files` to skip copying attached files; set `SEED_TEACHER_EMAIL` to process a
+single teacher. It is safe to run again.
+
 ## 5. Contest reminders scheduler (Issue #48)
 
 Upcoming contest reminders are triggered by the GitHub Actions workflow `.github/workflows/contest-reminders.yml` (`*/30 * * * *` UTC and `workflow_dispatch`), which sends `POST {APP_URL}/api/cron/contest-reminders`.

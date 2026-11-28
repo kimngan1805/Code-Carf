@@ -16,6 +16,27 @@ enum RoleName {
   GUEST
 }
 
+/// Trạng thái một mục trong kho tài liệu: nháp, sẵn sàng dùng, hoặc cất đi mà không xóa.
+enum LibraryStatus {
+  DRAFT
+  READY
+  ARCHIVED
+}
+
+/// Ai thấy một mục trong kho: chỉ người tạo, hay mọi giảng viên.
+enum LibraryVisibility {
+  PRIVATE
+  SHARED
+}
+
+/// Loại bài giảng trong kho.
+enum LectureKind {
+  VIDEO
+  PDF
+  SLIDE
+  DOC
+}
+
 enum ExerciseKind {
   CODE
   HANDWRITTEN
@@ -149,6 +170,9 @@ model User {
   handledReports       ExerciseReport[]     @relation("ReportHandler")
   notifications        Notification[]
   passwordResetToken   PasswordResetToken?
+  createdExercises     Exercise[]           @relation("ExerciseCreator")
+  libraryLectures      LibraryLecture[]
+  libraryCategories    LibraryCategory[]
 
   @@index([xp])
 }
@@ -265,22 +289,24 @@ model Path {
 }
 
 model Room {
-  id              String           @id @default(cuid())
-  pathId          String
-  path            Path             @relation(fields: [pathId], references: [id], onDelete: Cascade)
-  title           String
-  description     String           @default("")
+  id                  String           @id @default(cuid())
+  pathId              String
+  path                Path             @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  title               String
+  description         String           @default("")
   /// Phần lý thuyết của bài học, dạng Markdown.
-  content         String           @default("")
-  published       Boolean          @default(false)
+  content             String           @default("")
+  published           Boolean          @default(false)
   /// Thứ tự trong path; room position N mở khóa khi đã xong room trước đó.
-  position        Int
-  xpReward        Int              @default(50)
-  exercises       Exercise[]
-  progress        RoomProgress[]
-  xpEvents        XpEvent[]
-  exerciseReports ExerciseReport[]
-  attachments     RoomAttachment[]
+  position            Int
+  xpReward            Int              @default(50)
+  /// Video YouTube trong nội dung đã được đưa vào kho của giảng viên (quét một lần).
+  libraryVideosSynced Boolean          @default(false)
+  exercises           Exercise[]
+  progress            RoomProgress[]
+  xpEvents            XpEvent[]
+  exerciseReports     ExerciseReport[]
+  attachments         RoomAttachment[]
 
   @@unique([pathId, position])
   @@index([pathId, published, position])
@@ -289,19 +315,65 @@ model Room {
 /// Tài liệu bài giảng (PDF, PPTX, DOCX) giảng viên đính kèm vào bài học.
 /// File nằm trong storage private, chỉ phục vụ qua route có kiểm tra quyền.
 model RoomAttachment {
-  id          String   @id @default(cuid())
-  roomId      String
-  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  id            String          @id @default(cuid())
+  roomId        String
+  room          Room            @relation(fields: [roomId], references: [id], onDelete: Cascade)
   /// Tên file gốc (đã làm sạch) để hiển thị và đặt tên khi tải về.
-  fileName    String
+  fileName      String
   /// MIME chuẩn theo loại file đã kiểm tra, không lấy từ trình duyệt.
-  contentType String
-  size        Int
-  storageKey  String   @unique
-  position    Int
-  createdAt   DateTime @default(now())
+  contentType   String
+  size          Int
+  storageKey    String          @unique
+  position      Int
+  createdAt     DateTime        @default(now())
+  /// File trong kho mà tài liệu này được chép từ đó (bản lưu trữ riêng, không dùng chung).
+  libraryFileId String?
+  libraryFile   LibraryLecture? @relation(fields: [libraryFileId], references: [id], onDelete: SetNull)
+  /// File đã được chép vào kho (một lần), kể cả khi bản trong kho đã bị xóa sau đó.
+  librarySynced Boolean         @default(false)
 
   @@index([roomId, position])
+}
+
+/// Bài giảng trong kho tài liệu của giảng viên: video YouTube hoặc file (PDF, PPTX, DOCX).
+/// Đưa file vào bài học là chép thành một RoomAttachment có bản lưu trữ riêng.
+model LibraryLecture {
+  id          String            @id @default(cuid())
+  ownerId     String
+  owner       User              @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  kind        LectureKind       @default(PDF)
+  /// Tên hiển thị; với file mặc định là tên file.
+  title       String            @default("")
+  /// Mã video YouTube (11 ký tự) khi kind = VIDEO.
+  youtubeId   String?
+  fileName    String?
+  contentType String?
+  size        Int?
+  storageKey  String?           @unique
+  categoryId  String?
+  category    LibraryCategory?  @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  tags        String[]          @default([])
+  status      LibraryStatus     @default(READY)
+  visibility  LibraryVisibility @default(PRIVATE)
+  createdAt   DateTime          @default(now())
+  attachments RoomAttachment[]
+
+  @@index([ownerId, createdAt])
+  @@index([visibility, status])
+  @@map("LibraryFile")
+}
+
+/// Danh mục do giảng viên tự đặt để xếp bài tập và bài giảng trong kho (ví dụ "Python", "CTDL").
+model LibraryCategory {
+  id        String           @id @default(cuid())
+  ownerId   String
+  owner     User             @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  name      String
+  createdAt DateTime         @default(now())
+  exercises Exercise[]
+  lectures  LibraryLecture[]
+
+  @@unique([ownerId, name])
 }
 
 /// Một dòng = người học đã hoàn thành room, dùng cho mở khóa tuần tự.
@@ -318,24 +390,42 @@ model RoomProgress {
 
 /// Bài tập dùng cho room luyện tập; cũng có thể đưa vào nhiều contest qua ContestExercise.
 model Exercise {
-  id            String            @id @default(cuid())
-  roomId        String?
-  room          Room?             @relation(fields: [roomId], references: [id])
-  title         String
-  prompt        String
-  kind          ExerciseKind      @default(CODE)
-  difficulty    Difficulty        @default(EASY)
-  points        Int               @default(100)
-  timeLimitMs   Int               @default(2000)
-  memoryLimitKb Int               @default(262144)
+  id                String            @id @default(cuid())
+  roomId            String?
+  room              Room?             @relation(fields: [roomId], references: [id])
+  title             String
+  prompt            String
+  kind              ExerciseKind      @default(CODE)
+  difficulty        Difficulty        @default(EASY)
+  points            Int               @default(100)
+  timeLimitMs       Int               @default(2000)
+  memoryLimitKb     Int               @default(262144)
   /// Đáp án mẫu / tiêu chí chấm cho bài viết tay, dùng cho AI và grader.
-  rubric        String?
-  testCases     TestCase[]
-  quizQuestions QuizQuestion[]
-  submissions   Submission[]
-  contests      ContestExercise[]
-  contestDrafts ContestDraft[]
-  reports       ExerciseReport[]
+  rubric            String?
+  /// Giảng viên tạo bài; null với bài cũ của cuộc thi. Bài có creatorId và không có sourceId hiện trong kho tài liệu.
+  creatorId         String?
+  creator           User?             @relation("ExerciseCreator", fields: [creatorId], references: [id])
+  /// Bài gốc trong kho khi bài này được chép vào một bài học; bản chép không hiện lại trong kho.
+  sourceId          String?
+  source            Exercise?         @relation("ExerciseCopies", fields: [sourceId], references: [id], onDelete: SetNull)
+  copies            Exercise[]        @relation("ExerciseCopies")
+  createdAt         DateTime          @default(now())
+  /// Các trường dưới đây chỉ dùng cho bài trong kho tài liệu (roomId null).
+  libraryCategoryId String?
+  libraryCategory   LibraryCategory?  @relation(fields: [libraryCategoryId], references: [id], onDelete: SetNull)
+  libraryTags       String[]          @default([])
+  libraryStatus     LibraryStatus     @default(READY)
+  libraryVisibility LibraryVisibility @default(PRIVATE)
+  /// Bài trong bài học đã có bản trong kho (chép đúng một lần, xóa bản trong kho không chép lại).
+  librarySynced     Boolean           @default(false)
+  testCases         TestCase[]
+  quizQuestions     QuizQuestion[]
+  submissions       Submission[]
+  contests          ContestExercise[]
+  contestDrafts     ContestDraft[]
+  reports           ExerciseReport[]
+
+  @@index([creatorId, sourceId])
 }
 
 model ExerciseReport {
