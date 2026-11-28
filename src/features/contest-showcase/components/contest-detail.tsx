@@ -32,7 +32,7 @@ import {
 } from "../catalog";
 import { PublicDate, PublicPhase } from "./contest-card";
 import { ContestArt, FormatChip, SampleBadge } from "./contest-kinds";
-import { ContestTabs, SampleRegisterButton } from "./contest-tabs";
+import { ContestTabs } from "./contest-tabs";
 
 const REWARD_ICONS: Record<ContestReward["kind"], LucideIcon> = {
   xp: Sparkles,
@@ -200,6 +200,29 @@ export function ContestDetailHero({ contest }: { contest: ShowcaseContest }) {
   );
 }
 
+/** Nút đăng ký dẫn vào khu vực thí sinh; khách chưa đăng nhập được route guard chuyển sang đăng nhập rồi quay lại. */
+function RegisterAction({ contest }: { contest: ShowcaseContest }) {
+  // Cuộc thi chỉ có ở giao diện (không có trong cơ sở dữ liệu) thì quay về danh sách cuộc thi thật.
+  const target = contest.sample
+    ? "/contests"
+    : `/contests/${encodeURIComponent(contest.slug)}`;
+  return (
+    <>
+      <Button asChild size="lg" className="w-full rounded-full">
+        <Link href={target}>
+          {contest.registrationPhase === "live"
+            ? "Đăng ký tham gia"
+            : "Vào khu vực thí sinh"}
+        </Link>
+      </Button>
+      <p className="mt-3 text-center text-xs text-muted-foreground">
+        Bạn sẽ được yêu cầu đăng nhập bằng tài khoản học viên nếu chưa đăng
+        nhập.
+      </p>
+    </>
+  );
+}
+
 export function ContestDetailAside({ contest }: { contest: ShowcaseContest }) {
   // Mốc đã qua suy ra từ trạng thái, không đọc giờ hệ thống lúc render.
   const reg = contest.registrationPhase;
@@ -273,22 +296,9 @@ export function ContestDetailAside({ contest }: { contest: ShowcaseContest }) {
             <p className="rounded-xl bg-muted p-4 text-sm text-muted-foreground">
               Cuộc thi đã kết thúc. Hẹn bạn ở thử thách tiếp theo!
             </p>
-          ) : contest.sample ? (
-            <SampleRegisterButton open={contest.registrationPhase === "live"} />
           ) : (
-            <Button asChild size="lg" className="w-full rounded-full">
-              <Link href={`/contests/${encodeURIComponent(contest.slug)}`}>
-                {contest.registrationPhase === "live"
-                  ? "Đăng ký tham gia"
-                  : "Vào khu vực thí sinh"}
-              </Link>
-            </Button>
+            <RegisterAction contest={contest} />
           )}
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            {contest.sample
-              ? "Cuộc thi mẫu: nút đăng ký chỉ minh họa giao diện."
-              : "Bạn sẽ được yêu cầu đăng nhập nếu chưa có phiên đăng nhập."}
-          </p>
         </div>
       </div>
       <div className="flex items-center gap-3 rounded-3xl border-2 border-primary/20 bg-background p-5">

@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Hero } from "@/features/landing/components/hero";
 import { ShowcaseContestCard, ShowcaseHero } from "./contest-kinds";
 import { ShowcaseGallery } from "./showcase-gallery";
+import { ContestDetailAside } from "./contest-detail";
 import { withProfile } from "../catalog";
 import type { PublicContest } from "../service";
 
@@ -49,4 +50,17 @@ it("shows an informative empty gallery rather than a login prompt", () => {
   const html = renderToStaticMarkup(<ShowcaseGallery contests={[]} />);
   expect(html).toContain("Thử thách mới đang được chuẩn bị");
   expect(html).not.toContain('href="/login"');
+});
+it("sends registration to the student contest page, guarded by login", () => {
+  const html = renderToStaticMarkup(
+    <ContestDetailAside contest={withProfile(contest)} />,
+  );
+  expect(html).toContain('href="/contests/public-event"');
+  expect(html).toContain("Đăng ký tham gia");
+});
+it("sends a sample that is not in the database to the real contest list", () => {
+  const sample = { ...withProfile(contest), sample: true };
+  const html = renderToStaticMarkup(<ContestDetailAside contest={sample} />);
+  expect(html).toContain('href="/contests"');
+  expect(html).not.toContain("aria-pressed");
 });
