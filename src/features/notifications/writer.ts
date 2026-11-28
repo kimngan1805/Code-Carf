@@ -163,3 +163,39 @@ export async function sendUpcomingContestReminders(
     notificationsCreated,
   };
 }
+
+export interface HandwrittenGradedNotificationInput {
+  userId: string;
+  submissionId: string;
+  /** Lần nộp ảnh đang được chấm; nộp ảnh mới rồi chấm lại thì báo lần nữa. */
+  submittedAt: Date;
+  exerciseId: string;
+  exerciseTitle: string;
+  /** Điểm thang 10 để hiển thị. */
+  score10: number;
+}
+
+/**
+ * Báo học viên khi giảng viên chấm xong bài tự luận luyện tập. Chấm lại cùng một
+ * ảnh không gửi thêm. Không bao giờ ném lỗi để việc chấm luôn lưu được.
+ */
+export async function notifyHandwrittenGraded(
+  input: HandwrittenGradedNotificationInput,
+): Promise<number> {
+  try {
+    return await createNotification({
+      userId: input.userId,
+      type: "SUBMISSION_RESULT",
+      title: `Đã chấm bài: ${input.exerciseTitle}`,
+      body: `Bài "${input.exerciseTitle}" được ${input.score10.toLocaleString("vi-VN")}/10 điểm. Mở bài để xem nhận xét của giảng viên.`,
+      href: `/hv/exercises/${input.exerciseId}`,
+      dedupeKey: `handwritten-graded:${input.submissionId}:${input.submittedAt.getTime()}`,
+    });
+  } catch (error) {
+    logger.error("notification.handwritten_graded_failed", {
+      submissionId: input.submissionId,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return 0;
+  }
+}

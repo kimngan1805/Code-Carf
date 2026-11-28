@@ -37,3 +37,14 @@ export const addLessonVideoSchema = z
     caption: z.string().max(500).default(""),
   })
   .strict();
+
+const roomScope = {
+  pathSlug: z.string().min(1).max(200),
+  roomId: z.string().min(1).max(200),
+};
+
+export const deleteLessonSchema = z.object(roomScope).strict();
+
+export const moveLessonSchema = z
+  .object({ ...roomScope, direction: z.enum(["up", "down"]) })
+  .strict();

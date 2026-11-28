@@ -10,6 +10,7 @@ import { PathBreadcrumb } from "@/features/paths/components/path-badges";
 import { stripLessonTemplate } from "@/features/paths/lesson-structure";
 import { getManagedRoom } from "@/features/paths/management";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
+import { DeleteLesson } from "@/features/rooms/components/lesson-actions";
 import { RoomHeader } from "@/features/rooms/components/room-header";
 import { AppError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -89,6 +90,14 @@ export default async function ManagedRoomPage({
         exerciseCount={room.exercises.length}
         previewHref={`${roomBaseHref}/preview`}
         editHref={`${roomBaseHref}/edit`}
+        actions={
+          <DeleteLesson
+            pathSlug={room.path.slug}
+            roomId={room.id}
+            title={room.title}
+            redirectTo={`/gv/paths/${room.path.slug}`}
+          />
+        }
       />
 
       <section

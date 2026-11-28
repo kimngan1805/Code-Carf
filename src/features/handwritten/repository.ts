@@ -40,7 +40,14 @@ export function findOwnUpload(
 ) {
   return db.submission.findFirst({
     where: { userId, exerciseId, contestId, imageUrl: { not: null } },
-    select: { id: true, status: true, createdAt: true },
+    select: {
+      id: true,
+      status: true,
+      createdAt: true,
+      score: true,
+      feedback: true,
+      reviewedAt: true,
+    },
   });
 }
 
@@ -48,7 +55,18 @@ export function findOwnUpload(
 export function findSubmissionImage(id: string) {
   return db.submission.findUnique({
     where: { id },
-    select: { userId: true, imageUrl: true },
+    select: {
+      userId: true,
+      imageUrl: true,
+      contestId: true,
+      exercise: {
+        select: {
+          room: {
+            select: { path: { select: { creatorId: true, deletedAt: true } } },
+          },
+        },
+      },
+    },
   });
 }
 

@@ -64,7 +64,10 @@ const saved = {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.requireRole.mockResolvedValue({ id: "user-1" });
+  mocks.requireRole.mockResolvedValue({
+    id: "user-1",
+    role: { name: "STUDENT" },
+  });
   mocks.findExerciseForUpload.mockResolvedValue(exercise);
   mocks.canAccessRoom.mockResolvedValue(true);
   mocks.saveHandwrittenImage.mockResolvedValue(saved);
@@ -317,6 +320,8 @@ describe("readHandwrittenImage (access control)", () => {
     mocks.findSubmissionImage.mockResolvedValue({
       userId: "user-1",
       imageUrl: "handwritten/abc.webp",
+      contestId: null,
+      exercise: { room: { path: { creatorId: "teacher-1", deletedAt: null } } },
     });
     mocks.get.mockResolvedValue(Buffer.from([1, 2, 3]));
     const result = await readHandwrittenImage("sub-1");
@@ -329,6 +334,8 @@ describe("readHandwrittenImage (access control)", () => {
     mocks.findSubmissionImage.mockResolvedValue({
       userId: "user-2",
       imageUrl: "handwritten/secret.png",
+      contestId: null,
+      exercise: { room: { path: { creatorId: "teacher-1", deletedAt: null } } },
     });
     await expect(readHandwrittenImage("sub-2")).rejects.toMatchObject({
       status: 404,
@@ -342,6 +349,8 @@ describe("readHandwrittenImage (access control)", () => {
     mocks.findSubmissionImage.mockResolvedValueOnce({
       userId: "user-2",
       imageUrl: "handwritten/secret.png",
+      contestId: null,
+      exercise: { room: { path: { creatorId: "teacher-1", deletedAt: null } } },
     });
     const foreign = await readHandwrittenImage("sub-2").catch((e) => e);
     expect({
@@ -359,6 +368,8 @@ describe("readHandwrittenImage (access control)", () => {
     mocks.findSubmissionImage.mockResolvedValue({
       userId: "user-1",
       imageUrl: null,
+      contestId: null,
+      exercise: { room: { path: { creatorId: "teacher-1", deletedAt: null } } },
     });
     await expect(readHandwrittenImage("sub-1")).rejects.toMatchObject({
       status: 404,
@@ -371,6 +382,63 @@ describe("readHandwrittenImage (access control)", () => {
       status: 401,
     });
     expect(mocks.findSubmissionImage).not.toHaveBeenCalled();
+  });
+});
+
+describe("readHandwrittenImage (teachers grading practice essays)", () => {
+  const row = (overrides: Record<string, unknown> = {}) => ({
+    userId: "learner-1",
+    imageUrl: "handwritten/essay.png",
+    contestId: null,
+    exercise: { room: { path: { creatorId: "teacher-1", deletedAt: null } } },
+    ...overrides,
+  });
+  const asUser = (id: string, role: string) =>
+    mocks.requireRole.mockResolvedValue({ id, role: { name: role } });
+
+  it("lets the teacher who manages the lesson see a learner's image", async () => {
+    asUser("teacher-1", "TEACHER");
+    mocks.findSubmissionImage.mockResolvedValue(row());
+    mocks.get.mockResolvedValue(Buffer.from([7]));
+    await expect(readHandwrittenImage("sub-1")).resolves.toMatchObject({
+      mime: "image/png",
+    });
+    expect(mocks.requireRole).toHaveBeenCalledWith([
+      "STUDENT",
+      "TEACHER",
+      "ADMIN",
+    ]);
+  });
+
+  it("hides it from other teachers, contest submissions and deleted paths", async () => {
+    asUser("teacher-2", "TEACHER");
+    mocks.findSubmissionImage.mockResolvedValue(row());
+    await expect(readHandwrittenImage("sub-1")).rejects.toMatchObject({
+      status: 404,
+    });
+    asUser("teacher-1", "TEACHER");
+    mocks.findSubmissionImage.mockResolvedValue(row({ contestId: "c-1" }));
+    await expect(readHandwrittenImage("sub-1")).rejects.toMatchObject({
+      status: 404,
+    });
+    mocks.findSubmissionImage.mockResolvedValue(
+      row({
+        exercise: {
+          room: { path: { creatorId: "teacher-1", deletedAt: new Date() } },
+        },
+      }),
+    );
+    await expect(readHandwrittenImage("sub-1")).rejects.toMatchObject({
+      status: 404,
+    });
+    expect(mocks.get).not.toHaveBeenCalled();
+  });
+
+  it("lets an admin see any image", async () => {
+    asUser("admin-1", "ADMIN");
+    mocks.findSubmissionImage.mockResolvedValue(row({ contestId: "c-1" }));
+    mocks.get.mockResolvedValue(Buffer.from([1]));
+    await expect(readHandwrittenImage("sub-1")).resolves.toBeTruthy();
   });
 });
 
@@ -387,11 +455,50 @@ describe("getOwnHandwrittenUpload", () => {
       id: "sub-1",
       status: "PENDING",
       submittedAt: saved.createdAt,
+      score: null,
+      feedback: null,
+      reviewedAt: undefined,
     });
   });
 
   it("returns null before the first upload", async () => {
     mocks.findOwnUpload.mockResolvedValue(null);
     expect(await getOwnHandwrittenUpload("user-1", "ex-1")).toBeNull();
+  });
+});
+
+describe("getOwnHandwrittenUpload (grading result)", () => {
+  it("shows the teacher's score and feedback once graded", async () => {
+    const reviewedAt = new Date("2026-11-29T09:00:00Z");
+    mocks.findOwnUpload.mockResolvedValue({
+      id: "sub-1",
+      status: "ACCEPTED",
+      createdAt: saved.createdAt,
+      score: 85,
+      feedback: "Đúng ý chính, thiếu ví dụ.",
+      reviewedAt,
+    });
+    await expect(getOwnHandwrittenUpload("user-1", "ex-1")).resolves.toEqual({
+      id: "sub-1",
+      status: "ACCEPTED",
+      submittedAt: saved.createdAt,
+      score: 85,
+      feedback: "Đúng ý chính, thiếu ví dụ.",
+      reviewedAt,
+    });
+  });
+
+  it("does not show a score before a teacher has reviewed it", async () => {
+    mocks.findOwnUpload.mockResolvedValue({
+      id: "sub-1",
+      status: "NEEDS_REVIEW",
+      createdAt: saved.createdAt,
+      score: 40,
+      feedback: "gợi ý tự động",
+      reviewedAt: null,
+    });
+    await expect(
+      getOwnHandwrittenUpload("user-1", "ex-1"),
+    ).resolves.toMatchObject({ score: null, feedback: null });
   });
 });

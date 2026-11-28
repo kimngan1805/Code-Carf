@@ -22,7 +22,7 @@ import { canConnectToDatabase } from "@/test-utils/database";
 // The signed-in user is chosen per test; the database, storage and rules are real.
 let currentUserId = "";
 vi.mock("@/features/auth/service", () => ({
-  requireRole: async () => ({ id: currentUserId }),
+  requireRole: async () => ({ id: currentUserId, role: { name: "STUDENT" } }),
 }));
 
 import { saveHandwrittenImage } from "./repository";

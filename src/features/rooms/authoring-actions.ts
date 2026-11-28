@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { AppError } from "@/lib/errors";
 import { addLessonVideoToLibrary } from "@/features/library/service";
 import { addLessonVideo, saveManagedLesson } from "./authoring";
+import { deleteManagedLesson, moveManagedLesson } from "./lesson-order";
 
 function revalidateLesson(room: { id: string; slug: string }) {
   revalidatePath("/gv/paths");
@@ -43,6 +44,40 @@ export async function addLessonVideoAction(input: unknown) {
         error instanceof AppError
           ? error.message
           : "Chưa thể thêm video. Vui lòng thử lại.",
+    };
+  }
+}
+
+export async function moveLessonAction(input: unknown) {
+  try {
+    const result = await moveManagedLesson(input);
+    revalidatePath(`/gv/paths/${result.slug}`);
+    revalidatePath(`/hv/paths/${result.slug}`);
+    return { error: null };
+  } catch (error) {
+    return {
+      error:
+        error instanceof AppError
+          ? error.message
+          : "Chưa thể đổi thứ tự bài học. Vui lòng thử lại.",
+    };
+  }
+}
+
+export async function deleteLessonAction(input: unknown) {
+  try {
+    const result = await deleteManagedLesson(input);
+    revalidatePath("/gv/paths");
+    revalidatePath(`/gv/paths/${result.slug}`);
+    revalidatePath(`/hv/paths/${result.slug}`);
+    return { error: null, slug: result.slug };
+  } catch (error) {
+    return {
+      error:
+        error instanceof AppError
+          ? error.message
+          : "Chưa thể xóa bài học. Vui lòng thử lại.",
+      slug: null,
     };
   }
 }

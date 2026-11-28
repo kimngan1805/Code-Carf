@@ -14,6 +14,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { AddContentButton } from "@/features/rooms/components/add-content-dialog";
+import {
+  DeleteLesson,
+  MoveLesson,
+} from "@/features/rooms/components/lesson-actions";
 import type { LessonVideo } from "@/features/rooms/lesson-summary";
 
 type ExerciseKind = "CODE" | "QUIZ" | "HANDWRITTEN";
@@ -128,9 +132,14 @@ function RowLink({
 export function ManagedPathRoomItem({
   pathSlug,
   room,
+  first = false,
+  last = false,
 }: {
   pathSlug: string;
   room: ManagedPathRoomItemData;
+  /** Bài đầu/cuối lộ trình: khóa nút lên/xuống tương ứng. */
+  first?: boolean;
+  last?: boolean;
 }) {
   const detailHref = `/gv/paths/${pathSlug}/rooms/${room.id}`;
   const editHref = `${detailHref}/edit`;
@@ -260,6 +269,18 @@ export function ManagedPathRoomItem({
               className="rounded-lg border border-dashed border-primary/40 px-3 py-2 text-sm hover:border-primary hover:bg-secondary/30 hover:no-underline"
             />
             <div className="flex flex-wrap items-center gap-2">
+              <MoveLesson
+                pathSlug={pathSlug}
+                roomId={room.id}
+                title={room.title}
+                first={first}
+                last={last}
+              />
+              <DeleteLesson
+                pathSlug={pathSlug}
+                roomId={room.id}
+                title={room.title}
+              />
               <Button
                 asChild
                 variant="ghost"

@@ -13,6 +13,7 @@ export function RoomHeader({
   exerciseCount,
   previewHref,
   editHref,
+  actions,
 }: {
   title: string;
   description: string;
@@ -20,6 +21,8 @@ export function RoomHeader({
   exerciseCount: number;
   previewHref: string;
   editHref: string;
+  /** Hành động thêm, ví dụ xóa bài học. */
+  actions?: React.ReactNode;
 }) {
   return (
     <header className="space-y-4 rounded-2xl border border-border/70 bg-background p-5 sm:p-6">
@@ -66,6 +69,7 @@ export function RoomHeader({
               Chỉnh sửa bài học
             </Link>
           </Button>
+          {actions}
         </div>
       </div>
     </header>
