@@ -8,6 +8,7 @@ import {
   findContestParticipant,
   registerContestParticipant,
 } from "./repository";
+import { loadStageState } from "./stage-repository";
 import {
   assertParticipantCanEnter,
   assertRegistrationOpen,
@@ -35,8 +36,15 @@ export async function getContest(slug: string) {
   if (!contest)
     throw new AppError(404, "CONTEST_NOT_FOUND", "Không tìm thấy cuộc thi.");
   const participant = await findContestParticipant(contest.id, user.id);
+  // Cuộc thi theo chặng: chặng hiện tại (tính cả chặng đã hết giờ) và thời gian từng chặng.
+  const stageState = await loadStageState(contest.id, user.id);
   return {
     ...contest,
+    stages: stageState.stages.map(({ number, durationMinutes }) => ({
+      number,
+      durationMinutes,
+    })),
+    currentStage: stageState.current?.number ?? null,
     participant: participant
       ? { ...participant, deadlineAt: getAttemptDeadline(contest, participant) }
       : null,

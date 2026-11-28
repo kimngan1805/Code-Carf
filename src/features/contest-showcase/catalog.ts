@@ -193,11 +193,14 @@ export type JourneyStage = {
   count: number;
   description: string;
   title?: string;
+  /** Thời gian làm chặng (phút), có khi chặng đã có đề thật. */
+  minutes?: number;
 };
 
 /**
  * Cuộc thi tổ chức theo hành trình: các chặng mở lần lượt trên bản đồ đảo.
- * Chỉ một số cuộc thi dùng cách này; `currentStage` là chặng người xem đang làm (dữ liệu mẫu).
+ * Chỉ một số cuộc thi dùng cách này. `currentStage` là chặng đầu tiên có đề thật; các chặng
+ * trước đó coi như đã qua. Với thí sinh, `journeyForLearner` dời chặng hiện tại theo tiến độ.
  */
 export type ContestJourney = {
   island: string;
@@ -1002,4 +1005,29 @@ export function formatDuration(minutes: number) {
     return `${minutes / (24 * 60)} ngày`;
   if (minutes % 60 === 0) return `${minutes / 60} giờ`;
   return `${Math.floor(minutes / 60)} giờ ${minutes % 60} phút`;
+}
+
+/**
+ * Bản đồ hành trình theo tiến độ thật của thí sinh: `stages` là các chặng có đề (số chặng và
+ * thời gian làm), `current` là chặng đang làm, null khi đã xong mọi chặng có đề.
+ */
+export function journeyForLearner(
+  journey: ContestJourney,
+  stages: { number: number; durationMinutes: number }[],
+  current: number | null,
+): ContestJourney {
+  if (stages.length === 0) return journey;
+  const last = Math.max(...stages.map((stage) => stage.number));
+  return {
+    ...journey,
+    currentStage: Math.min(
+      (current ?? last + 1) - 1,
+      journey.stages.length - 1,
+    ),
+    stages: journey.stages.map((stage, index) => ({
+      ...stage,
+      minutes: stages.find((item) => item.number === index + 1)
+        ?.durationMinutes,
+    })),
+  };
 }

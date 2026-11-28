@@ -3,6 +3,8 @@ import {
   CONTEST_FORMATS,
   defaultProfile,
   formatDuration,
+  journeyForLearner,
+  sampleProfile,
   sampleContestSeeds,
   sampleContests,
   withProfile,
@@ -62,6 +64,24 @@ describe("contest showcase catalog", () => {
     expect(contest.profile.sections).toEqual([
       { title: "Bài lập trình", questionType: "coding", count: 3 },
     ]);
+  });
+
+  it("moves the journey map to the learner's current stage and shows stage times", () => {
+    const journey = sampleProfile("dao-kho-bau-cpp")!.journey!;
+    const stages = [
+      { number: 4, durationMinutes: 30 },
+      { number: 5, durationMinutes: 25 },
+      { number: 6, durationMinutes: 40 },
+    ];
+    const at5 = journeyForLearner(journey, stages, 5);
+    expect(at5.currentStage).toBe(4);
+    expect(at5.stages[3].minutes).toBe(30);
+    expect(at5.stages[5].minutes).toBe(40);
+    expect(at5.stages[6].minutes).toBeUndefined();
+    // Every seeded stage done: the map moves past the last one.
+    expect(journeyForLearner(journey, stages, null).currentStage).toBe(6);
+    // Without stages in the database the sample map is unchanged.
+    expect(journeyForLearner(journey, [], null)).toBe(journey);
   });
 
   it("formats durations in minutes, hours and whole days", () => {

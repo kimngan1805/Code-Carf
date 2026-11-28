@@ -277,6 +277,7 @@ export function ContestJourneyMap({
               <p className="text-xs font-semibold text-muted-foreground">
                 Chặng {selected + 1} · {QUESTION_TYPES[stage.questionType]} ·{" "}
                 {stage.count} {stage.questionType === "coding" ? "bài" : "câu"}
+                {stage.minutes ? ` · ${stage.minutes} phút` : ""}
               </p>
               <h3 className="text-lg font-bold">{stage.name}</h3>
               <p className="mt-1 text-sm text-muted-foreground">

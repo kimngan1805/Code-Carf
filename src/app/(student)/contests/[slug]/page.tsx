@@ -15,6 +15,7 @@ import {
 } from "@/features/contest-showcase/components/contest-detail";
 import { ContestArena } from "@/features/contest-showcase/components/contest-arenas";
 import { getShowcaseContest } from "@/features/contest-showcase/service";
+import { journeyForLearner } from "@/features/contest-showcase/catalog";
 import { Countdown } from "@/features/contests/components/countdown";
 import { ParticipationAction } from "@/features/contests/components/participation-action";
 import { getContestPhase, getExamPhase } from "@/features/contests/time";
@@ -69,6 +70,16 @@ export default async function ContestDetailPage({
           ? "BẮT ĐẦU THI SAU"
           : "ĐÓNG LÀM BÀI SAU";
   const showcase = await getShowcaseContest(slug, now);
+  // Bản đồ hành trình theo tiến độ thật: chặng xong khi nộp đủ bài hoặc hết giờ chặng.
+  if (showcase.profile.journey)
+    showcase.profile = {
+      ...showcase.profile,
+      journey: journeyForLearner(
+        showcase.profile.journey,
+        contest.stages,
+        contest.currentStage,
+      ),
+    };
   const action = (
     <div id="vao-thi" className="scroll-mt-24 space-y-4">
       {attemptClosed ? (

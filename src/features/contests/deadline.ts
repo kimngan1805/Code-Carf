@@ -13,6 +13,7 @@ import {
   saveActiveDraft,
   startContestAttempt,
 } from "./deadline-repository";
+import { closeExpiredStages, findStageDeadline } from "./stage-repository";
 
 export async function saveContestDraft(slug: string, body: unknown) {
   const parsed = contestDraftSchema.safeParse(body);
@@ -36,7 +37,16 @@ export async function finalizeContest(slug: string) {
   const contest = await findDeadlineContest(slug);
   if (!contest)
     throw new AppError(404, "CONTEST_NOT_FOUND", "Không tìm thấy cuộc thi.");
-  const result = await finalizeSavedDraft(contest.id, user.id);
+  const participant = await findContestParticipant(contest.id, user.id);
+  const attemptDeadline = getAttemptDeadline(contest, participant);
+  const attemptOver =
+    !!participant?.finishedAt ||
+    (!!attemptDeadline && Date.now() >= +attemptDeadline);
+  // Cuộc thi theo chặng: hết giờ chặng thì tự nộp bài đang làm dở của chặng đó.
+  const staged = attemptOver
+    ? null
+    : await closeExpiredStages(contest.id, user.id);
+  const result = staged ?? (await finalizeSavedDraft(contest.id, user.id));
   if (!result.submissionId)
     return { state: "skipped" as const, submission: null };
   await gradePendingSubmission(result.submissionId);
@@ -79,12 +89,19 @@ export async function getExpiredContest(slug: string) {
   };
 }
 
-export async function getContestClock(slug: string) {
+export async function getContestClock(slug: string, stage?: number) {
   try {
     const entry = await getContestEntry(slug);
+    // Phòng thi theo chặng đếm ngược tới hạn của chặng đang làm.
+    const stageDeadline = stage
+      ? await findStageDeadline(entry.contest.id, entry.userId, stage)
+      : null;
+    const deadlineAt = new Date(
+      Math.min(+entry.deadlineAt, stageDeadline ? +stageDeadline : Infinity),
+    );
     return {
       serverNow: entry.serverNow,
-      deadlineAt: entry.deadlineAt.toISOString(),
+      deadlineAt: deadlineAt.toISOString(),
     };
   } catch (error) {
     if (
