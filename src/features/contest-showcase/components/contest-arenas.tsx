@@ -713,9 +713,25 @@ function SoloArena({ contest }: { contest: ShowcaseContest }) {
 }
 
 /** Chọn đấu trường theo hình thức; cuộc thi có hành trình dùng bản đồ đảo. */
-export function ContestArena({ contest }: { contest: ShowcaseContest }) {
+export function ContestArena({
+  contest,
+  startHref,
+}: {
+  contest: ShowcaseContest;
+  /** Khu vực thí sinh truyền đường vào thi theo trạng thái lượt thi của người dùng. */
+  startHref?: string;
+}) {
   if (contest.profile.journey)
-    return <ContestJourneyMap journey={contest.profile.journey} />;
+    return (
+      <ContestJourneyMap
+        journey={contest.profile.journey}
+        startHref={
+          contest.sample
+            ? undefined
+            : (startHref ?? `/contests/${encodeURIComponent(contest.slug)}`)
+        }
+      />
+    );
   switch (contest.profile.format) {
     case "duel":
       return <DuelArena contest={contest} />;

@@ -18,6 +18,16 @@ vi.mock("@/features/grading/submit", () => ({
   MAX_SOURCE_LENGTH: 64 * 1024,
 }));
 import { getContestWorkspace, submitContestSolution } from "./workspace";
+vi.mock("./stage-repository", () => ({
+  closeExpiredStages: vi.fn(async () => null),
+  finishIfStagesDone: vi.fn(async () => false),
+  loadStageState: vi.fn(async () => ({
+    progress: await mocks.progress(),
+    stages: [],
+    current: null,
+  })),
+  startStageAttempt: vi.fn(),
+}));
 vi.mock("./deadline-repository", () => ({
   createTimedContestSubmission: vi.fn(),
   getContestSubmissionProgress: mocks.progress,

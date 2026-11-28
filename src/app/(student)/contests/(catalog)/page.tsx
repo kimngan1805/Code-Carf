@@ -2,12 +2,14 @@ import Link from "next/link";
 import {
   ArrowRight,
   CalendarDays,
+  CircleCheck,
   FileCode2,
   Trophy,
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PhaseBadge } from "@/features/contests/components/phase-badge";
+import { RegistrationFilter } from "@/features/contests/components/registration-filter";
 import { getContests } from "@/features/contests/service";
 import {
   formatContestDate,
@@ -20,17 +22,38 @@ import {
 import { cn } from "@/lib/utils";
 
 const filters = ["all", "upcoming", "live", "ended"] as const;
+const registrationFilters = [
+  { key: "all", label: "Tất cả" },
+  { key: "da", label: "Đã đăng ký" },
+  { key: "chua", label: "Chưa đăng ký" },
+] as const;
+type RegistrationFilter = (typeof registrationFilters)[number]["key"];
+
+/** Giữ cả hai bộ lọc trên URL để chọn bộ lọc này không mất bộ lọc kia. */
+function contestsHref(status: string, registration: RegistrationFilter) {
+  const params = new URLSearchParams();
+  if (status !== "all") params.set("status", status);
+  if (registration !== "all") params.set("dang-ky", registration);
+  const query = params.toString();
+  return query ? `/contests?${query}` : "/contests";
+}
 
 export default async function ContestsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; "dang-ky"?: string }>;
 }) {
-  const { status } = await searchParams;
-  const active = filters.find((filter) => filter === status) ?? "all";
+  const query = await searchParams;
+  const active = filters.find((filter) => filter === query.status) ?? "all";
+  const registration =
+    registrationFilters.find((filter) => filter.key === query["dang-ky"])
+      ?.key ?? "all";
   const { contests, serverNow: now } = await getContests();
   const visible = contests.filter(
-    (contest) => active === "all" || getExamPhase(contest, now) === active,
+    (contest) =>
+      (active === "all" || getExamPhase(contest, now) === active) &&
+      (registration === "all" ||
+        contest.registered === (registration === "da")),
   );
   return (
     <div className="mx-auto max-w-6xl space-y-7">
@@ -51,30 +74,37 @@ export default async function ContestsPage({
         </p>
       </section>
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <nav
-          aria-label="Lọc cuộc thi"
-          className="flex max-w-full gap-1 overflow-x-auto rounded-xl border bg-background p-1"
-        >
-          {filters.map((filter) => (
-            <Link
-              key={filter}
-              href={
-                filter === "all" ? "/contests" : `/contests?status=${filter}`
-              }
-              aria-current={active === filter ? "page" : undefined}
-              className={cn(
-                "whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-2",
-                active === filter
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted",
-              )}
-            >
-              {filter === "all"
-                ? "Tất cả"
-                : examPhaseLabels[filter as ContestPhase]}
-            </Link>
-          ))}
-        </nav>
+        <div className="flex max-w-full flex-wrap items-stretch gap-2">
+          <nav
+            aria-label="Lọc cuộc thi"
+            className="flex max-w-full gap-1 overflow-x-auto rounded-xl border bg-background p-1"
+          >
+            {filters.map((filter) => (
+              <Link
+                key={filter}
+                href={contestsHref(filter, registration)}
+                aria-current={active === filter ? "page" : undefined}
+                className={cn(
+                  "whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold focus-visible:outline-2",
+                  active === filter
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted",
+                )}
+              >
+                {filter === "all"
+                  ? "Tất cả"
+                  : examPhaseLabels[filter as ContestPhase]}
+              </Link>
+            ))}
+          </nav>
+          <RegistrationFilter
+            active={registration}
+            options={registrationFilters.map((filter) => ({
+              ...filter,
+              href: contestsHref(active, filter.key),
+            }))}
+          />
+        </div>
         <p className="text-sm text-muted-foreground">
           {visible.length} cuộc thi
         </p>
@@ -89,6 +119,11 @@ export default async function ContestsPage({
           <p className="mt-2 text-sm text-muted-foreground">
             Thử chọn trạng thái khác hoặc quay lại sau nhé.
           </p>
+          {registration === "da" && (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Bạn chưa đăng ký cuộc thi nào ở trạng thái này.
+            </p>
+          )}
           <Button asChild variant="outline" className="mt-5">
             <Link href="/contests">Xem tất cả cuộc thi</Link>
           </Button>
@@ -98,11 +133,19 @@ export default async function ContestsPage({
           {visible.map((contest) => (
             <article
               key={contest.id}
-              className="flex min-w-0 flex-col rounded-2xl border bg-background p-6 shadow-sm"
+              className="group flex h-full min-w-0 flex-col rounded-2xl border-2 border-border bg-background p-6 shadow-sm transition-all duration-200 hover:animate-card-float hover:border-primary hover:shadow-[6px_6px_0_0_var(--brand-blue)] focus-within:border-primary focus-within:shadow-[6px_6px_0_0_var(--brand-blue)] motion-reduce:transition-none motion-reduce:hover:animate-none motion-reduce:hover:-translate-y-1"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="space-y-2">
-                  <PhaseBadge phase={getExamPhase(contest, now)} />
+                  <div className="flex flex-wrap items-center gap-2">
+                    <PhaseBadge phase={getExamPhase(contest, now)} />
+                    {contest.registered && (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-1 text-xs font-semibold text-success">
+                        <CircleCheck className="size-3.5" aria-hidden />
+                        Đã đăng ký
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     {phaseLabels[getContestPhase(contest, now)]}
                   </p>
@@ -150,7 +193,12 @@ export default async function ContestsPage({
                 Giờ thi: {formatContestDate(contest.examStartsAt)} →{" "}
                 {formatContestDate(contest.examEndsAt)}
               </p>
-              <Button asChild variant="outline" className="mt-6 w-full">
+              <div aria-hidden className="min-h-6 flex-1" />
+              <Button
+                asChild
+                variant="outline"
+                className="mt-auto w-full group-hover:border-primary group-hover:text-primary"
+              >
                 <Link href={`/contests/${contest.slug}`}>
                   Xem chi tiết <ArrowRight className="size-4" aria-hidden />
                 </Link>

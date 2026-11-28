@@ -6,6 +6,8 @@ export function useServerClock(
   slug: string,
   initialNow: number,
   initialDeadlineAt: number,
+  /** Số chặng đang làm: đồng hồ đếm tới hạn của chặng thay vì cả lượt thi. */
+  stage?: number,
 ) {
   const [now, setNow] = useState(initialNow);
   const [deadlineAt, setDeadlineAt] = useState(initialDeadlineAt);
@@ -24,7 +26,7 @@ export function useServerClock(
       const sentAt = performance.now();
       try {
         const response = await fetch(
-          `/api/contests/${encodeURIComponent(slug)}/clock`,
+          `/api/contests/${encodeURIComponent(slug)}/clock${stage ? `?stage=${stage}` : ""}`,
           { cache: "no-store", signal: controller.signal },
         );
         const result = await response.json();
@@ -71,6 +73,6 @@ export function useServerClock(
       document.removeEventListener("visibilitychange", onVisible);
       window.removeEventListener("online", sync);
     };
-  }, [slug, initialNow]);
+  }, [slug, initialNow, stage]);
   return { now, deadlineAt, blocked, connectionLost };
 }

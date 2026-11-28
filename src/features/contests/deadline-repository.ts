@@ -32,6 +32,10 @@ export async function getContestSubmissionProgress(
       ?.exerciseId ?? null;
   return {
     submittedExerciseIds,
+    /** Đề theo thứ tự, true khi thí sinh đã nộp bài đó. */
+    submittedInOrder: exercises.map((item) =>
+      submittedExerciseIds.includes(item.exerciseId),
+    ),
     nextExerciseId,
     finished: exercises.length > 0 && !nextExerciseId,
   };

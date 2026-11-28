@@ -4,6 +4,8 @@
  * Giai đoạn UI: loại cuộc thi, hình thức, cấu trúc đề và phần thưởng chưa có trong
  * cơ sở dữ liệu, nên được khai báo ở đây. Cuộc thi thật nhận một hồ sơ mặc định suy ra
  * từ dữ liệu có sẵn; các cuộc thi mẫu (`sample: true`) chỉ để duyệt giao diện.
+ * `npm run db:seed` tạo các cuộc thi mẫu này thành cuộc thi thật (cùng slug) để học viên
+ * đăng ký được; khi đó trang giới thiệu dùng dữ liệu thật kèm hồ sơ của mẫu.
  */
 import {
   getContestPhase,
@@ -191,11 +193,14 @@ export type JourneyStage = {
   count: number;
   description: string;
   title?: string;
+  /** Thời gian làm chặng (phút), có khi chặng đã có đề thật. */
+  minutes?: number;
 };
 
 /**
  * Cuộc thi tổ chức theo hành trình: các chặng mở lần lượt trên bản đồ đảo.
- * Chỉ một số cuộc thi dùng cách này; `currentStage` là chặng người xem đang làm (dữ liệu mẫu).
+ * Chỉ một số cuộc thi dùng cách này. `currentStage` là chặng đầu tiên có đề thật; các chặng
+ * trước đó coi như đã qua. Với thí sinh, `journeyForLearner` dời chặng hiện tại theo tiến độ.
  */
 export type ContestJourney = {
   island: string;
@@ -923,25 +928,46 @@ function toIso(time: number) {
   return new Date(time).toISOString();
 }
 
-function buildSample(seed: SampleSeed, now: number): ShowcaseContest {
-  const opens = now + seed.opensIn;
+/** Lịch của cuộc thi mẫu tính từ `now`; dùng chung cho giao diện và seed. */
+export function sampleSchedule(
+  seed: Pick<SampleSeed, "opensIn" | "examIn" | "durationMinutes">,
+  now: number,
+) {
   const exam = now + seed.examIn;
-  const closes = exam - HOUR;
-  const examEnds = exam + seed.durationMinutes * 60 * 1000;
-  const schedule = {
-    startsAt: new Date(opens),
-    endsAt: new Date(closes),
+  return {
+    startsAt: new Date(now + seed.opensIn),
+    endsAt: new Date(exam - HOUR),
     examStartsAt: new Date(exam),
-    examEndsAt: new Date(examEnds),
+    examEndsAt: new Date(exam + seed.durationMinutes * 60 * 1000),
   };
+}
+
+/** Dữ liệu để seed các cuộc thi mẫu thành cuộc thi thật trong cơ sở dữ liệu. */
+export function sampleContestSeeds(now = Date.now()) {
+  return SAMPLES.map((seed) => ({
+    slug: seed.slug,
+    title: seed.title,
+    description: seed.description,
+    durationMinutes: seed.durationMinutes,
+    ...sampleSchedule(seed, now),
+  }));
+}
+
+/** Hồ sơ giới thiệu của cuộc thi mẫu cùng slug, nếu có. */
+export function sampleProfile(slug: string) {
+  return SAMPLES.find((seed) => seed.slug === slug)?.profile;
+}
+
+function buildSample(seed: SampleSeed, now: number): ShowcaseContest {
+  const schedule = sampleSchedule(seed, now);
   return {
     slug: seed.slug,
     title: seed.title,
     description: seed.description,
-    registrationOpensAt: toIso(opens),
-    registrationClosesAt: toIso(closes),
-    examStartsAt: toIso(exam),
-    examEndsAt: toIso(examEnds),
+    registrationOpensAt: toIso(+schedule.startsAt),
+    registrationClosesAt: toIso(+schedule.endsAt),
+    examStartsAt: toIso(+schedule.examStartsAt),
+    examEndsAt: toIso(+schedule.examEndsAt),
     durationMinutes: seed.durationMinutes,
     exercises: seed.profile.sections.reduce((sum, s) => sum + s.count, 0),
     participants: seed.participants,
@@ -958,9 +984,12 @@ export function sampleContests(now = Date.now()) {
 }
 
 export function withProfile(contest: PublicContest): ShowcaseContest {
+  const fallback = defaultProfile(contest);
+  const sample = sampleProfile(contest.slug);
   return {
     ...contest,
-    profile: defaultProfile(contest),
+    // Cuộc thi mẫu đã seed giữ phần giới thiệu, nhưng nội dung thi theo số bài thật.
+    profile: sample ? { ...sample, sections: fallback.sections } : fallback,
     sample: false,
     people: [],
   };
@@ -976,4 +1005,29 @@ export function formatDuration(minutes: number) {
     return `${minutes / (24 * 60)} ngày`;
   if (minutes % 60 === 0) return `${minutes / 60} giờ`;
   return `${Math.floor(minutes / 60)} giờ ${minutes % 60} phút`;
+}
+
+/**
+ * Bản đồ hành trình theo tiến độ thật của thí sinh: `stages` là các chặng có đề (số chặng và
+ * thời gian làm), `current` là chặng đang làm, null khi đã xong mọi chặng có đề.
+ */
+export function journeyForLearner(
+  journey: ContestJourney,
+  stages: { number: number; durationMinutes: number }[],
+  current: number | null,
+): ContestJourney {
+  if (stages.length === 0) return journey;
+  const last = Math.max(...stages.map((stage) => stage.number));
+  return {
+    ...journey,
+    currentStage: Math.min(
+      (current ?? last + 1) - 1,
+      journey.stages.length - 1,
+    ),
+    stages: journey.stages.map((stage, index) => ({
+      ...stage,
+      minutes: stages.find((item) => item.number === index + 1)
+        ?.durationMinutes,
+    })),
+  };
 }

@@ -15,6 +15,7 @@ import {
 import { addDays, toVnMidnight } from "../src/features/progress/week-activity";
 import { computeContestParticipantStanding } from "../src/features/leaderboard/contest-ranking";
 import { SAMPLE_SCHOOLS } from "./schools";
+import { seedShowcaseContests } from "./seed-showcase-contests";
 
 const prisma = new PrismaClient();
 
@@ -177,6 +178,18 @@ async function main() {
       joinedAt: new Date(sampleNow - 120000),
     },
   });
+
+  const sampleExercises = await prisma.contestExercise.findMany({
+    where: { contestId: contest.id },
+    orderBy: { position: "asc" },
+    select: { exerciseId: true },
+  });
+  await seedShowcaseContests(
+    prisma,
+    teacher.id,
+    sampleExercises.map((item) => item.exerciseId),
+    users[roles.findIndex((role) => role.name === RoleName.STUDENT)].id,
+  );
 
   console.log(
     "Sample Contest is ready: sign in as student@local.test and open /contests/sample-contest. The exam stays open for 24 hours; click Start for your own 120-minute timer. Existing attempts are kept.",

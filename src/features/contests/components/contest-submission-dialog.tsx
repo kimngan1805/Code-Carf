@@ -7,11 +7,17 @@ import { Button } from "@/components/ui/button";
 export function ContestSubmissionDialog({
   open,
   completed = false,
+  stage,
+  timeUp = false,
   onConfirm,
   onCancel,
 }: {
   open: boolean;
   completed?: boolean;
+  /** Cuộc thi theo hành trình: hộp thoại nói về chặng thay vì cả lượt thi. */
+  stage?: number | null;
+  /** Chặng kết thúc vì hết giờ chứ không phải vì đã nộp đủ bài. */
+  timeUp?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -54,7 +60,13 @@ export function ContestSubmissionDialog({
         id={completed ? "contest-complete-title" : "contest-confirm-title"}
         className="text-xl font-bold"
       >
-        {completed ? "Hoàn thành cuộc thi!" : "Xác nhận nộp bài?"}
+        {completed
+          ? stage
+            ? timeUp
+              ? `Hết giờ chặng ${stage}`
+              : `Hoàn thành chặng ${stage}!`
+            : "Hoàn thành cuộc thi!"
+          : "Xác nhận nộp bài?"}
       </h2>
       <p
         id={
@@ -65,8 +77,14 @@ export function ContestSubmissionDialog({
         className="mt-3 text-sm leading-6 text-muted-foreground"
       >
         {completed
-          ? "Bài làm của bạn đã được ghi nhận. Bạn sẽ được chuyển về trang chi tiết cuộc thi."
-          : "Đây là bài cuối cùng chưa nộp. Sau khi xác nhận, lượt thi sẽ kết thúc và bạn không thể sửa hoặc nộp lại bài."}
+          ? stage
+            ? timeUp
+              ? `Bài đang làm dở được tự nộp, các bài chưa nộp của chặng ${stage} tính 0 điểm. Bạn sẽ được chuyển về bản đồ hành trình.`
+              : `Bài làm chặng ${stage} đã được ghi nhận. Bạn sẽ được chuyển về bản đồ hành trình để mở chặng tiếp theo.`
+            : "Bài làm của bạn đã được ghi nhận. Bạn sẽ được chuyển về trang chi tiết cuộc thi."
+          : stage
+            ? `Đây là bài cuối của chặng ${stage}. Sau khi xác nhận, chặng này kết thúc và bạn không thể sửa hoặc nộp lại bài của chặng.`
+            : "Đây là bài cuối cùng chưa nộp. Sau khi xác nhận, lượt thi sẽ kết thúc và bạn không thể sửa hoặc nộp lại bài."}
       </p>
       <div className="mt-6 flex flex-wrap justify-end gap-3">
         {!completed && (
@@ -75,7 +93,11 @@ export function ContestSubmissionDialog({
           </Button>
         )}
         <Button onClick={onConfirm}>
-          {completed ? "Về chi tiết cuộc thi" : "Xác nhận nộp bài"}
+          {completed
+            ? stage
+              ? "Về bản đồ hành trình"
+              : "Về chi tiết cuộc thi"
+            : "Xác nhận nộp bài"}
         </Button>
       </div>
     </dialog>

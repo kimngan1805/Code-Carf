@@ -56,15 +56,22 @@ export async function getShowcaseContests(
   now = Date.now(),
 ): Promise<ShowcaseContest[]> {
   const real = (await getPublicShowcase(now)).map(withProfile);
-  return [...real, ...sampleContests(now)].sort(byPriority);
+  // Mẫu đã được seed thành cuộc thi thật thì chỉ hiện bản thật để đăng ký được.
+  const seeded = new Set(real.map((contest) => contest.slug));
+  const samples = sampleContests(now).filter(
+    (contest) => !seeded.has(contest.slug),
+  );
+  return [...real, ...samples].sort(byPriority);
 }
 export async function getShowcaseContest(
   slug: string,
   now = Date.now(),
 ): Promise<ShowcaseContest> {
-  const sample = sampleContests(now).find((contest) => contest.slug === slug);
+  const contest = await findPublicContest(slug);
+  if (contest) return withProfile(presentPublicContest(contest, now));
+  const sample = sampleContests(now).find((item) => item.slug === slug);
   if (sample) return sample;
-  return withProfile(await getPublicContest(slug, now));
+  throw new AppError(404, "CONTEST_NOT_FOUND", "Không tìm thấy cuộc thi.");
 }
 export async function getPublicContest(slug: string, now = Date.now()) {
   const contest = await findPublicContest(slug);

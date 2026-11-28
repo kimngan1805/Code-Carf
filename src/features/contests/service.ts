@@ -4,18 +4,30 @@ import { AppError } from "@/lib/errors";
 import {
   findPublishedContest,
   listContests,
+  listRegisteredContestIds,
   findContestParticipant,
   registerContestParticipant,
 } from "./repository";
+import { loadStageState } from "./stage-repository";
 import {
   assertParticipantCanEnter,
   assertRegistrationOpen,
   getAttemptDeadline,
 } from "./access";
 export async function getContests() {
-  await requireRole(Object.values(RoleName));
-  const contests = await listContests();
-  return { contests, serverNow: Date.now() };
+  const user = await requireRole(Object.values(RoleName));
+  const [contests, registeredIds] = await Promise.all([
+    listContests(),
+    listRegisteredContestIds(user.id),
+  ]);
+  const registered = new Set(registeredIds);
+  return {
+    contests: contests.map((contest) => ({
+      ...contest,
+      registered: registered.has(contest.id),
+    })),
+    serverNow: Date.now(),
+  };
 }
 
 export async function getContest(slug: string) {
@@ -24,8 +36,15 @@ export async function getContest(slug: string) {
   if (!contest)
     throw new AppError(404, "CONTEST_NOT_FOUND", "Không tìm thấy cuộc thi.");
   const participant = await findContestParticipant(contest.id, user.id);
+  // Cuộc thi theo chặng: chặng hiện tại (tính cả chặng đã hết giờ) và thời gian từng chặng.
+  const stageState = await loadStageState(contest.id, user.id);
   return {
     ...contest,
+    stages: stageState.stages.map(({ number, durationMinutes }) => ({
+      number,
+      durationMinutes,
+    })),
+    currentStage: stageState.current?.number ?? null,
     participant: participant
       ? { ...participant, deadlineAt: getAttemptDeadline(contest, participant) }
       : null,

@@ -23,7 +23,6 @@ import { ContestSubmissionDialog } from "./contest-submission-dialog";
 import { useContestEvents } from "@/features/proctoring/components/use-contest-events";
 import { ProctoringNotice } from "@/features/proctoring/components/proctoring-notice";
 import { exitExamFullscreen } from "../fullscreen";
-import { ContestLeaderboardPanel } from "@/features/leaderboard/components/contest-leaderboard-view";
 
 const CodeEditor = dynamic(
   () =>
@@ -247,6 +246,7 @@ function SolutionPanel({
       </div>
       <ContestSubmissionDialog
         open={confirming && !closed && !submitted}
+        stage={data.stage?.number}
         onCancel={() => setConfirming(false)}
         onConfirm={() => {
           setConfirming(false);
@@ -260,7 +260,7 @@ function SolutionPanel({
 export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const router = useRouter();
   const [completionOpen, setCompletionOpen] = useState(false);
-  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [finishedStage, setFinishedStage] = useState<number | null>(null);
   const detailUrl = `/contests/${encodeURIComponent(data.contest.slug)}`;
   useEffect(() => {
     if (!completionOpen) return;
@@ -282,9 +282,13 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
   const clock = useServerClock(
     data.contest.slug,
     data.serverNow,
-    Date.parse(data.contest.deadlineAt),
+    Date.parse(data.stage?.deadlineAt ?? data.contest.deadlineAt),
+    data.stage?.number,
   );
   const remaining = clock.deadlineAt - clock.now;
+  // Hết giờ chặng: bài đang làm dở được tự nộp, rồi quay về bản đồ để sang chặng sau.
+  const stageTimeUp =
+    !!data.stage && remaining <= 0 && !completed && finishedStage === null;
   const closed = completed || clock.blocked || remaining <= 0;
   const proctoring = useContestEvents(
     data.contest.slug,
@@ -299,18 +303,31 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
     data.contest.slug,
     remaining <= 0 || completed,
   );
+  const stageFinalized = !!finalization.result || !!finalization.error;
+  useEffect(() => {
+    if (!stageTimeUp) return;
+    const timeout = window.setTimeout(
+      () => router.replace(detailUrl),
+      stageFinalized ? 2500 : 8000,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [stageTimeUp, stageFinalized, detailUrl, router]);
   const exercise = data.exercises.find((item) => item.id === selectedId);
   function recordResult(result: ContestSubmissionResult) {
     setProgress(result.progress);
-    if (result.progress.finished) setCompletionOpen(true);
+    if (result.stageFinished) setFinishedStage(result.stageFinished);
+    if (result.progress.finished || result.stageFinished)
+      setCompletionOpen(true);
     if (result.progress.nextExerciseId)
       setSelectedId(result.progress.nextExerciseId);
   }
   return (
     <div className="mx-auto max-w-screen-2xl space-y-5">
       <ContestSubmissionDialog
-        open={completionOpen}
+        open={completionOpen || stageTimeUp}
         completed
+        stage={finishedStage ?? data.stage?.number}
+        timeUp={stageTimeUp}
         onConfirm={() => router.replace(detailUrl)}
         onCancel={() => router.replace(detailUrl)}
       />
@@ -319,16 +336,13 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           <h1 className="break-words text-xl font-bold">
             {data.contest.title}
           </h1>
+          {data.stage && (
+            <p className="mt-1 text-sm font-semibold text-accent-strong">
+              Chặng {data.stage.number} · {data.stage.name}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => setLeaderboardOpen(true)}
-          >
-            <Trophy className="size-4" aria-hidden />
-            <span>Bảng xếp hạng</span>
-          </Button>
           <div
             className={cn(
               "rounded-xl px-5 py-3 text-center",
@@ -343,7 +357,11 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           >
             <p className="mb-1 flex items-center justify-center gap-2 text-xs font-semibold">
               <Clock3 className="size-3.5" aria-hidden />
-              {completed ? "ĐÃ HOÀN THÀNH" : "THỜI GIAN LÀM BÀI CỦA BẠN"}
+              {completed
+                ? "ĐÃ HOÀN THÀNH"
+                : data.stage
+                  ? `THỜI GIAN CHẶNG ${data.stage.number}`
+                  : "THỜI GIAN LÀM BÀI CỦA BẠN"}
             </p>
             <p
               role="timer"
@@ -368,7 +386,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           Bạn đã nộp tất cả bài và hoàn thành lượt thi.
         </p>
       )}
-      {remaining <= 0 && !completed && (
+      {remaining <= 0 && !completed && !data.stage && (
         <div className="space-y-3">
           <FinalizationNotice finalization={finalization} />
           {finalization.result && (
@@ -376,7 +394,7 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           )}
         </div>
       )}
-      {closed && !completed && (
+      {closed && !completed && !stageTimeUp && (
         <p
           role="alert"
           className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm text-destructive"
@@ -501,11 +519,6 @@ export function ContestWorkspace({ data }: { data: ContestWorkspaceData }) {
           </div>
         </>
       )}
-      <ContestLeaderboardPanel
-        slug={data.contest.slug}
-        open={leaderboardOpen}
-        onClose={() => setLeaderboardOpen(false)}
-      />
     </div>
   );
 }
