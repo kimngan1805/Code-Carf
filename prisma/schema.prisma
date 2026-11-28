@@ -137,37 +137,38 @@ model Role {
 }
 
 model User {
-  id                   String               @id @default(cuid())
-  email                String               @unique
+  id                   String                @id @default(cuid())
+  email                String                @unique
   name                 String
   passwordHash         String
   roleId               String
-  role                 Role                 @relation(fields: [roleId], references: [id])
+  role                 Role                  @relation(fields: [roleId], references: [id])
   /// Tổng XP, cache của XpEvent. Cấp độ được tính từ xp trong code, không lưu.
-  xp                   Int                  @default(0)
-  currentStreak        Int                  @default(0)
-  longestStreak        Int                  @default(0)
+  xp                   Int                   @default(0)
+  currentStreak        Int                   @default(0)
+  longestStreak        Int                   @default(0)
   /// Ngày học gần nhất, dùng để tính chuỗi ngày học liên tục.
-  lastActiveOn         DateTime?            @db.Date
+  lastActiveOn         DateTime?             @db.Date
   /// Thời điểm hoàn tất câu hỏi làm quen sau đăng ký; null thì cần làm onboarding.
   onboardedAt          DateTime?
-  createdAt            DateTime             @default(now())
+  createdAt            DateTime              @default(now())
   learnerProfile       LearnerProfile?
-  teacherApplications  TeacherApplication[] @relation("TeacherApplicant")
-  reviewedApplications TeacherApplication[] @relation("TeacherApplicationReviewer")
-  paths                Path[]               @relation("PathCreator")
-  createdContests      Contest[]            @relation("ContestCreator")
+  teacherApplications  TeacherApplication[]  @relation("TeacherApplicant")
+  reviewedApplications TeacherApplication[]  @relation("TeacherApplicationReviewer")
+  paths                Path[]                @relation("PathCreator")
+  createdContests      Contest[]             @relation("ContestCreator")
   enrollments          Enrollment[]
   roomProgress         RoomProgress[]
-  submissions          Submission[]         @relation("SubmissionAuthor")
-  reviewedSubmissions  Submission[]         @relation("SubmissionReviewer")
+  submissions          Submission[]          @relation("SubmissionAuthor")
+  reviewedSubmissions  Submission[]          @relation("SubmissionReviewer")
   xpEvents             XpEvent[]
   badges               UserBadge[]
   assignedContests     ContestGrader[]
   contestEntries       ContestParticipant[]
+  contestStageAttempts ContestStageAttempt[]
   proctoringEvents     ProctoringEvent[]
   exerciseReports      ExerciseReport[]
-  handledReports       ExerciseReport[]     @relation("ReportHandler")
+  handledReports       ExerciseReport[]      @relation("ReportHandler")
   notifications        Notification[]
   passwordResetToken   PasswordResetToken?
   createdExercises     Exercise[]           @relation("ExerciseCreator")
@@ -585,7 +586,39 @@ model Contest {
   submissions        Submission[]
   xpEvents           XpEvent[]
   proctoringEvents   ProctoringEvent[]
+  stages             ContestStage[]
   createdAt          DateTime             @default(now())
+}
+
+/// Cuộc thi theo hành trình: đề chia thành các chặng làm lần lượt, mỗi chặng có đồng hồ riêng.
+model ContestStage {
+  id              String                @id @default(cuid())
+  contestId       String
+  contest         Contest               @relation(fields: [contestId], references: [id], onDelete: Cascade)
+  /// Số chặng hiển thị cho thí sinh (vd. 4 = "Chặng 4"); các chặng xếp theo số này.
+  number          Int
+  name            String
+  /// Số bài liên tiếp (theo ContestExercise.position) thuộc chặng.
+  exerciseCount   Int
+  /// Thời gian làm chặng, tính từ lúc thí sinh vào chặng; độc lập với lịch mở cuộc thi.
+  durationMinutes Int
+  attempts        ContestStageAttempt[]
+
+  @@unique([contestId, number])
+}
+
+/// Mốc thời gian của một thí sinh ở một chặng; tạo khi thí sinh vào chặng lần đầu.
+model ContestStageAttempt {
+  stageId    String
+  stage      ContestStage @relation(fields: [stageId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  startedAt  DateTime
+  /// Hạn chót của chặng, không vượt quá hạn của cả lượt thi.
+  deadlineAt DateTime
+
+  @@id([stageId, userId])
+  @@index([userId])
 }
 
 model ContestExercise {

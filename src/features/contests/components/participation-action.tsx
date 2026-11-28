@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { ContestPhase } from "../time";
@@ -12,6 +12,7 @@ import {
   exitExamFullscreen,
   prepareExamEntry,
 } from "../fullscreen";
+import { CONTEST_ENTRY_REQUEST } from "../entry-request";
 
 export function ParticipationAction({
   slug,
@@ -41,6 +42,24 @@ export function ParticipationAction({
   const [error, setError] = useState("");
   const [entryOpen, setEntryOpen] = useState(false);
   const entering = useRef(false);
+  const canEnter =
+    canParticipate &&
+    registered &&
+    !finished &&
+    !attemptExpired &&
+    examPhase === "live" &&
+    !needsFaceCheck;
+  // Nút "Vào thi chặng này" trên bản đồ mở cùng hộp thoại toàn màn hình như nút ở đây.
+  useEffect(() => {
+    if (!canEnter) return;
+    const open = (event: Event) => {
+      event.preventDefault();
+      setError("");
+      setEntryOpen(true);
+    };
+    window.addEventListener(CONTEST_ENTRY_REQUEST, open);
+    return () => window.removeEventListener(CONTEST_ENTRY_REQUEST, open);
+  }, [canEnter]);
   async function register() {
     setPending(true);
     setError("");

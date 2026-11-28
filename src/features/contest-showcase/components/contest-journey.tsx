@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Check, Crown, Flag, Lock, Play } from "lucide-react";
+import { requestContestEntry } from "@/features/contests/entry-request";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { QUESTION_TYPES, type ContestJourney } from "../catalog";
@@ -45,7 +47,17 @@ const pct = (x: number, y: number) => ({
   top: `${(y / 700) * 100}%`,
 });
 
-export function ContestJourneyMap({ journey }: { journey: ContestJourney }) {
+export function ContestJourneyMap({
+  journey,
+  startHref,
+}: {
+  journey: ContestJourney;
+  /**
+   * Đường vào thi; bỏ trống với cuộc thi mẫu chưa có đề thật. Bắt đầu bằng "#" (khu vực thí
+   * sinh) thì mở hộp thoại vào thi của khung thao tác, không được thì cuộn tới khung đó.
+   */
+  startHref?: string;
+}) {
   const [selected, setSelected] = useState(journey.currentStage);
   const stages = journey.stages.slice(0, SLOTS.length);
   const points = SLOTS.slice(0, stages.length);
@@ -280,10 +292,33 @@ export function ContestJourneyMap({ journey }: { journey: ContestJourney }) {
           </div>
           <div className="md:w-48">
             {state === "current" ? (
-              <Button className="w-full rounded-full">
-                <Play aria-hidden className="size-4 fill-current" /> Vào thi
-                chặng này
-              </Button>
+              startHref?.startsWith("#") ? (
+                <Button
+                  className="w-full rounded-full"
+                  onClick={() => {
+                    if (!requestContestEntry())
+                      document.querySelector(startHref)?.scrollIntoView({
+                        behavior: "smooth",
+                        block: "center",
+                      });
+                  }}
+                >
+                  <Play aria-hidden className="size-4 fill-current" /> Vào thi
+                  chặng này
+                </Button>
+              ) : startHref ? (
+                <Button asChild className="w-full rounded-full">
+                  <Link href={startHref}>
+                    <Play aria-hidden className="size-4 fill-current" /> Vào thi
+                    chặng này
+                  </Link>
+                </Button>
+              ) : (
+                <Button className="w-full rounded-full" disabled>
+                  <Play aria-hidden className="size-4 fill-current" /> Chưa mở
+                  đề thi
+                </Button>
+              )
             ) : state === "done" ? (
               <p className="inline-flex w-full items-center justify-center gap-2 rounded-full border-2 border-success px-4 py-2 text-sm font-semibold text-success">
                 <Check aria-hidden className="size-4" /> Đã vượt qua

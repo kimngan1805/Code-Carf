@@ -70,7 +70,7 @@ export default async function ContestDetailPage({
           : "ĐÓNG LÀM BÀI SAU";
   const showcase = await getShowcaseContest(slug, now);
   const action = (
-    <div className="space-y-4">
+    <div id="vao-thi" className="scroll-mt-24 space-y-4">
       {attemptClosed ? (
         <p className="rounded-xl bg-muted px-4 py-3 text-sm font-semibold text-primary">
           {contest.participant?.finishedAt
@@ -125,7 +125,7 @@ export default async function ContestDetailPage({
   );
   const overviewContent = (
     <div className="space-y-10">
-      <ContestArena contest={showcase} />
+      <ContestArena contest={showcase} startHref="#vao-thi" />
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <div className="min-w-0">
           <ShowcaseDetailTabs contest={showcase} signedIn />

@@ -188,6 +188,7 @@ async function main() {
     prisma,
     teacher.id,
     sampleExercises.map((item) => item.exerciseId),
+    users[roles.findIndex((role) => role.name === RoleName.STUDENT)].id,
   );
 
   console.log(
