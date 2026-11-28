@@ -3,10 +3,13 @@ import { notFound } from "next/navigation";
 import { BookOpen, CheckCircle2, CodeXml, Pencil, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DeleteExerciseButton } from "@/features/exercises/components/delete-exercise-button";
+import { ExerciseItem } from "@/features/exercises/components/exercise-item";
+import { ExercisePreview } from "@/features/exercises/components/exercise-preview";
 import { PathBreadcrumb } from "@/features/paths/components/path-badges";
+import { stripLessonTemplate } from "@/features/paths/lesson-structure";
 import { getManagedRoom } from "@/features/paths/management";
 import { RoomMarkdown } from "@/features/rooms/components/room-markdown";
-import { RoomPublication } from "@/features/rooms/components/room-publication";
+import { RoomHeader } from "@/features/rooms/components/room-header";
 import { AppError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +17,12 @@ const difficultyLabel = {
   EASY: "Dễ",
   MEDIUM: "Trung bình",
   HARD: "Khó",
+} as const;
+
+const kindLabel = {
+  CODE: "Code",
+  QUIZ: "Trắc nghiệm",
+  HANDWRITTEN: "Tự luận",
 } as const;
 
 const difficultyBadgeClass = {
@@ -40,6 +49,8 @@ export default async function ManagedRoomPage({
   });
 
   const roomBaseHref = `/gv/paths/${room.path.slug}/rooms/${room.id}`;
+  // Giảng viên xem đúng phần học viên sẽ thấy: khung mẫu chưa điền được bỏ đi.
+  const theory = stripLessonTemplate(room.content);
 
   return (
     <div className="mx-auto w-full max-w-5xl space-y-5">
@@ -70,11 +81,9 @@ export default async function ManagedRoomPage({
         </div>
       )}
 
-      <RoomPublication
-        roomId={room.id}
+      <RoomHeader
         title={room.title}
         description={room.description}
-        published={room.published}
         pathPublished={room.path.published}
         exerciseCount={room.exercises.length}
         previewHref={`${roomBaseHref}/preview`}
@@ -94,12 +103,19 @@ export default async function ManagedRoomPage({
             Lý thuyết bài học
           </h2>
         </div>
-        {room.content.trim() ? (
-          <RoomMarkdown content={room.content} />
+        {theory ? (
+          <RoomMarkdown content={theory} />
+        ) : room.content.trim() ? (
+          <p className="text-sm text-muted-foreground">
+            Bài mới có khung mẫu, chưa nhập nội dung nên học viên chưa thấy phần
+            này. Chọn &ldquo;Chỉnh sửa bài học&rdquo; để điền hoặc xóa khung
+            mẫu.
+          </p>
         ) : (
           <p className="text-sm text-muted-foreground">
-            Bài học chưa có nội dung lý thuyết. Hãy chọn &ldquo;Chỉnh sửa bài
-            học&rdquo; để bổ sung trước khi xuất bản.
+            Bài học chưa có nội dung chữ. Không bắt buộc nếu bài đã có tài liệu
+            đính kèm hoặc bài tập; muốn viết thì chọn &ldquo;Chỉnh sửa bài
+            học&rdquo;, có sẵn khung mẫu để dùng.
           </p>
         )}
       </section>
@@ -140,7 +156,7 @@ export default async function ManagedRoomPage({
               Bài học chưa có bài tập
             </p>
             <p className="mt-1 max-w-sm text-xs leading-5 text-muted-foreground">
-              Thêm bài tập lập trình kèm bộ test case để học viên thực hành ngay
+              Thêm bài code, trắc nghiệm hoặc tự luận để học viên thực hành ngay
               sau khi đọc lý thuyết.
             </p>
             <Button asChild size="default" className="mt-4 rounded-xl">
@@ -153,50 +169,62 @@ export default async function ManagedRoomPage({
         ) : (
           <ul className="space-y-2.5">
             {room.exercises.map((exercise) => (
-              <li
+              <ExerciseItem
                 key={exercise.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-background px-4 py-3.5 transition-colors hover:border-primary/35"
-              >
-                <div className="min-w-0 space-y-1">
-                  <p className="text-sm font-semibold text-foreground break-words sm:text-base">
-                    {exercise.title}
-                  </p>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums">
-                    <span
-                      className={cn(
-                        "rounded-full border px-2 py-0.5 font-semibold",
-                        difficultyBadgeClass[exercise.difficulty],
-                      )}
+                summary={
+                  <>
+                    <p className="font-semibold text-foreground break-words">
+                      {exercise.title}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground tabular-nums">
+                      <span className="rounded-full border border-primary/20 px-2 py-0.5 font-semibold text-primary">
+                        {kindLabel[exercise.kind]}
+                      </span>
+                      <span
+                        className={cn(
+                          "rounded-full border px-2 py-0.5 font-semibold",
+                          difficultyBadgeClass[exercise.difficulty],
+                        )}
+                      >
+                        {difficultyLabel[exercise.difficulty]}
+                      </span>
+                      <span>{exercise.points} XP</span>
+                      <span>·</span>
+                      <span>
+                        {exercise.kind === "QUIZ"
+                          ? `${exercise.quizQuestions.length} câu hỏi`
+                          : exercise.kind === "HANDWRITTEN"
+                            ? "Nộp ảnh bài làm"
+                            : `${exercise._count.testCases} test case`}
+                      </span>
+                    </div>
+                  </>
+                }
+                actions={
+                  <>
+                    <Button
+                      asChild
+                      variant="outline"
+                      size="sm"
+                      className="h-9 rounded-lg border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted hover:text-primary"
                     >
-                      {difficultyLabel[exercise.difficulty]}
-                    </span>
-                    <span>{exercise.points} XP</span>
-                    <span aria-hidden>·</span>
-                    <span>{exercise._count.testCases} test case</span>
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="sm"
-                    className="h-9 rounded-lg border-border bg-background text-foreground hover:border-primary/40 hover:bg-muted hover:text-primary"
-                  >
-                    <Link
-                      href={`${roomBaseHref}/exercises/${exercise.id}/edit`}
-                    >
-                      <Pencil className="size-3.5" aria-hidden />
-                      Sửa
-                    </Link>
-                  </Button>
-                  <DeleteExerciseButton
-                    pathSlug={room.path.slug}
-                    roomId={room.id}
-                    exerciseId={exercise.id}
-                    title={exercise.title}
-                  />
-                </div>
-              </li>
+                      <Link
+                        href={`${roomBaseHref}/exercises/${exercise.id}/edit`}
+                      >
+                        <Pencil className="size-3.5" aria-hidden />
+                        Sửa
+                      </Link>
+                    </Button>
+                    <DeleteExerciseButton
+                      pathSlug={room.path.slug}
+                      roomId={room.id}
+                      exerciseId={exercise.id}
+                      title={exercise.title}
+                    />
+                  </>
+                }
+                preview={<ExercisePreview exercise={exercise} />}
+              />
             ))}
           </ul>
         )}

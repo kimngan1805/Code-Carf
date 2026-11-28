@@ -26,7 +26,7 @@ import { PathPublication } from "@/features/paths/components/path-publication";
 import { PathUnlockSetting } from "@/features/paths/components/path-unlock-setting";
 import { coverThemeClass } from "@/features/paths/cover-themes";
 import { getManagedPathEnrolledStudents } from "@/features/paths/enrolled-students";
-import { formatDuration, formatPostedAt } from "@/features/paths/format";
+import { formatDateTime, formatDuration } from "@/features/paths/format";
 import { getManagedPath } from "@/features/paths/management";
 import { AppError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -66,10 +66,12 @@ export default async function ManagedPathPage({
   const roomsWithoutExercises = path.rooms.filter(
     (room) => room._count.exercises === 0,
   ).length;
+  // Bài chưa có nội dung, tài liệu hay bài tập thì chưa xuất bản được (backend kiểm tra lại).
+  const emptyLessons = path.rooms.filter((room) => !room.hasMaterial).length;
   const durationLabel = formatDuration(path.estimatedMinutes);
   const timestampLabel = path.published
-    ? formatPostedAt(path.publishedAt)
-    : formatPostedAt(path.createdAt);
+    ? formatDateTime(path.publishedAt)
+    : formatDateTime(path.createdAt);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
@@ -87,8 +89,9 @@ export default async function ManagedPathPage({
         >
           <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
           <p>
-            Đã tạo lộ trình thành công. Hãy thêm bài học đầu tiên để bắt đầu xây
-            dựng nội dung.
+            {path.rooms.length > 0
+              ? `Đã tạo lộ trình cùng ${path.rooms.length} bài học. Bấm "Thêm nội dung" ở từng bài để thêm slide/PDF, video hoặc bài tập.`
+              : "Đã tạo lộ trình thành công. Hãy thêm bài học đầu tiên để bắt đầu xây dựng nội dung."}
           </p>
         </div>
       )}
@@ -131,8 +134,15 @@ export default async function ManagedPathPage({
             {timestampLabel && (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-background/90 px-3 py-1 text-xs font-medium text-foreground shadow-xs backdrop-blur-xs">
                 <Calendar className="size-3.5 text-primary" aria-hidden />
-                {path.published ? "Xuất bản" : "Tạo"}{" "}
-                {timestampLabel.toLowerCase()}
+                {path.published ? "Xuất bản lúc" : "Tạo lúc"}{" "}
+                <time
+                  dateTime={(path.published
+                    ? path.publishedAt
+                    : path.createdAt
+                  )?.toISOString()}
+                >
+                  {timestampLabel}
+                </time>
               </span>
             )}
           </div>
@@ -296,7 +306,26 @@ export default async function ManagedPathPage({
             </div>
           )}
 
-          {!path.published && path.rooms.length > 0 && (
+          {!path.published && emptyLessons > 0 && (
+            <div className="flex items-start gap-3 rounded-2xl border border-warning/30 bg-warning/5 p-4">
+              <AlertTriangle
+                aria-hidden
+                className="mt-0.5 size-5 shrink-0 text-warning"
+              />
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-foreground">
+                  Còn {emptyLessons} bài học chưa có nội dung
+                </p>
+                <p className="text-xs leading-5 text-muted-foreground">
+                  Mỗi bài chỉ cần một trong ba: nội dung chữ, tài liệu đính kèm
+                  (PDF, slide) hoặc bài tập. Bấm &quot;Thêm nội dung&quot; ở bài
+                  được đánh dấu để bổ sung.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {!path.published && path.rooms.length > 0 && emptyLessons === 0 && (
             <div className="flex items-start gap-3 rounded-2xl border border-success/25 bg-success/5 p-4">
               <Sparkles
                 aria-hidden
@@ -388,6 +417,7 @@ export default async function ManagedPathPage({
               pathId={path.id}
               published={path.published}
               roomCount={path.rooms.length}
+              emptyLessonCount={emptyLessons}
             />
           </section>
 

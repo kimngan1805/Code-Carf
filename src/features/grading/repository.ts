@@ -212,6 +212,11 @@ export function findExerciseForPractice(exerciseId: string) {
         orderBy: { id: "asc" },
         select: { id: true, input: true, expected: true },
       },
+      // Không lấy đáp án đúng: chỉ server chấm mới cần đến.
+      quizQuestions: {
+        orderBy: { position: "asc" },
+        select: { prompt: true, options: true },
+      },
     },
   });
 }

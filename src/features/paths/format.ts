@@ -17,3 +17,22 @@ export function formatDuration(minutes: number | null) {
   if (minutes < 60) return `${minutes} phút`;
   return `${+(minutes / 60).toFixed(1)} giờ`;
 }
+
+const dateTimeFormat = new Intl.DateTimeFormat("vi-VN", {
+  hour: "2-digit",
+  minute: "2-digit",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour12: false,
+  timeZone: "Asia/Ho_Chi_Minh",
+});
+
+/** "14:05 24/11/2026" theo giờ Việt Nam, dùng ở trang quản lý cần mốc thời gian chính xác. */
+export function formatDateTime(date: Date | null) {
+  if (!date) return "";
+  const part = Object.fromEntries(
+    dateTimeFormat.formatToParts(date).map((p) => [p.type, p.value]),
+  );
+  return `${part.hour}:${part.minute} ${part.day}/${part.month}/${part.year}`;
+}

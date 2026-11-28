@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
-import { deleteExerciseSchema, saveExerciseSchema } from "./authoring-schema";
+import { deleteExerciseSchema, parseSaveExercise } from "./authoring-schema";
 
 type Tx = Prisma.TransactionClient;
 type Teacher = Awaited<ReturnType<typeof requireRole>>;
@@ -44,23 +44,43 @@ function isRetryable(error: unknown) {
 
 export async function saveManagedExercise(body: unknown) {
   const user = await requireRole(["TEACHER", "ADMIN"]);
-  const parsed = saveExerciseSchema.safeParse(body);
+  const parsed = parseSaveExercise(body);
   if (!parsed.success)
-    throw new AppError(
-      400,
-      "INVALID_EXERCISE",
-      parsed.error.issues[0]?.message ?? "Thông tin bài tập không hợp lệ.",
-    );
+    throw new AppError(400, "INVALID_EXERCISE", parsed.message);
   const input = parsed.data;
   const fields = {
     title: input.title,
     prompt: input.prompt,
-    kind: "CODE" as const,
+    kind: input.kind,
     difficulty: input.difficulty,
     points: input.points,
-    timeLimitMs: input.timeLimitMs,
-    memoryLimitKb: input.memoryMb * 1024,
+    ...(input.kind === "CODE"
+      ? {
+          timeLimitMs: input.timeLimitMs,
+          memoryLimitKb: input.memoryMb * 1024,
+          rubric: null,
+        }
+      : { rubric: input.kind === "HANDWRITTEN" ? input.rubric : null }),
   };
+  const testCases =
+    input.kind === "CODE"
+      ? input.testCases.map((test) => ({
+          input: test.input,
+          expected: test.expected,
+          isHidden: test.isHidden,
+          weight: test.weight,
+        }))
+      : [];
+  const questions =
+    input.kind === "QUIZ"
+      ? input.questions.map((question, position) => ({
+          position,
+          prompt: question.prompt,
+          options: question.options,
+          answer: question.answer,
+          explanation: question.explanation,
+        }))
+      : [];
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
       return await db
@@ -72,13 +92,24 @@ export async function saveManagedExercise(body: unknown) {
               input.pathSlug,
               input.roomId,
             );
-            const testCases = input.testCases.map((test) => ({
-              input: test.input,
-              expected: test.expected,
-              isHidden: test.isHidden,
-              weight: test.weight,
-            }));
             if ("exerciseId" in input) {
+              const current = await tx.exercise.findFirst({
+                where: { id: input.exerciseId, roomId: room.id },
+                select: {
+                  kind: true,
+                  _count: { select: { submissions: true } },
+                },
+              });
+              if (
+                current &&
+                current.kind !== input.kind &&
+                current._count.submissions
+              )
+                throw new AppError(
+                  409,
+                  "EXERCISE_KIND_LOCKED",
+                  "Bài tập đã có bài nộp nên không thể đổi loại.",
+                );
               const updated = await tx.exercise.updateMany({
                 where: { id: input.exerciseId, roomId: room.id },
                 data: fields,
@@ -92,9 +123,18 @@ export async function saveManagedExercise(body: unknown) {
               await tx.testCase.deleteMany({
                 where: { exerciseId: input.exerciseId },
               });
+              await tx.quizQuestion.deleteMany({
+                where: { exerciseId: input.exerciseId },
+              });
               await tx.testCase.createMany({
                 data: testCases.map((test) => ({
                   ...test,
+                  exerciseId: input.exerciseId,
+                })),
+              });
+              await tx.quizQuestion.createMany({
+                data: questions.map((question) => ({
+                  ...question,
                   exerciseId: input.exerciseId,
                 })),
               });
@@ -124,6 +164,7 @@ export async function saveManagedExercise(body: unknown) {
                 roomId: room.id,
                 ...fields,
                 testCases: { create: testCases },
+                quizQuestions: { create: questions },
               },
             });
             return { id, roomId: room.id };

@@ -1,26 +1,15 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BookmarkCheck,
   BookOpen,
-  Bug,
   Check,
   ChevronDown,
   ChevronRight,
   Clock,
   Code,
-  Cog,
-  Compass,
-  Dumbbell,
   Gauge,
   Layers,
-  Lightbulb,
-  ListChecks,
   MapPin,
-  MonitorPlay,
-  Rocket,
-  Scale,
-  Shapes,
   Users,
   type LucideIcon,
 } from "lucide-react";
@@ -30,140 +19,13 @@ import { DIFFICULTY_LABELS } from "../cover-themes";
 import { formatDuration, formatPostedAt } from "../format";
 import type { getPublicPath } from "../service";
 import { DifficultyChip, PathArt } from "./path-showcase";
+import {
+  LESSON_PART_COUNT,
+  LESSON_PHASES,
+  PHASE_OFFSETS,
+} from "../lesson-structure";
 
 type PublicPath = NonNullable<Awaited<ReturnType<typeof getPublicPath>>>;
-
-type LessonPart = {
-  name: string;
-  english: string;
-  question: string;
-  icon: LucideIcon;
-};
-
-/**
- * Khung chuẩn của một bài học, chia 4 chặng để người học thấy được hành trình.
- * Hiện là khung giao diện cố định; chưa lưu theo từng bài trong cơ sở dữ liệu.
- */
-const LESSON_PHASES: {
-  title: string;
-  summary: string;
-  tone: string;
-  parts: LessonPart[];
-}[] = [
-  {
-    title: "Hiểu",
-    summary: "Nắm chủ đề là gì",
-    tone: "bg-brand-sky-light/60",
-    parts: [
-      {
-        name: "Tổng quan",
-        english: "Overview",
-        question: "Giới thiệu chủ đề và mục tiêu học tập",
-        icon: Compass,
-      },
-      {
-        name: "Khái niệm",
-        english: "Concept",
-        question: "Kiến thức này là gì?",
-        icon: Lightbulb,
-      },
-      {
-        name: "Đặc điểm",
-        english: "Characteristics",
-        question: "Có những đặc điểm gì?",
-        icon: ListChecks,
-      },
-      {
-        name: "Phân loại",
-        english: "Classification",
-        question: "Bao gồm những loại nào?",
-        icon: Shapes,
-      },
-    ],
-  },
-  {
-    title: "Nắm cách làm",
-    summary: "Đọc và viết được code",
-    tone: "bg-brand-sky/20",
-    parts: [
-      {
-        name: "Cách thức hoạt động",
-        english: "Mechanism",
-        question: "Hoạt động như thế nào?",
-        icon: Cog,
-      },
-      {
-        name: "Cú pháp",
-        english: "Syntax",
-        question: "Cách khai báo và sử dụng trong code",
-        icon: Code,
-      },
-      {
-        name: "Ví dụ minh họa",
-        english: "Example",
-        question: "Ví dụ code kèm giải thích",
-        icon: MonitorPlay,
-      },
-    ],
-  },
-  {
-    title: "Vận dụng",
-    summary: "Dùng đúng chỗ, tránh lỗi",
-    tone: "bg-brand-orange/15",
-    parts: [
-      {
-        name: "Ứng dụng thực tế",
-        english: "Application",
-        question: "Khi nào và tại sao cần sử dụng?",
-        icon: Rocket,
-      },
-      {
-        name: "Ưu và nhược điểm",
-        english: "Pros & Cons",
-        question: "Điểm mạnh và hạn chế",
-        icon: Scale,
-      },
-      {
-        name: "Lỗi thường gặp",
-        english: "Common Errors",
-        question: "Các lỗi và cách khắc phục",
-        icon: Bug,
-      },
-    ],
-  },
-  {
-    title: "Củng cố",
-    summary: "Nhớ lâu, làm được",
-    tone: "bg-brand-blue/10",
-    parts: [
-      {
-        name: "Ghi nhớ",
-        english: "Key Takeaways",
-        question: "Tổng hợp kiến thức trọng tâm",
-        icon: BookmarkCheck,
-      },
-      {
-        name: "Luyện tập",
-        english: "Practice",
-        question: "Trắc nghiệm và bài tập lập trình",
-        icon: Dumbbell,
-      },
-    ],
-  },
-];
-
-const LESSON_PART_COUNT = LESSON_PHASES.reduce(
-  (sum, phase) => sum + phase.parts.length,
-  0,
-);
-
-/** Số thứ tự 01-12 liên tục qua các chặng. */
-const PHASE_OFFSETS = LESSON_PHASES.map((_, index) =>
-  LESSON_PHASES.slice(0, index).reduce(
-    (sum, phase) => sum + phase.parts.length,
-    0,
-  ),
-);
 
 const startHref = (path: PublicPath) => `/hv/paths/${path.slug}`;
 

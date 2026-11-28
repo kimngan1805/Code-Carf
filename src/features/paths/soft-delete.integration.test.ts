@@ -37,7 +37,6 @@ import { recordStreakActivity } from "@/features/progress/activity";
 import { awardCompletedWeekTopBadge } from "@/features/progress/badge-awarding";
 import { canAccessRoom } from "@/features/rooms/access";
 import { saveManagedLesson } from "@/features/rooms/authoring";
-import { setRoomPublication } from "@/features/rooms/publication";
 import { getRoom, getRoomPage } from "@/features/rooms/service";
 import { findPublishedSearchResults } from "@/features/search/repository";
 import { updateManagedPathDetails } from "./details";
@@ -328,9 +327,6 @@ describe.skipIf(!hasDatabase)(
       await expect(
         getManagedRoomPreview(path.slug, room1.id),
       ).rejects.toMatchObject({ status: 404 });
-      await expect(setRoomPublication(room1.id, false)).rejects.toMatchObject({
-        status: 404,
-      });
       await expect(
         saveManagedLesson({
           pathSlug: path.slug,

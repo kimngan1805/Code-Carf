@@ -19,6 +19,8 @@ enum RoleName {
 enum ExerciseKind {
   CODE
   HANDWRITTEN
+  /// Trắc nghiệm: chấm tự động theo đáp án của từng câu (QuizQuestion).
+  QUIZ
 }
 
 enum ExerciseReportKind {
@@ -329,6 +331,7 @@ model Exercise {
   /// Đáp án mẫu / tiêu chí chấm cho bài viết tay, dùng cho AI và grader.
   rubric        String?
   testCases     TestCase[]
+  quizQuestions QuizQuestion[]
   submissions   Submission[]
   contests      ContestExercise[]
   contestDrafts ContestDraft[]
@@ -378,6 +381,23 @@ model Notification {
   @@index([userId, readAt, createdAt(sort: Desc)])
 }
 
+/// Một câu hỏi của bài trắc nghiệm (Exercise.kind = QUIZ), chọn một đáp án đúng.
+model QuizQuestion {
+  id          String   @id @default(cuid())
+  exerciseId  String
+  exercise    Exercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  /// Thứ tự hiển thị, bắt đầu từ 0.
+  position    Int
+  prompt      String
+  options     String[]
+  /// Vị trí đáp án đúng trong `options`.
+  answer      Int
+  /// Giải thích hiện cho học viên sau khi nộp.
+  explanation String   @default("")
+
+  @@unique([exerciseId, position])
+}
+
 model TestCase {
   id         String   @id @default(cuid())
   exerciseId String
@@ -402,6 +422,8 @@ model Submission {
   language         String?
   /// Ảnh bài viết tay đã upload (bài HANDWRITTEN).
   imageUrl         String?
+  /// Đáp án đã chọn theo thứ tự câu hỏi (bài QUIZ); -1 là bỏ trống.
+  quizAnswers      Int[]            @default([])
   status           SubmissionStatus @default(PENDING)
   score            Int?
   feedback         String?
