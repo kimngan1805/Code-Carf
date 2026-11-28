@@ -1229,9 +1229,13 @@ async function main() {
       create: { pathId: path.id, position, ...data },
     });
     const essay = ESSAYS[index];
-    for (const item of essay ? [...room.exercises, essay] : room.exercises) {
+    for (const [order, item] of (essay
+      ? [...room.exercises, essay]
+      : room.exercises
+    ).entries()) {
       const id = `seed-py-${item.key}`;
       const fields = {
+        position: order + 1,
         roomId: saved.id,
         title: item.title,
         prompt: item.prompt,

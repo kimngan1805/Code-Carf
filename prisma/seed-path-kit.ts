@@ -230,9 +230,10 @@ export async function seedPath(prisma: PrismaClient, seed: PathSeed) {
       update: data,
       create: { pathId: path.id, position, ...data },
     });
-    for (const item of room.exercises) {
+    for (const [order, item] of room.exercises.entries()) {
       const id = `${seed.exercisePrefix}-${item.key}`;
       const fields = {
+        position: order + 1,
         roomId: saved.id,
         title: item.title,
         prompt: item.prompt,
