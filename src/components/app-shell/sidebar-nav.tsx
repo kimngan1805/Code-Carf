@@ -4,6 +4,7 @@ import { RoleName } from "@prisma/client";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ClipboardCheck,
   Award,
   BadgeCheck,
   BookOpen,
@@ -99,6 +100,12 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
         label: "Xử lý báo lỗi",
         short: "Báo lỗi",
         icon: Flag,
+      },
+      {
+        href: "/gv/grading",
+        label: "Chấm bài tự luận",
+        short: "Chấm bài",
+        icon: ClipboardCheck,
       },
       {
         href: "/gv/paths",
