@@ -34,6 +34,15 @@ export function findPublishedContest(slug: string) {
 
 export type ContestSummary = Awaited<ReturnType<typeof listContests>>[number];
 
+/** Id các cuộc thi mà người dùng đã đăng ký, để lọc danh sách theo cá nhân. */
+export async function listRegisteredContestIds(userId: string) {
+  const rows = await db.contestParticipant.findMany({
+    where: { userId },
+    select: { contestId: true },
+  });
+  return rows.map((row) => row.contestId);
+}
+
 export function findContestParticipant(contestId: string, userId: string) {
   return db.contestParticipant.findUnique({
     where: { contestId_userId: { contestId, userId } },

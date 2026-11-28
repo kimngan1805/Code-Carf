@@ -4,6 +4,7 @@ import { AppError } from "@/lib/errors";
 import {
   findPublishedContest,
   listContests,
+  listRegisteredContestIds,
   findContestParticipant,
   registerContestParticipant,
 } from "./repository";
@@ -13,9 +14,19 @@ import {
   getAttemptDeadline,
 } from "./access";
 export async function getContests() {
-  await requireRole(Object.values(RoleName));
-  const contests = await listContests();
-  return { contests, serverNow: Date.now() };
+  const user = await requireRole(Object.values(RoleName));
+  const [contests, registeredIds] = await Promise.all([
+    listContests(),
+    listRegisteredContestIds(user.id),
+  ]);
+  const registered = new Set(registeredIds);
+  return {
+    contests: contests.map((contest) => ({
+      ...contest,
+      registered: registered.has(contest.id),
+    })),
+    serverNow: Date.now(),
+  };
 }
 
 export async function getContest(slug: string) {

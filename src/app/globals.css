@@ -147,6 +147,19 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   --font-sans: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+
+  /* Thẻ nổi lên xuống nhẹ khi rê chuột, dùng cho danh sách cuộc thi. */
+  --animate-card-float: card-float 1.8s ease-in-out infinite;
+
+  @keyframes card-float {
+    0%,
+    100% {
+      transform: translateY(-4px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
 }
 
 @layer base {
