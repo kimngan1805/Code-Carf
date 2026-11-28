@@ -187,6 +187,10 @@ export async function getManagedRoom(slug: string, roomId: string) {
       content: true,
       published: true,
       path: { select: { title: true, slug: true, published: true } },
+      attachments: {
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, fileName: true, contentType: true, size: true },
+      },
       exercises: {
         orderBy: { id: "asc" },
         select: {
@@ -226,6 +230,10 @@ export async function getManagedRoomPreview(slug: string, roomId: string) {
       content: true,
       published: true,
       path: { select: { title: true, slug: true, published: true } },
+      attachments: {
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, fileName: true, contentType: true, size: true },
+      },
       exercises: {
         orderBy: { id: "asc" },
         select: {
@@ -257,6 +265,7 @@ export async function getManagedRoomPreview(slug: string, roomId: string) {
       title: room.path.title,
       published: room.path.published,
     },
+    attachments: room.attachments,
     exercises: room.exercises.map((exercise) => ({
       ...exercise,
       state: "not_started" as const,

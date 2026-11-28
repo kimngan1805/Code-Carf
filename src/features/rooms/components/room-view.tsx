@@ -13,6 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import type { getRoomPage } from "../service";
 import { RoomMarkdown } from "./room-markdown";
 import { RefreshRoom } from "./refresh-room";
+import { RoomAttachments } from "./room-attachments";
 import { ExerciseReportForm } from "@/features/exercise-reports/components/report-form";
 
 const states = {
@@ -188,6 +189,7 @@ export function RoomView({
               </ul>
             </aside>
           </div>
+          <RoomAttachments roomId={room.id} attachments={room.attachments} />
           <section className="space-y-4" aria-labelledby="exercises-title">
             <h2 id="exercises-title" className="text-xl font-semibold">
               Bài tập ({room.exercises.length})

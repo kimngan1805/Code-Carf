@@ -61,6 +61,10 @@ export function findRoomContent(roomId: string) {
           points: true,
         },
       },
+      attachments: {
+        orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+        select: { id: true, fileName: true, contentType: true, size: true },
+      },
       path: { select: { slug: true, title: true } },
     },
   });
