@@ -7,14 +7,18 @@ import {
   findRoomAccess,
   findRoomContent,
   findRoomExerciseStatuses,
+  findNextRoom,
+  isRoomCompleted,
   listRooms,
 } from "./repository";
 import { exerciseState } from "./exercise-status";
+import { completeRoomIfDone } from "@/features/grading/room-completion";
 
 async function loadRoom(roomId: string, userId: string) {
-  const [content, statuses] = await Promise.all([
+  const [content, statuses, completed] = await Promise.all([
     findRoomContent(roomId),
     findRoomExerciseStatuses(roomId, userId),
+    isRoomCompleted(roomId, userId),
   ]);
   if (!content)
     throw new AppError(404, "ROOM_NOT_FOUND", "Không tìm thấy bài học.");
@@ -29,8 +33,13 @@ async function loadRoom(roomId: string, userId: string) {
   return {
     ...content,
     exercises,
-    passedExercises: exercises.filter((exercise) => exercise.state === "passed")
-      .length,
+    completed,
+    // Bài tự luận nộp ảnh là đã làm xong phần của học viên (điểm chấm sau).
+    passedExercises: exercises.filter(
+      (exercise) =>
+        exercise.state === "passed" ||
+        (exercise.kind === "HANDWRITTEN" && exercise.state === "submitted"),
+    ).length,
   };
 }
 
@@ -61,7 +70,12 @@ export async function getRoomPage(roomId: string) {
         : "Bạn cần đăng ký lộ trình trước khi mở bài học này.",
     };
   }
-  return { accessible: true as const, ...(await loadRoom(roomId, user.id)) };
+  const loaded = await loadRoom(roomId, user.id);
+  // Học xong bài này thì chỉ đường sang bài kế tiếp (kể cả khi tải lại trang).
+  const nextRoom = loaded.completed
+    ? await findNextRoom(room.pathId, room.position)
+    : null;
+  return { accessible: true as const, ...loaded, nextRoom };
 }
 
 export async function getRoom(roomId: string) {
@@ -85,4 +99,27 @@ export async function getRoom(roomId: string) {
 export async function getRooms() {
   await requireRole([RoleName.STUDENT, RoleName.TEACHER, RoleName.ADMIN]);
   return listRooms();
+}
+
+/**
+ * Bài học không có bài tập: học viên bấm "Đã học xong" để hoàn thành và mở bài
+ * tiếp theo. Bài có bài tập thì phải làm bài tập, không đánh dấu tay được.
+ */
+export async function markRoomLearned(roomId: string) {
+  const user = await requireRole([RoleName.STUDENT]);
+  if (!(await canAccessRoom(user.id, roomId)))
+    throw new AppError(403, "ROOM_LOCKED", "Bài học đang khóa.");
+  const content = await findRoomContent(roomId);
+  if (!content)
+    throw new AppError(404, "ROOM_NOT_FOUND", "Không tìm thấy bài học.");
+  if (content.exercises.length > 0)
+    throw new AppError(
+      400,
+      "ROOM_HAS_EXERCISES",
+      "Bài học có bài tập, hãy hoàn thành bài tập để qua bài.",
+    );
+  const completion = await completeRoomIfDone(user.id, roomId, {
+    markRead: true,
+  });
+  return { roomId, completion };
 }

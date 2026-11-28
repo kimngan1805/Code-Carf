@@ -7,12 +7,14 @@ import {
   Eye,
   LockKeyhole,
   ArrowLeft,
+  ArrowRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import type { getRoomPage } from "../service";
 import { stripLessonTemplate } from "@/features/paths/lesson-structure";
 import { RoomMarkdown } from "./room-markdown";
+import { MarkLearned } from "./mark-learned";
 import { RefreshRoom } from "./refresh-room";
 import { RoomAttachments } from "./room-attachments";
 import { ExerciseReportForm } from "@/features/exercise-reports/components/report-form";
@@ -174,41 +176,73 @@ export function RoomView({
             ) : (
               <section className="min-w-0 rounded-2xl border bg-background p-4 sm:p-6">
                 <p className="text-muted-foreground">
-                  Bài học này gồm các bài tập thực hành bên dưới.
+                  {room.exercises.length
+                    ? "Bài học này gồm các bài tập thực hành bên dưới."
+                    : "Bài học chưa có nội dung."}
                 </p>
               </section>
             )}
             <aside className="h-fit space-y-4 rounded-2xl border bg-background p-5">
-              <h2 className="font-semibold">Tiến độ bài tập</h2>
-              <p className="text-3xl font-bold text-primary">
-                {room.passedExercises}
-                <span className="text-lg font-normal text-muted-foreground">
-                  {" "}
-                  / {room.exercises.length}
-                </span>
-              </p>
-              <Progress
-                value={
-                  room.exercises.length
-                    ? room.passedExercises / room.exercises.length
-                    : 0
-                }
-                label="Bài tập đã đạt"
-              />
-              <p className="text-sm text-muted-foreground">
-                Số bài tập đã đạt trong bài học này.
-              </p>
-              <ul className="space-y-2">
-                {Object.values(states).map(({ label, Icon }) => (
-                  <li
-                    key={label}
-                    className="flex items-center gap-2 text-sm text-muted-foreground"
-                  >
-                    <Icon className="size-4" aria-hidden />
-                    {label}
-                  </li>
-                ))}
-              </ul>
+              {room.completed && (
+                <p className="flex items-center gap-2 rounded-xl bg-success/10 px-3 py-2 text-sm font-semibold text-success">
+                  <CheckCircle2 className="size-4" aria-hidden />
+                  Đã hoàn thành bài học
+                </p>
+              )}
+              {room.completed && "nextRoom" in room && room.nextRoom && (
+                <Button asChild size="sm" className="w-full rounded-full">
+                  <Link href={`/hv/rooms/${room.nextRoom.id}`}>
+                    Bài tiếp: {room.nextRoom.title}
+                    <ArrowRight className="size-4" aria-hidden />
+                  </Link>
+                </Button>
+              )}
+              {room.exercises.length === 0 ? (
+                <>
+                  <h2 className="font-semibold">Bài học không có bài tập</h2>
+                  <p className="text-sm text-muted-foreground">
+                    Đọc nội dung, xem video và tài liệu xong thì bấm &quot;Đã
+                    học xong&quot; để mở bài tiếp theo.
+                  </p>
+                  {!room.completed && !isPreview && (
+                    <MarkLearned roomId={room.id} />
+                  )}
+                </>
+              ) : (
+                <>
+                  <h2 className="font-semibold">Tiến độ bài tập</h2>
+                  <p className="text-3xl font-bold text-primary">
+                    {room.passedExercises}
+                    <span className="text-lg font-normal text-muted-foreground">
+                      {" "}
+                      / {room.exercises.length}
+                    </span>
+                  </p>
+                  <Progress
+                    value={
+                      room.exercises.length
+                        ? room.passedExercises / room.exercises.length
+                        : 0
+                    }
+                    label="Bài tập đã xong"
+                  />
+                  <p className="text-sm text-muted-foreground">
+                    Bài code và trắc nghiệm cần đạt; bài tự luận nộp ảnh là
+                    xong, giảng viên chấm điểm sau.
+                  </p>
+                  <ul className="space-y-2">
+                    {Object.values(states).map(({ label, Icon }) => (
+                      <li
+                        key={label}
+                        className="flex items-center gap-2 text-sm text-muted-foreground"
+                      >
+                        <Icon className="size-4" aria-hidden />
+                        {label}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
             </aside>
           </div>
           {hasTheory && (

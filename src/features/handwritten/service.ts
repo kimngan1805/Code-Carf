@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { ExerciseKind, RoleName } from "@prisma/client";
 import { requireRole } from "@/features/auth/service";
 import { getContestEntry } from "@/features/contests/service";
+import { completeRoomIfDone } from "@/features/grading/room-completion";
 import { canAccessRoom } from "@/features/rooms/access";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
@@ -65,7 +66,7 @@ async function resolveTarget(exerciseId: string, contestSlug: string | null) {
   } else if (!(await canAccessRoom(userId, exercise.room.id))) {
     throw new AppError(403, "ROOM_LOCKED", "Bài học đang khóa.");
   }
-  return { userId, contestId };
+  return { userId, contestId, roomId: exercise.room?.id ?? null };
 }
 
 /**
@@ -79,7 +80,7 @@ export async function uploadHandwrittenImage(input: {
   contestSlug?: string | null;
   file: UploadedImage;
 }) {
-  const { userId, contestId } = await resolveTarget(
+  const { userId, contestId, roomId } = await resolveTarget(
     input.exerciseId,
     input.contestSlug ?? null,
   );
@@ -105,6 +106,17 @@ export async function uploadHandwrittenImage(input: {
   }
   // Only after the commit: a failed delete leaves an unreferenced file, never a broken submission.
   if (saved.replacedKey) await removeQuietly(saved.replacedKey);
+
+  // Luyện tập: nộp ảnh tự luận là đã làm bài, có thể hoàn thành bài học ngay.
+  if (!contestId && roomId) {
+    try {
+      await completeRoomIfDone(userId, roomId);
+    } catch (error) {
+      logger.error("handwritten_room_completion_failed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
 
   return {
     id: saved.id,
