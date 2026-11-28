@@ -24,6 +24,12 @@ import {
   MAX_TEST_CASES,
   type ExerciseKindKey,
 } from "../authoring-schema";
+import { saveLibraryExerciseAction } from "@/features/library/actions";
+import {
+  MetaFields,
+  type CategoryOption,
+  type MetaValue,
+} from "@/features/library/components/meta-fields";
 import { saveExerciseAction } from "../authoring-actions";
 
 type TestRow = {
@@ -120,14 +126,21 @@ function newRow(key: string, partial: Partial<TestRow> = {}): TestRow {
   };
 }
 
+/**
+ * Soạn bài tập trong một bài học, hoặc trong kho tài liệu khi không truyền
+ * `pathSlug` / `roomId` (bài trong kho chưa gắn với bài học nào).
+ */
 export function ExerciseEditor({
   pathSlug,
   roomId,
   exercise,
+  library,
 }: {
-  pathSlug: string;
-  roomId: string;
+  pathSlug?: string;
+  roomId?: string;
   exercise?: Initial;
+  /** Danh mục và phân loại hiện tại khi soạn trong kho tài liệu. */
+  library?: { categories: CategoryOption[]; meta: MetaValue };
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(exercise?.title ?? "");
@@ -165,7 +178,18 @@ export function ExerciseEditor({
   const nextKey = useRef(tests.length);
   const inFlight = useRef(false);
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
-  const back = `/gv/paths/${pathSlug}/rooms/${roomId}`;
+  const inLibrary = !pathSlug || !roomId;
+  const [meta, setMeta] = useState<MetaValue>(
+    library?.meta ?? {
+      categoryId: null,
+      tags: [],
+      status: "READY",
+      visibility: "PRIVATE",
+    },
+  );
+  const back = inLibrary
+    ? "/gv/library"
+    : `/gv/paths/${pathSlug}/rooms/${roomId}`;
 
   function addTest() {
     const key = `row-${nextKey.current++}`;
@@ -240,19 +264,22 @@ export function ExerciseEditor({
       const fingerprint = JSON.stringify(parsed.data);
       if (request.current?.fingerprint !== fingerprint)
         request.current = { fingerprint, id: crypto.randomUUID() };
-      const result = await saveExerciseAction({
-        ...parsed.data,
-        pathSlug,
-        roomId,
-        ...(exercise
-          ? { exerciseId: exercise.id }
-          : { requestId: request.current.id }),
-      });
+      const target = exercise
+        ? { exerciseId: exercise.id }
+        : { requestId: request.current.id };
+      const result = inLibrary
+        ? await saveLibraryExerciseAction({ ...parsed.data, ...target, meta })
+        : await saveExerciseAction({
+            ...parsed.data,
+            pathSlug,
+            roomId,
+            ...target,
+          });
       if (result.error || !result.data) {
         setError(result.error ?? "Chưa thể lưu bài tập.");
         return;
       }
-      router.push(`${back}?exercise=saved`);
+      router.push(inLibrary ? `${back}?saved=1` : `${back}?exercise=saved`);
       router.refresh();
       navigating = true;
     } catch {
@@ -776,6 +803,20 @@ export function ExerciseEditor({
                 </li>
               ))}
             </ol>
+          </section>
+        )}
+
+        {inLibrary && (
+          <section
+            aria-label="Phân loại trong kho"
+            className="space-y-3 rounded-2xl border-2 border-dashed border-primary/20 p-4"
+          >
+            <h2 className="text-sm font-semibold">Phân loại trong kho</h2>
+            <MetaFields
+              value={meta}
+              onChange={setMeta}
+              categories={library?.categories ?? []}
+            />
           </section>
         )}
 

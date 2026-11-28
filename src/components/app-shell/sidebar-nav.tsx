@@ -8,6 +8,7 @@ import {
   BadgeCheck,
   BookOpen,
   Flag,
+  FolderOpen,
   History,
   House,
   LayoutDashboard,
@@ -105,6 +106,12 @@ export const teacherNavGroups: { title: string; items: NavItem[] }[] = [
         short: "Lộ trình",
         icon: BookOpen,
       },
+      {
+        href: "/gv/library",
+        label: "Kho tài liệu",
+        short: "Kho",
+        icon: FolderOpen,
+      },
     ],
   },
   {
@@ -153,6 +160,12 @@ export const adminNavGroups: { title: string; items: NavItem[] }[] = [
         label: "Lộ trình học",
         short: "Lộ trình",
         icon: BookOpen,
+      },
+      {
+        href: "/gv/library",
+        label: "Kho tài liệu",
+        short: "Kho",
+        icon: FolderOpen,
       },
       { href: "/contests", label: "Cuộc thi", short: "Cuộc thi", icon: Trophy },
     ],
