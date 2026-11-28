@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { AppError } from "@/lib/errors";
 import { logger } from "@/lib/logger";
 import { getStorage } from "@/lib/storage";
+import { addRoomUploadToLibrary } from "@/features/library/service";
 import { canAccessRoom } from "./access";
 import {
   MAX_ATTACHMENTS_PER_ROOM,
@@ -87,7 +88,7 @@ export async function uploadRoomAttachment(input: {
   roomId: string;
   file: UploadedAttachment;
 }) {
-  const { room } = await requireManagedRoom(input.roomId);
+  const { user, room } = await requireManagedRoom(input.roomId);
   const type = validateAttachment(input.file);
   if (
     (await db.roomAttachment.count({ where: { roomId: room.id } })) >=
@@ -118,6 +119,7 @@ export async function uploadRoomAttachment(input: {
       },
       select: attachmentSelect,
     });
+    await addRoomUploadToLibrary(user.id, attachment.id);
     return { attachment, slug: room.path.slug };
   } catch (error) {
     await removeQuietly(storageKey);
