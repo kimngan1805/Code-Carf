@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   ChevronRight,
   CodeXml,
+  FolderOpen,
   LoaderCircle,
   MonitorPlay,
   Plus,
@@ -16,10 +17,11 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LibraryPicker } from "@/features/library/components/library-picker";
 import { addLessonVideoAction } from "../authoring-actions";
 import { youtubeVideoId } from "../youtube";
 
-type Step = "choose" | "video";
+type Step = "choose" | "video" | "library";
 
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -212,7 +214,11 @@ export function AddContentButton({
               id={titleId}
               className="text-lg font-bold tracking-tight text-foreground"
             >
-              {step === "choose" ? "Thêm nội dung" : "Thêm video YouTube"}
+              {step === "choose"
+                ? "Thêm nội dung"
+                : step === "library"
+                  ? "Chọn từ kho tài liệu"
+                  : "Thêm video YouTube"}
             </h2>
             <p className="truncate text-xs text-muted-foreground">
               Bài học: {roomTitle}
@@ -231,11 +237,43 @@ export function AddContentButton({
           </Button>
         </div>
 
-        {step === "choose" ? (
+        {step === "library" ? (
+          <>
+            <LibraryPicker roomId={roomId} />
+            <div className="flex justify-between gap-2 border-t border-border/60 bg-muted/30 px-5 py-3.5 sm:px-6">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setStep("choose")}
+              >
+                <ArrowLeft className="size-4" aria-hidden />
+                Chọn loại khác
+              </Button>
+              <Button type="button" size="sm" onClick={close}>
+                Xong
+              </Button>
+            </div>
+          </>
+        ) : step === "choose" ? (
           <div className="space-y-2.5 p-5 sm:p-6">
             <button
               type="button"
               data-first-option
+              className={optionClass}
+              onClick={() => {
+                setError("");
+                setStep("library");
+              }}
+            >
+              <OptionBody
+                icon={<FolderOpen className="size-5" />}
+                title="Chọn từ kho tài liệu"
+                hint="Dùng lại bài tập hoặc file bài giảng đã có trong kho của bạn."
+              />
+            </button>
+            <button
+              type="button"
               className={optionClass}
               onClick={() => {
                 setError("");
